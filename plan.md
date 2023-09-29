@@ -29,3 +29,6 @@ Things that can be added at that point:
 - closure ?
 - Null statement ?
 
+
+I don't know much about how this language will be designed. I intend to do mistake and learn while doing.
+I should not be afraid to take time to think, graph, document everything if I get blocked to find a solution.

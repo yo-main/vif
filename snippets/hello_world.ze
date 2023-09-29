@@ -1,0 +1,5 @@
+def entrypoint():
+	world = "world"
+	print("Hello", world)
+
+entrypoint()

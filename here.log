@@ -1,0 +1,175 @@
+2023-09-28T22:50:31.964 helix_lsp::client [INFO] Using custom LSP config: {"inlayHints":{"bindingModeHints":{"enable":false},"closingBraceHints":{"minLines":10},"closureReturnTypeHints":{"enable":"with_block"},"discriminantHints":{"enable":"fieldless"},"lifetimeElisionHints":{"enable":"skip_trivial"},"typeHints":{"hideClosureInitialization":false}}}
+2023-09-28T22:50:31.964 helix_lsp::transport [INFO] rust-analyzer -> {"jsonrpc":"2.0","method":"initialize","params":{"capabilities":{"general":{"positionEncodings":["utf-8","utf-32","utf-16"]},"textDocument":{"codeAction":{"codeActionLiteralSupport":{"codeActionKind":{"valueSet":["","quickfix","refactor","refactor.extract","refactor.inline","refactor.rewrite","source","source.organizeImports"]}},"dataSupport":true,"disabledSupport":true,"isPreferredSupport":true,"resolveSupport":{"properties":["edit","command"]}},"completion":{"completionItem":{"deprecatedSupport":true,"insertReplaceSupport":true,"resolveSupport":{"properties":["documentation","detail","additionalTextEdits"]},"snippetSupport":true,"tagSupport":{"valueSet":[1]}},"completionItemKind":{}},"hover":{"contentFormat":["markdown"]},"inlayHint":{"dynamicRegistration":false},"publishDiagnostics":{"versionSupport":true},"rename":{"dynamicRegistration":false,"honorsChangeAnnotations":false,"prepareSupport":true},"signatureHelp":{"signatureInformation":{"activeParameterSupport":true,"documentationFormat":["markdown"],"parameterInformation":{"labelOffsetSupport":true}}}},"window":{"workDoneProgress":true},"workspace":{"applyEdit":true,"configuration":true,"didChangeConfiguration":{"dynamicRegistration":false},"didChangeWatchedFiles":{"dynamicRegistration":true,"relativePatternSupport":false},"executeCommand":{"dynamicRegistration":false},"inlayHint":{"refreshSupport":false},"symbol":{"dynamicRegistration":false},"workspaceEdit":{"documentChanges":true,"failureHandling":"abort","normalizesLineEndings":false,"resourceOperations":["create","rename","delete"]},"workspaceFolders":true}},"clientInfo":{"name":"helix","version":"23.05 (8a28f305)"},"initializationOptions":{"inlayHints":{"bindingModeHints":{"enable":false},"closingBraceHints":{"minLines":10},"closureReturnTypeHints":{"enable":"with_block"},"discriminantHints":{"enable":"fieldless"},"lifetimeElisionHints":{"enable":"skip_trivial"},"typeHints":{"hideClosureInitialization":false}}},"processId":20979,"rootPath":"/home/yomain/projects/zeus","rootUri":"file:///home/yomain/projects/zeus","workspaceFolders":[{"name":"zeus","uri":"file:///home/yomain/projects/zeus"}]},"id":0}
+2023-09-28T22:50:32.500 helix_lsp::transport [ERROR] rust-analyzer err <- "error: 'rust-analyzer' is not installed for the toolchain 'nightly-x86_64-unknown-linux-gnu'\n"
+2023-09-28T22:50:32.500 helix_lsp::transport [ERROR] rust-analyzer err: <- StreamClosed
+2023-09-28T22:50:32.500 helix_lsp [ERROR] failed to initialize language server: server closed the stream
+2023-09-28T22:52:09.987 helix_lsp::client [INFO] Using custom LSP config: {"inlayHints":{"bindingModeHints":{"enable":false},"closingBraceHints":{"minLines":10},"closureReturnTypeHints":{"enable":"with_block"},"discriminantHints":{"enable":"fieldless"},"lifetimeElisionHints":{"enable":"skip_trivial"},"typeHints":{"hideClosureInitialization":false}}}
+2023-09-28T22:52:09.988 helix_lsp::transport [INFO] rust-analyzer -> {"jsonrpc":"2.0","method":"initialize","params":{"capabilities":{"general":{"positionEncodings":["utf-8","utf-32","utf-16"]},"textDocument":{"codeAction":{"codeActionLiteralSupport":{"codeActionKind":{"valueSet":["","quickfix","refactor","refactor.extract","refactor.inline","refactor.rewrite","source","source.organizeImports"]}},"dataSupport":true,"disabledSupport":true,"isPreferredSupport":true,"resolveSupport":{"properties":["edit","command"]}},"completion":{"completionItem":{"deprecatedSupport":true,"insertReplaceSupport":true,"resolveSupport":{"properties":["documentation","detail","additionalTextEdits"]},"snippetSupport":true,"tagSupport":{"valueSet":[1]}},"completionItemKind":{}},"hover":{"contentFormat":["markdown"]},"inlayHint":{"dynamicRegistration":false},"publishDiagnostics":{"versionSupport":true},"rename":{"dynamicRegistration":false,"honorsChangeAnnotations":false,"prepareSupport":true},"signatureHelp":{"signatureInformation":{"activeParameterSupport":true,"documentationFormat":["markdown"],"parameterInformation":{"labelOffsetSupport":true}}}},"window":{"workDoneProgress":true},"workspace":{"applyEdit":true,"configuration":true,"didChangeConfiguration":{"dynamicRegistration":false},"didChangeWatchedFiles":{"dynamicRegistration":true,"relativePatternSupport":false},"executeCommand":{"dynamicRegistration":false},"inlayHint":{"refreshSupport":false},"symbol":{"dynamicRegistration":false},"workspaceEdit":{"documentChanges":true,"failureHandling":"abort","normalizesLineEndings":false,"resourceOperations":["create","rename","delete"]},"workspaceFolders":true}},"clientInfo":{"name":"helix","version":"23.05 (8a28f305)"},"initializationOptions":{"inlayHints":{"bindingModeHints":{"enable":false},"closingBraceHints":{"minLines":10},"closureReturnTypeHints":{"enable":"with_block"},"discriminantHints":{"enable":"fieldless"},"lifetimeElisionHints":{"enable":"skip_trivial"},"typeHints":{"hideClosureInitialization":false}}},"processId":21307,"rootPath":"/home/yomain/projects/zeus","rootUri":"file:///home/yomain/projects/zeus","workspaceFolders":[{"name":"zeus","uri":"file:///home/yomain/projects/zeus"}]},"id":0}
+2023-09-28T22:52:10.013 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","id":0,"result":{"capabilities":{"positionEncoding":"utf-8","textDocumentSync":{"openClose":true,"change":2,"save":{}},"selectionRangeProvider":true,"hoverProvider":true,"completionProvider":{"resolveProvider":true,"triggerCharacters":[":",".","'","("],"completionItem":{"labelDetailsSupport":false}},"signatureHelpProvider":{"triggerCharacters":["(",",","<"]},"definitionProvider":true,"typeDefinitionProvider":true,"implementationProvider":true,"referencesProvider":true,"documentHighlightProvider":true,"documentSymbolProvider":true,"workspaceSymbolProvider":true,"codeActionProvider":{"codeActionKinds":["","quickfix","refactor","refactor.extract","refactor.inline","refactor.rewrite"],"resolveProvider":true},"codeLensProvider":{"resolveProvider":true},"documentFormattingProvider":true,"documentRangeFormattingProvider":false,"documentOnTypeFormattingProvider":{"firstTriggerCharacter":"=","moreTriggerCharacter":[".",">","{","("]},"renameProvider":{"prepareProvider":true},"foldingRangeProvider":true,"declarationProvider":true,"workspace":{"workspaceFolders":{"supported":true,"changeNotifications":true},"fileOperations":{"willRename":{"filters":[{"scheme":"file","pattern":{"glob":"**/*.rs","matches":"file"}},{"scheme":"file","pattern":{"glob":"**","matches":"folder"}}]}}},"callHierarchyProvider":true,"semanticTokensProvider":{"legend":{"tokenTypes":["comment","decorator","enumMember","enum","function","interface","keyword","macro","method","namespace","number","operator","parameter","property","string","struct","typeParameter","variable","angle","arithmetic","attribute","attributeBracket","bitwise","boolean","brace","bracket","builtinAttribute","builtinType","character","colon","comma","comparison","constParameter","derive","deriveHelper","dot","escapeSequence","invalidEscapeSequence","formatSpecifier","generic","label","lifetime","logical","macroBang","parenthesis","punctuation","selfKeyword","selfTypeKeyword","semicolon","typeAlias","toolModule","union","unresolvedReference"],"tokenModifiers":["documentation","declaration","static","defaultLibrary","async","attribute","callable","constant","consuming","controlFlow","crateRoot","injected","intraDocLink","library","macro","mutable","public","reference","trait","unsafe"]},"range":true,"full":{"delta":true}},"inlayHintProvider":{"resolveProvider":true},"experimental":{"externalDocs":true,"hoverRange":true,"joinLines":true,"matchingBrace":true,"moveItem":true,"onEnter":true,"openCargoToml":true,"parentModule":true,"runnables":{"kinds":["cargo"]},"ssr":true,"workspaceSymbolScopeKindFiltering":true}},"serverInfo":{"name":"rust-analyzer","version":"1.74.0-nightly (e7c502d 2023-09-27)"}}}
+2023-09-28T22:52:10.014 helix_lsp::transport [INFO] rust-analyzer <- {"capabilities":{"callHierarchyProvider":true,"codeActionProvider":{"codeActionKinds":["","quickfix","refactor","refactor.extract","refactor.inline","refactor.rewrite"],"resolveProvider":true},"codeLensProvider":{"resolveProvider":true},"completionProvider":{"completionItem":{"labelDetailsSupport":false},"resolveProvider":true,"triggerCharacters":[":",".","'","("]},"declarationProvider":true,"definitionProvider":true,"documentFormattingProvider":true,"documentHighlightProvider":true,"documentOnTypeFormattingProvider":{"firstTriggerCharacter":"=","moreTriggerCharacter":[".",">","{","("]},"documentRangeFormattingProvider":false,"documentSymbolProvider":true,"experimental":{"externalDocs":true,"hoverRange":true,"joinLines":true,"matchingBrace":true,"moveItem":true,"onEnter":true,"openCargoToml":true,"parentModule":true,"runnables":{"kinds":["cargo"]},"ssr":true,"workspaceSymbolScopeKindFiltering":true},"foldingRangeProvider":true,"hoverProvider":true,"implementationProvider":true,"inlayHintProvider":{"resolveProvider":true},"positionEncoding":"utf-8","referencesProvider":true,"renameProvider":{"prepareProvider":true},"selectionRangeProvider":true,"semanticTokensProvider":{"full":{"delta":true},"legend":{"tokenModifiers":["documentation","declaration","static","defaultLibrary","async","attribute","callable","constant","consuming","controlFlow","crateRoot","injected","intraDocLink","library","macro","mutable","public","reference","trait","unsafe"],"tokenTypes":["comment","decorator","enumMember","enum","function","interface","keyword","macro","method","namespace","number","operator","parameter","property","string","struct","typeParameter","variable","angle","arithmetic","attribute","attributeBracket","bitwise","boolean","brace","bracket","builtinAttribute","builtinType","character","colon","comma","comparison","constParameter","derive","deriveHelper","dot","escapeSequence","invalidEscapeSequence","formatSpecifier","generic","label","lifetime","logical","macroBang","parenthesis","punctuation","selfKeyword","selfTypeKeyword","semicolon","typeAlias","toolModule","union","unresolvedReference"]},"range":true},"signatureHelpProvider":{"triggerCharacters":["(",",","<"]},"textDocumentSync":{"change":2,"openClose":true,"save":{}},"typeDefinitionProvider":true,"workspace":{"fileOperations":{"willRename":{"filters":[{"pattern":{"glob":"**/*.rs","matches":"file"},"scheme":"file"},{"pattern":{"glob":"**","matches":"folder"},"scheme":"file"}]}},"workspaceFolders":{"changeNotifications":true,"supported":true}},"workspaceSymbolProvider":true},"serverInfo":{"name":"rust-analyzer","version":"1.74.0-nightly (e7c502d 2023-09-27)"}}
+2023-09-28T22:52:10.014 helix_lsp::transport [INFO] rust-analyzer -> {"jsonrpc":"2.0","method":"initialized","params":{}}
+2023-09-28T22:52:10.014 helix_lsp::transport [INFO] rust-analyzer -> {"jsonrpc":"2.0","method":"workspace/didChangeConfiguration","params":{"settings":{"inlayHints":{"bindingModeHints":{"enable":false},"closingBraceHints":{"minLines":10},"closureReturnTypeHints":{"enable":"with_block"},"discriminantHints":{"enable":"fieldless"},"lifetimeElisionHints":{"enable":"skip_trivial"},"typeHints":{"hideClosureInitialization":false}}}}}
+2023-09-28T22:52:10.014 helix_lsp::transport [INFO] rust-analyzer -> {"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"languageId":"rust","text":"mod config;\nmod cli;\n\nfn main() {\n    let config = config::get_config();\n\n    println!(\"{:?}\", config.entrypoint);\n}\n","uri":"file:///home/yomain/projects/zeus/src/main.rs","version":0}}}
+2023-09-28T22:52:10.030 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","id":0,"method":"workspace/configuration","params":{"items":[{"section":"rust-analyzer"}]}}
+2023-09-28T22:52:10.030 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","id":1,"method":"window/workDoneProgress/create","params":{"token":"rustAnalyzer/Fetching"}}
+2023-09-28T22:52:10.030 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Fetching","value":{"kind":"begin","title":"Fetching","cancellable":false}}}
+2023-09-28T22:52:10.030 helix_lsp::transport [INFO] rust-analyzer -> {"jsonrpc":"2.0","result":[null],"id":0}
+2023-09-28T22:52:10.030 helix_lsp::transport [INFO] rust-analyzer -> {"jsonrpc":"2.0","result":null,"id":1}
+2023-09-28T22:52:10.117 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Fetching","value":{"kind":"report","cancellable":false,"message":"metadata"}}}
+2023-09-28T22:52:10.261 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","id":2,"method":"client/registerCapability","params":{"registrations":[{"id":"workspace/didChangeWatchedFiles","method":"workspace/didChangeWatchedFiles","registerOptions":{"watchers":[{"globPattern":"/home/yomain/projects/zeus/**/*.rs"},{"globPattern":"/home/yomain/projects/zeus/**/Cargo.toml"},{"globPattern":"/home/yomain/projects/zeus/**/Cargo.lock"}]}}]}}
+2023-09-28T22:52:10.261 helix_lsp::transport [INFO] rust-analyzer -> {"jsonrpc":"2.0","result":null,"id":2}
+2023-09-28T22:52:10.263 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Fetching","value":{"kind":"end"}}}
+2023-09-28T22:52:10.263 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","id":3,"method":"window/workDoneProgress/create","params":{"token":"rustAnalyzer/Roots Scanned"}}
+2023-09-28T22:52:10.263 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Roots Scanned","value":{"kind":"begin","title":"Roots Scanned","cancellable":false,"message":"0/12","percentage":0}}}
+2023-09-28T22:52:10.263 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Roots Scanned","value":{"kind":"report","cancellable":false,"message":"1/12","percentage":8}}}
+2023-09-28T22:52:10.263 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Roots Scanned","value":{"kind":"report","cancellable":false,"message":"2/12","percentage":16}}}
+2023-09-28T22:52:10.263 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Roots Scanned","value":{"kind":"report","cancellable":false,"message":"3/12","percentage":25}}}
+2023-09-28T22:52:10.263 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Roots Scanned","value":{"kind":"report","cancellable":false,"message":"4/12","percentage":33}}}
+2023-09-28T22:52:10.263 helix_lsp::transport [INFO] rust-analyzer -> {"jsonrpc":"2.0","result":null,"id":3}
+2023-09-28T22:52:10.263 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Roots Scanned","value":{"kind":"report","cancellable":false,"message":"5/12","percentage":41}}}
+2023-09-28T22:52:10.264 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","id":4,"method":"window/workDoneProgress/create","params":{"token":"rustAnalyzer/Fetching"}}
+2023-09-28T22:52:10.264 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Fetching","value":{"kind":"begin","title":"Fetching","cancellable":false}}}
+2023-09-28T22:52:10.264 helix_lsp::transport [INFO] rust-analyzer -> {"jsonrpc":"2.0","result":null,"id":4}
+2023-09-28T22:52:10.264 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Roots Scanned","value":{"kind":"report","cancellable":false,"message":"6/12","percentage":50}}}
+2023-09-28T22:52:10.264 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Roots Scanned","value":{"kind":"report","cancellable":false,"message":"7/12","percentage":58}}}
+2023-09-28T22:52:10.264 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Roots Scanned","value":{"kind":"report","cancellable":false,"message":"8/12","percentage":66}}}
+2023-09-28T22:52:10.264 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Roots Scanned","value":{"kind":"report","cancellable":false,"message":"9/12","percentage":75}}}
+2023-09-28T22:52:10.264 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Roots Scanned","value":{"kind":"report","cancellable":false,"message":"10/12","percentage":83}}}
+2023-09-28T22:52:10.278 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Roots Scanned","value":{"kind":"report","cancellable":false,"message":"11/12","percentage":91}}}
+2023-09-28T22:52:10.278 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Roots Scanned","value":{"kind":"end","message":"12/12"}}}
+2023-09-28T22:52:10.351 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Fetching","value":{"kind":"report","cancellable":false,"message":"metadata"}}}
+2023-09-28T22:52:10.488 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Fetching","value":{"kind":"end"}}}
+2023-09-28T22:52:10.488 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","id":5,"method":"window/workDoneProgress/create","params":{"token":"rustAnalyzer/Fetching"}}
+2023-09-28T22:52:10.488 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Fetching","value":{"kind":"begin","title":"Fetching","cancellable":false}}}
+2023-09-28T22:52:10.488 helix_lsp::transport [INFO] rust-analyzer -> {"jsonrpc":"2.0","result":null,"id":5}
+2023-09-28T22:52:10.577 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Fetching","value":{"kind":"report","cancellable":false,"message":"metadata"}}}
+2023-09-28T22:52:10.717 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Fetching","value":{"kind":"end"}}}
+2023-09-28T22:52:10.717 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","id":6,"method":"window/workDoneProgress/create","params":{"token":"rustAnalyzer/Building"}}
+2023-09-28T22:52:10.717 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Building","value":{"kind":"begin","title":"Building","cancellable":false}}}
+2023-09-28T22:52:10.717 helix_lsp::transport [INFO] rust-analyzer -> {"jsonrpc":"2.0","result":null,"id":6}
+2023-09-28T22:52:10.717 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","id":7,"method":"window/workDoneProgress/create","params":{"token":"rustAnalyzer/Loading"}}
+2023-09-28T22:52:10.717 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Loading","value":{"kind":"begin","title":"Loading","cancellable":false}}}
+2023-09-28T22:52:10.717 helix_lsp::transport [INFO] rust-analyzer -> {"jsonrpc":"2.0","result":null,"id":7}
+2023-09-28T22:52:10.717 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Loading","value":{"kind":"end"}}}
+2023-09-28T22:52:10.773 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Building","value":{"kind":"report","cancellable":false,"message":"building proc-macros: utf8parse"}}}
+2023-09-28T22:52:10.773 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Building","value":{"kind":"report","cancellable":false,"message":"building proc-macros: anstyle-parse"}}}
+2023-09-28T22:52:10.773 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Building","value":{"kind":"report","cancellable":false,"message":"building proc-macros: anstyle"}}}
+2023-09-28T22:52:10.773 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Building","value":{"kind":"report","cancellable":false,"message":"building proc-macros: colorchoice"}}}
+2023-09-28T22:52:10.773 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Building","value":{"kind":"report","cancellable":false,"message":"building proc-macros: anstyle-query"}}}
+2023-09-28T22:52:10.773 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Building","value":{"kind":"report","cancellable":false,"message":"building proc-macros: anstream"}}}
+2023-09-28T22:52:10.773 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Building","value":{"kind":"report","cancellable":false,"message":"building proc-macros: strsim"}}}
+2023-09-28T22:52:10.773 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Building","value":{"kind":"report","cancellable":false,"message":"building proc-macros: clap_lex"}}}
+2023-09-28T22:52:10.773 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Building","value":{"kind":"report","cancellable":false,"message":"building proc-macros: clap_builder"}}}
+2023-09-28T22:52:10.773 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Building","value":{"kind":"report","cancellable":false,"message":"building proc-macros: clap"}}}
+2023-09-28T22:52:10.775 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Building","value":{"kind":"report","cancellable":false,"message":"building proc-macros: zeus"}}}
+2023-09-28T22:52:10.775 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Building","value":{"kind":"report","cancellable":false,"message":"building proc-macros: zeus"}}}
+2023-09-28T22:52:10.776 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","id":8,"method":"client/registerCapability","params":{"registrations":[{"id":"workspace/didChangeWatchedFiles","method":"workspace/didChangeWatchedFiles","registerOptions":{"watchers":[{"globPattern":"/home/yomain/projects/zeus/**/*.rs"},{"globPattern":"/home/yomain/projects/zeus/**/Cargo.toml"},{"globPattern":"/home/yomain/projects/zeus/**/Cargo.lock"}]}}]}}
+2023-09-28T22:52:10.776 helix_lsp::transport [INFO] rust-analyzer -> {"jsonrpc":"2.0","result":null,"id":8}
+2023-09-28T22:52:10.777 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Building","value":{"kind":"end"}}}
+2023-09-28T22:52:10.777 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","id":9,"method":"window/workDoneProgress/create","params":{"token":"rustAnalyzer/Roots Scanned"}}
+2023-09-28T22:52:10.777 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Roots Scanned","value":{"kind":"begin","title":"Roots Scanned","cancellable":false,"message":"0/12","percentage":0}}}
+2023-09-28T22:52:10.777 helix_lsp::transport [INFO] rust-analyzer -> {"jsonrpc":"2.0","result":null,"id":9}
+2023-09-28T22:52:10.777 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Roots Scanned","value":{"kind":"report","cancellable":false,"message":"1/12","percentage":8}}}
+2023-09-28T22:52:10.777 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Roots Scanned","value":{"kind":"report","cancellable":false,"message":"2/12","percentage":16}}}
+2023-09-28T22:52:10.777 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Roots Scanned","value":{"kind":"report","cancellable":false,"message":"3/12","percentage":25}}}
+2023-09-28T22:52:10.777 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Roots Scanned","value":{"kind":"report","cancellable":false,"message":"4/12","percentage":33}}}
+2023-09-28T22:52:10.777 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","id":10,"method":"window/workDoneProgress/create","params":{"token":"rustAnalyzer/Loading"}}
+2023-09-28T22:52:10.777 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Loading","value":{"kind":"begin","title":"Loading","cancellable":false}}}
+2023-09-28T22:52:10.777 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Loading","value":{"kind":"end"}}}
+2023-09-28T22:52:10.777 helix_lsp::transport [INFO] rust-analyzer -> {"jsonrpc":"2.0","result":null,"id":10}
+2023-09-28T22:52:10.777 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Roots Scanned","value":{"kind":"report","cancellable":false,"message":"5/12","percentage":41}}}
+2023-09-28T22:52:10.778 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Roots Scanned","value":{"kind":"report","cancellable":false,"message":"6/12","percentage":50}}}
+2023-09-28T22:52:10.778 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Roots Scanned","value":{"kind":"report","cancellable":false,"message":"7/12","percentage":58}}}
+2023-09-28T22:52:10.778 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Roots Scanned","value":{"kind":"report","cancellable":false,"message":"8/12","percentage":66}}}
+2023-09-28T22:52:10.778 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Roots Scanned","value":{"kind":"report","cancellable":false,"message":"9/12","percentage":75}}}
+2023-09-28T22:52:10.778 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Roots Scanned","value":{"kind":"report","cancellable":false,"message":"10/12","percentage":83}}}
+2023-09-28T22:52:10.794 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Roots Scanned","value":{"kind":"report","cancellable":false,"message":"11/12","percentage":91}}}
+2023-09-28T22:52:10.794 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Roots Scanned","value":{"kind":"end","message":"12/12"}}}
+2023-09-28T22:52:10.794 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","id":11,"method":"window/workDoneProgress/create","params":{"token":"rustAnalyzer/Indexing"}}
+2023-09-28T22:52:10.794 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Indexing","value":{"kind":"begin","title":"Indexing","cancellable":false,"percentage":0}}}
+2023-09-28T22:52:10.794 helix_lsp::transport [INFO] rust-analyzer -> {"jsonrpc":"2.0","result":null,"id":11}
+2023-09-28T22:52:10.794 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Indexing","value":{"kind":"report","cancellable":false,"message":"0/6 (test)","percentage":0}}}
+2023-09-28T22:52:10.795 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Indexing","value":{"kind":"report","cancellable":false,"message":"0/6 (test + 1 more)","percentage":0}}}
+2023-09-28T22:52:10.827 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Indexing","value":{"kind":"report","cancellable":false,"message":"1/6 (core)","percentage":16}}}
+2023-09-28T22:52:10.848 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","id":12,"method":"window/workDoneProgress/create","params":{"token":"rust-analyzer/flycheck/0"}}
+2023-09-28T22:52:10.848 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rust-analyzer/flycheck/0","value":{"kind":"begin","title":"cargo check","cancellable":true}}}
+2023-09-28T22:52:10.848 helix_lsp::transport [INFO] rust-analyzer -> {"jsonrpc":"2.0","result":null,"id":12}
+2023-09-28T22:52:10.905 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rust-analyzer/flycheck/0","value":{"kind":"end"}}}
+2023-09-28T22:52:11.637 helix_term::commands [ERROR] Shell error: usage: q <applet> <args>  : invoke a portage utility applet
+
+currently defined applets:
+         q <applet> <args> : virtual applet
+     qatom <pkg>           : split atom strings
+    qcheck <pkgname>       : verify integrity of installed packages
+  qdepends <pkgname>       : show dependency info
+     qfile <filename>      : list all pkgs owning files
+     qgrep <expr> [pkg ...]: grep in ebuilds
+  qkeyword <action> <args> : list packages based on keywords
+     qlist <pkgname>       : list files owned by pkgname
+      qlop <pkgname>       : emerge log analyzer
+ qmanifest <misc args>     : verify or generate thick Manifest files
+    qmerge <pkgnames>      : fetch and merge binary package
+      qpkg <misc args>     : create or manipulate Gentoo binpkgs
+   qsearch <regex>         : search pkgname/desc
+     qsize <pkgname>       : calculate size usage
+     qtbz2 <misc args>     : manipulate tbz2 packages
+  qtegrity <misc args>     : verify files with IMA
+      quse <useflag>       : find pkgs using useflags
+    qwhich <pkg ...>       : find path to pkg
+     qxpak <misc args>     : manipulate xpak archives
+
+options: -[ioemvqChV]
+  -i, --install    * Install symlinks for applets
+  -o, --overlays   * Print available overlays (read from repos.conf)
+  -e, --envvar     * Print used variables and their found values
+  -m, --masks      * Print (package.)masks for the current profile
+      --root <arg> * Set the ROOT env var
+  -v, --verbose    * Report full package versions, emit more elaborate output
+  -q, --quiet      * Tighter output; suppress warnings
+  -C, --nocolor    * Don't output color
+      --color      * Force color in output
+  -h, --help       * Print this help and exit
+  -V, --version    * Print version and exit
+
+2023-09-28T22:52:11.637 helix_view::editor [ERROR] editor error: Shell error: usage: q <applet> <args>  : invoke a portage utility applet
+
+currently defined applets:
+         q <applet> <args> : virtual applet
+     qatom <pkg>           : split atom strings
+    qcheck <pkgname>       : verify integrity of installed packages
+  qdepends <pkgname>       : show dependency info
+     qfile <filename>      : list all pkgs owning files
+     qgrep <expr> [pkg ...]: grep in ebuilds
+  qkeyword <action> <args> : list packages based on keywords
+     qlist <pkgname>       : list files owned by pkgname
+      qlop <pkgname>       : emerge log analyzer
+ qmanifest <misc args>     : verify or generate thick Manifest files
+    qmerge <pkgnames>      : fetch and merge binary package
+      qpkg <misc args>     : create or manipulate Gentoo binpkgs
+   qsearch <regex>         : search pkgname/desc
+     qsize <pkgname>       : calculate size usage
+     qtbz2 <misc args>     : manipulate tbz2 packages
+  qtegrity <misc args>     : verify files with IMA
+      quse <useflag>       : find pkgs using useflags
+    qwhich <pkg ...>       : find path to pkg
+     qxpak <misc args>     : manipulate xpak archives
+
+options: -[ioemvqChV]
+  -i, --install    * Install symlinks for applets
+  -o, --overlays   * Print available overlays (read from repos.conf)
+  -e, --envvar     * Print used variables and their found values
+  -m, --masks      * Print (package.)masks for the current profile
+      --root <arg> * Set the ROOT env var
+  -v, --verbose    * Report full package versions, emit more elaborate output
+  -q, --quiet      * Tighter output; suppress warnings
+  -C, --nocolor    * Don't output color
+      --color      * Force color in output
+  -h, --help       * Print this help and exit
+  -V, --version    * Print version and exit
+
+2023-09-28T22:52:12.853 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Indexing","value":{"kind":"report","cancellable":false,"message":"2/6 (alloc)","percentage":33}}}
+2023-09-28T22:52:13.002 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","method":"$/progress","params":{"token":"rustAnalyzer/Indexing","value":{"kind":"report","cancellable":false,"message":"3/6 (std)","percentage":50}}}
+2023-09-28T22:52:13.164 helix_lsp::transport [INFO] rust-analyzer -> {"jsonrpc":"2.0","method":"shutdown","id":1}
+2023-09-28T22:52:13.165 helix_lsp::transport [INFO] rust-analyzer <- {"jsonrpc":"2.0","id":1,"result":null}
+2023-09-28T22:52:13.165 helix_lsp::transport [INFO] rust-analyzer <- null
+2023-09-28T22:52:13.165 helix_lsp::transport [INFO] rust-analyzer -> {"jsonrpc":"2.0","method":"exit"}
