@@ -1,6 +1,7 @@
 Ok, let's go to work.
 
 What our first goal ?
+
 Being able to parse a small, easy piece of code I would say.
 
 What piece of code ?
