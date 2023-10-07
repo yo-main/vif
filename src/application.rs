@@ -3,6 +3,7 @@ use std::fs;
 use std::io;
 use std::io::Write;
 
+use crate::tokenizer::Tokenizer;
 use std::path::PathBuf;
 
 pub struct Zeus {}
@@ -13,6 +14,10 @@ impl Zeus {
     }
 
     fn run(&self, content: String) -> Result<(), ZeusError> {
+        let mut tokenizer = Tokenizer::new(content.as_str());
+        tokenizer.scan_tokens();
+        println!("[{}] {:?}", tokenizer.has_error, tokenizer.tokens);
+
         Ok(())
     }
 

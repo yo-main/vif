@@ -1,7 +1,14 @@
 #[derive(Debug)]
+pub enum ZeusErrorType {
+    Generic,
+    EOF,
+}
+
+#[derive(Debug)]
 pub struct ZeusError {
     pub msg: String,
     pub line: Option<i64>,
+    pub r#type: ZeusErrorType,
 }
 
 impl ZeusError {
@@ -9,6 +16,7 @@ impl ZeusError {
         Self {
             msg: msg.to_owned(),
             line: None,
+            r#type: ZeusErrorType::Generic,
         }
     }
 
@@ -16,6 +24,7 @@ impl ZeusError {
         Self {
             msg: msg.to_owned(),
             line: Some(line),
+            r#type: ZeusErrorType::Generic,
         }
     }
 
@@ -23,6 +32,23 @@ impl ZeusError {
         match self.line.as_ref() {
             Some(line) => format!("[{}] Error: {}", line, self.msg),
             _ => format!("Error: {}", self.msg),
+        }
+    }
+}
+
+impl From<ZeusErrorType> for ZeusError {
+    fn from(value: ZeusErrorType) -> Self {
+        match value {
+            ZeusErrorType::EOF => ZeusError {
+                msg: "EOF".to_owned(),
+                line: None,
+                r#type: ZeusErrorType::EOF,
+            },
+            ZeusErrorType::Generic => ZeusError {
+                msg: "Generic Error".to_owned(),
+                line: None,
+                r#type: ZeusErrorType::Generic,
+            },
         }
     }
 }
