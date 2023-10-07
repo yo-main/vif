@@ -90,9 +90,13 @@ impl<'a> Tokenizer<'a> {
                     true => TokenType::PlusEqual,
                     false => TokenType::Plus,
                 },
-                '-' => match self.r#match('=') {
-                    true => TokenType::MinusEqual,
-                    false => TokenType::Minus,
+                '-' => match *self.peek() {
+                    '=' => {
+                        self.advance().unwrap();
+                        TokenType::MinusEqual
+                    }
+                    d if d.is_digit(10) => self.parse_number('-'),
+                    _ => TokenType::Minus,
                 },
                 '/' => match self.r#match('=') {
                     true => TokenType::SlashEqual,
@@ -102,85 +106,9 @@ impl<'a> Tokenizer<'a> {
                     true => TokenType::StarEqual,
                     false => TokenType::Star,
                 },
-                d if d.is_digit(10) => {
-                    let mut str = String::from(d);
-
-                    loop {
-                        let c = self.peek();
-                        if !c.is_digit(10) {
-                            break;
-                        }
-                        str.push(self.advance().unwrap());
-                    }
-                    if self.peek() == &'.' {
-                        str.push(self.advance().unwrap());
-                        loop {
-                            let c = self.peek();
-                            if !c.is_digit(10) {
-                                break;
-                            }
-                            str.push(self.advance().unwrap());
-                        }
-                    }
-
-                    if str.contains('.') {
-                        TokenType::Float(str.parse::<f64>().unwrap())
-                    } else {
-                        TokenType::Integer(str.parse::<i64>().unwrap())
-                    }
-                }
-                c if c.is_ascii_alphabetic() => {
-                    let mut str = String::from(c);
-                    loop {
-                        let c = self.peek();
-                        if c.is_ascii_alphanumeric() || c == &'_' {
-                            str.push(self.advance().unwrap());
-                        } else {
-                            break;
-                        }
-                    }
-
-                    match str.as_str() {
-                        "and" => TokenType::And,
-                        "or" => TokenType::Or,
-                        "def" => TokenType::Def,
-                        "class" => TokenType::Class,
-                        "if" => TokenType::If,
-                        "else" => TokenType::Else,
-                        "elif" => TokenType::ElIf,
-                        "for" => TokenType::For,
-                        "while" => TokenType::While,
-                        "let" => TokenType::Let,
-                        "const" => TokenType::Const,
-                        "self" => TokenType::Self_,
-                        "return" => TokenType::Return,
-                        "True" => TokenType::True,
-                        "False" => TokenType::False,
-                        "None" => TokenType::None,
-                        _ => TokenType::Identifier(str),
-                    }
-                }
-                '"' => {
-                    let mut str = String::new();
-                    loop {
-                        match self.peek() {
-                            &'"' => {
-                                self.advance().unwrap();
-                                break;
-                            }
-                            &'\0' => {
-                                self.report_error("Unclosed string: EOF");
-                                return Ok(());
-                            }
-                            &'\n' => {
-                                self.report_error("Unclosed string: new line");
-                                return Ok(());
-                            }
-                            _ => str.push(self.advance()?),
-                        };
-                    }
-                    TokenType::String(str)
-                }
+                d if d.is_digit(10) => self.parse_number(d),
+                c if c.is_ascii_alphabetic() => self.parse_identifier(c),
+                '"' => self.parse_string(),
                 ' ' => TokenType::Ignore,
                 '\t' => TokenType::Ignore,
                 '\r' => TokenType::Ignore,
@@ -264,5 +192,87 @@ impl<'a> Tokenizer<'a> {
                 TokenType::Ignore
             }
         }
+    }
+
+    fn parse_number(&mut self, initial: char) -> TokenType {
+        let mut str = String::from(initial);
+
+        loop {
+            let c = self.peek();
+            if !c.is_digit(10) {
+                break;
+            }
+            str.push(self.advance().unwrap());
+        }
+        if self.peek() == &'.' {
+            str.push(self.advance().unwrap());
+            loop {
+                let c = self.peek();
+                if !c.is_digit(10) {
+                    break;
+                }
+                str.push(self.advance().unwrap());
+            }
+        }
+
+        if str.contains('.') {
+            TokenType::Float(str.parse::<f64>().unwrap())
+        } else {
+            TokenType::Integer(str.parse::<i64>().unwrap())
+        }
+    }
+
+    fn parse_identifier(&mut self, initial: char) -> TokenType {
+        let mut str = String::from(initial);
+        loop {
+            let c = self.peek();
+            if c.is_ascii_alphanumeric() || c == &'_' {
+                str.push(self.advance().unwrap());
+            } else {
+                break;
+            }
+        }
+
+        match str.as_str() {
+            "and" => TokenType::And,
+            "or" => TokenType::Or,
+            "def" => TokenType::Def,
+            "class" => TokenType::Class,
+            "if" => TokenType::If,
+            "else" => TokenType::Else,
+            "elif" => TokenType::ElIf,
+            "for" => TokenType::For,
+            "while" => TokenType::While,
+            "let" => TokenType::Let,
+            "const" => TokenType::Const,
+            "self" => TokenType::Self_,
+            "return" => TokenType::Return,
+            "True" => TokenType::True,
+            "False" => TokenType::False,
+            "None" => TokenType::None,
+            _ => TokenType::Identifier(str),
+        }
+    }
+
+    fn parse_string(&mut self) -> TokenType {
+        let mut str = String::new();
+        loop {
+            match self.peek() {
+                &'"' => {
+                    self.advance().unwrap();
+                    break;
+                }
+                &'\0' => {
+                    self.report_error("Unclosed string: EOF");
+                    return TokenType::Ignore;
+                }
+                &'\n' => {
+                    self.report_error("Unclosed string: new line");
+                    return TokenType::Ignore;
+                }
+                _ => str.push(self.advance().unwrap()),
+            };
+        }
+        TokenType::String(str)
     }
 }
