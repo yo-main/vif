@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 #[derive(Debug)]
 pub enum TokenType {
     // singles char
@@ -65,7 +67,6 @@ pub enum TokenType {
     EOF,
 }
 
-#[derive(Debug)]
 pub struct Token {
     pub r#type: TokenType,
     pub line: u64,
@@ -74,5 +75,11 @@ pub struct Token {
 impl Token {
     pub fn new(r#type: TokenType, line: u64) -> Self {
         Token { r#type, line }
+    }
+}
+
+impl Debug for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "<Token {:?} (L{})>", self.r#type, self.line)
     }
 }
