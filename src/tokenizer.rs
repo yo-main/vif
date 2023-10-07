@@ -154,6 +154,9 @@ impl<'a> Tokenizer<'a> {
                         "const" => TokenType::Const,
                         "self" => TokenType::Self_,
                         "return" => TokenType::Return,
+                        "True" => TokenType::True,
+                        "False" => TokenType::False,
+                        "None" => TokenType::None,
                         _ => TokenType::Identifier(str),
                     }
                 }
