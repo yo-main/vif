@@ -1,9 +1,11 @@
 mod application;
+mod ast;
 mod cli;
 mod config;
 mod errors;
 mod tokenizer;
 mod tokens;
+mod visitor;
 
 fn main() {
     let config = config::get_config();

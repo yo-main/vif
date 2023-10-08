@@ -1,4 +1,5 @@
 use crate::tokens::Token;
+use crate::Visitor;
 
 pub enum Operator {
     value(Token),
@@ -32,3 +33,5 @@ pub enum Expr {
     Grouping(Grouping),
     Literal(Literal),
 }
+
+Visitor!(AstVisitor[Operator, Literal, Unary, Binary, Grouping, Expr]);
