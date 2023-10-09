@@ -13,18 +13,20 @@
 ///
 /// // this creates
 /// pub trait MyVisitor {
-///     fn visit_a(&self, item: &A) {}
-///     fn visit_b(&self, item: &B) {}
+///     fn visit_a(&mut self, item: &A) {}
+///     fn visit_b(&mut self, item: &B) {}
 /// }
 ///
 /// impl A {
-///     fn accept<V>(&self, visitor: V) {
+///     fn accept<V>(&self, visitor: &mut V)
+///     where V: &mut MyVisitor {
 ///         self.visitor.visit_a(self);
 ///     }
 /// }
 ///
 /// impl B {
-///     fn accept<V>(&self, visitor: V) {
+///     pub fn accept<V>(&self, visitor: &mut V)
+///     where V: MyVisitor {
 ///         self.visitor.visit_b(self);
 ///     }
 /// }
@@ -34,9 +36,10 @@
 macro_rules! Visitor {
     ($visitor:ident[$($type:ident),*]) => {
         pub trait $visitor {
+            type Item;
             $(
                 paste::paste! {
-                    fn [<visit_$type:lower>](&self, item: &$type) {}
+                    fn [<visit_$type:lower>](&mut self, item: &$type) -> Self::Item;
                 }
             )*
         }
@@ -44,7 +47,29 @@ macro_rules! Visitor {
         $(
             paste::paste! {
                 impl $type {
-                    fn accept<V>(&self, visitor: V)
+                    pub fn accept<V>(&self, visitor: &mut V)
+                    where
+                        V: $visitor,
+                    {
+                        visitor.[<visit_$type:lower>](self);
+                    }
+                }
+            }
+        )*
+    };
+    ($visitor:ident[$($type:ident<$lifetime:tt>),*]) => {
+        pub trait $visitor {
+            $(
+                paste::paste! {
+                    fn [<visit_$type:lower>](&mut self, item: &$type);
+                }
+            )*
+        }
+
+        $(
+            paste::paste! {
+                impl<$lifetime> $type<$lifetime> {
+                    pub fn accept<V>(&self, visitor: &mut V)
                     where
                         V: $visitor,
                     {

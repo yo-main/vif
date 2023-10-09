@@ -1,5 +1,6 @@
 mod application;
 mod ast;
+mod ast_printer;
 mod cli;
 mod config;
 mod errors;
