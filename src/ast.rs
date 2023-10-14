@@ -69,3 +69,49 @@ impl Grouping {
         Grouping { left, expr, right }
     }
 }
+
+impl std::fmt::Display for Literal {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Literal[{}]", self.value)
+    }
+}
+
+impl std::fmt::Display for Binary {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Binary[{}, {}, {}]",
+            self.left, self.operator, self.right
+        )
+    }
+}
+
+impl std::fmt::Display for Grouping {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Grouping[{}, {}, {}]", self.left, self.expr, self.right)
+    }
+}
+
+impl std::fmt::Display for Operator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Operator[{}]", self.value)
+    }
+}
+
+impl std::fmt::Display for Unary {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Unary[{} {}]", self.operator, self.right)
+    }
+}
+
+impl std::fmt::Display for Expr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Expr::Operator(e) => write!(f, "Expr[{}]", e),
+            Expr::Binary(e) => write!(f, "Expr[{}]", e),
+            Expr::Unary(e) => write!(f, "Expr[{}]", e),
+            Expr::Grouping(e) => write!(f, "Expr[{}]", e),
+            Expr::Literal(e) => write!(f, "Expr[{}]", e),
+        }
+    }
+}

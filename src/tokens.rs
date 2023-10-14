@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 use std::fmt::Display;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum TokenType {
     // singles char
     LeftParen,
@@ -82,9 +82,9 @@ impl Token {
     }
 }
 
-impl Debug for Token {
+impl Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "<Token {:?} (L{})>", self.r#type, self.line)
+        write!(f, "{}", self.r#type)
     }
 }
 

@@ -56,10 +56,10 @@ impl From<ZeusErrorType> for ZeusError {
                 line: None,
                 r#type: ZeusErrorType::NoMoreTokens,
             },
-            ZeusErrorType::ParsingError => ZeusError {
+            ZeusErrorType::ParsingError(_) => ZeusError {
                 msg: "Parsing error".to_owned(),
                 line: None,
-                r#type: ZeusErrorType::ParsingError,
+                r#type: value,
             },
         }
     }

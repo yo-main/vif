@@ -16,11 +16,13 @@ impl Parser {
         }
     }
 
-    fn expression(&mut self) -> Result<Box<ast::Expr>, ZeusErrorType> {
+    pub fn expression(&mut self) -> Result<Box<ast::Expr>, ZeusErrorType> {
+        println!("-> expression");
         self.equality()
     }
 
     fn equality(&mut self) -> Result<Box<ast::Expr>, ZeusErrorType> {
+        println!("-> equality");
         let expr = self.comparison()?;
 
         for token_type in [&TokenType::BangEqual, &TokenType::EqualEqual] {
@@ -37,6 +39,7 @@ impl Parser {
     }
 
     fn comparison(&mut self) -> Result<Box<ast::Expr>, ZeusErrorType> {
+        println!("-> comparison");
         let expr = self.term()?;
 
         for token in [
@@ -58,6 +61,7 @@ impl Parser {
     }
 
     fn term(&mut self) -> Result<Box<ast::Expr>, ZeusErrorType> {
+        println!("-> term");
         let expr = self.factor()?;
 
         for token in [&TokenType::Minus, &TokenType::Plus] {
@@ -74,6 +78,7 @@ impl Parser {
     }
 
     fn factor(&mut self) -> Result<Box<ast::Expr>, ZeusErrorType> {
+        println!("-> factor");
         let expr = self.unary()?;
 
         for token in [&TokenType::Star, &TokenType::Slash] {
@@ -90,7 +95,8 @@ impl Parser {
     }
 
     fn unary(&mut self) -> Result<Box<ast::Expr>, ZeusErrorType> {
-        for token in [&TokenType::Bang, &TokenType::Minus] {
+        println!("-> unary");
+        for token in [&TokenType::Bang] {
             if self.r#match(token) {
                 let operator = self.advance().unwrap();
                 let right = self.unary()?;
@@ -102,6 +108,7 @@ impl Parser {
     }
 
     fn primary(&mut self) -> Result<Box<ast::Expr>, ZeusErrorType> {
+        println!("-> primary");
         let next = self.advance().unwrap();
 
         Ok(match next.r#type {
@@ -111,16 +118,19 @@ impl Parser {
             TokenType::Integer(_) => Box::new(ast::Expr::Literal(ast::Literal::new(next))),
             TokenType::Float(_) => Box::new(ast::Expr::Literal(ast::Literal::new(next))),
             TokenType::String(_) => Box::new(ast::Expr::Literal(ast::Literal::new(next))),
+            TokenType::Identifier(_) => Box::new(ast::Expr::Literal(ast::Literal::new(next))),
+            TokenType::NewLine => Box::new(ast::Expr::Literal(ast::Literal::new(next))),
             TokenType::LeftParen => {
                 let expr = self.expression()?;
                 let right = self.consume(TokenType::RightParen, "expect ')' after expression")?;
                 Box::new(ast::Expr::Grouping(ast::Grouping::new(next, expr, right)))
             }
-            _ => panic!("Not yet implemented"),
+            e => panic!("Parsing not yet implemented: {}", e),
         })
     }
 
     fn consume(&mut self, expected: TokenType, msg: &str) -> Result<Token, ZeusErrorType> {
+        println!("-> consume");
         if self.check(&expected) {
             return self.advance();
         }
@@ -129,8 +139,8 @@ impl Parser {
     }
 
     fn r#match(&mut self, token: &TokenType) -> bool {
+        println!("-> match");
         if self.check(token) {
-            self.advance().unwrap();
             return true;
         }
 
@@ -138,14 +148,17 @@ impl Parser {
     }
 
     fn advance(&mut self) -> Result<Token, ZeusErrorType> {
+        println!("-> advance");
         self.tokens.next().ok_or(ZeusErrorType::NoMoreTokens)
     }
 
     fn check(&mut self, token_type: &TokenType) -> bool {
-        self.peek().is_some_and(|t| matches!(&t.r#type, token_type))
+        println!("-> check");
+        self.peek().is_some_and(|t| &t.r#type == token_type)
     }
 
     fn peek(&mut self) -> Option<&Token> {
+        println!("-> peek");
         self.tokens.peek()
     }
 }
