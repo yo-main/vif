@@ -1,61 +1,71 @@
 use crate::tokens::Token;
 use crate::Visitor;
 
-pub struct Operator<'a> {
-    pub value: &'a Token,
+pub struct Operator {
+    pub value: Token,
 }
 
-pub struct Literal<'a> {
-    pub value: &'a Token,
+pub struct Literal {
+    pub value: Token,
 }
 
-pub struct Binary<'a> {
-    pub left: &'a Expr<'a>,
-    pub operator: &'a Token,
-    pub right: &'a Expr<'a>,
+pub struct Binary {
+    pub left: Box<Expr>,
+    pub operator: Token,
+    pub right: Box<Expr>,
 }
 
-pub struct Unary<'a> {
-    pub operator: &'a Token,
-    pub right: &'a Expr<'a>,
+pub struct Unary {
+    pub operator: Token,
+    pub right: Box<Expr>,
 }
 
-pub struct Grouping<'a> {
-    pub left: &'a Token,
-    pub expr: &'a Expr<'a>,
-    pub right: &'a Token,
+pub struct Grouping {
+    pub left: Token,
+    pub expr: Box<Expr>,
+    pub right: Token,
 }
 
-pub enum Expr<'a> {
-    Operator(Operator<'a>),
-    Binary(Binary<'a>),
-    Unary(Unary<'a>),
-    Grouping(Grouping<'a>),
-    Literal(Literal<'a>),
+pub enum Expr {
+    Operator(Operator),
+    Binary(Binary),
+    Unary(Unary),
+    Grouping(Grouping),
+    Literal(Literal),
 }
 
-Visitor!(AstVisitor[Operator<'a>, Literal<'a>, Unary<'a>, Binary<'a>, Grouping<'a>, Expr<'a>]);
+Visitor!(AstVisitor[Operator, Literal, Unary, Binary, Grouping, Expr]);
 
-impl<'a> Literal<'a> {
-    pub fn new(token: &'a Token) -> Self {
+impl Literal {
+    pub fn new(token: Token) -> Self {
         Literal { value: token }
     }
 }
 
-impl<'a> Operator<'a> {
-    pub fn new(token: &'a Token) -> Self {
+impl Operator {
+    pub fn new(token: Token) -> Self {
         Operator { value: token }
     }
 }
 
-impl<'a> Unary<'a> {
-    pub fn new(operator: &'a Token, right: &'a Expr) -> Self {
+impl Unary {
+    pub fn new(operator: Token, right: Box<Expr>) -> Self {
         Unary { operator, right }
     }
 }
 
-impl<'a> Grouping<'a> {
-    pub fn new(left: &'a Token, expr: &'a Expr, right: &'a Token) -> Self {
+impl Binary {
+    pub fn new(left: Box<Expr>, operator: Token, right: Box<Expr>) -> Self {
+        Binary {
+            left,
+            operator,
+            right,
+        }
+    }
+}
+
+impl Grouping {
+    pub fn new(left: Token, expr: Box<Expr>, right: Token) -> Self {
         Grouping { left, expr, right }
     }
 }

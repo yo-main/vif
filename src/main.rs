@@ -4,6 +4,7 @@ mod ast_printer;
 mod cli;
 mod config;
 mod errors;
+mod parser;
 mod tokenizer;
 mod tokens;
 mod visitor;

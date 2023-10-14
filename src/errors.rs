@@ -2,6 +2,8 @@
 pub enum ZeusErrorType {
     Generic,
     EOF,
+    NoMoreTokens,
+    ParsingError(String),
 }
 
 #[derive(Debug)]
@@ -48,6 +50,16 @@ impl From<ZeusErrorType> for ZeusError {
                 msg: "Generic Error".to_owned(),
                 line: None,
                 r#type: ZeusErrorType::Generic,
+            },
+            ZeusErrorType::NoMoreTokens => ZeusError {
+                msg: "No More Tokens".to_owned(),
+                line: None,
+                r#type: ZeusErrorType::NoMoreTokens,
+            },
+            ZeusErrorType::ParsingError => ZeusError {
+                msg: "Parsing error".to_owned(),
+                line: None,
+                r#type: ZeusErrorType::ParsingError,
             },
         }
     }

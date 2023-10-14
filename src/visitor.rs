@@ -36,10 +36,9 @@
 macro_rules! Visitor {
     ($visitor:ident[$($type:ident),*]) => {
         pub trait $visitor {
-            type Item;
             $(
                 paste::paste! {
-                    fn [<visit_$type:lower>](&mut self, item: &$type) -> Self::Item;
+                    fn [<visit_$type:lower>](&mut self, item: &$type);
                 }
             )*
         }

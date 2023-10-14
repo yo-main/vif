@@ -81,19 +81,19 @@ mod test {
         let token_parent_left = Token::new(TokenType::LeftParen, 1);
         let token_parent_right = Token::new(TokenType::RightParen, 1);
 
-        let expr_one = ast::Expr::Literal(ast::Literal::new(&token_one));
-        let expr_two = ast::Expr::Literal(ast::Literal::new(&token_two));
-        let expr_minus_one = ast::Expr::Unary(Unary::new(&token_minus, &expr_one));
+        let expr_one = ast::Expr::Literal(ast::Literal::new(token_one));
+        let expr_two = ast::Expr::Literal(ast::Literal::new(token_two));
+        let expr_minus_one = ast::Expr::Unary(Unary::new(token_minus, Box::new(expr_one)));
         let expr_group_two = ast::Expr::Grouping(ast::Grouping::new(
-            &token_parent_left,
-            &expr_two,
-            &token_parent_right,
+            token_parent_left,
+            Box::new(expr_two),
+            token_parent_right,
         ));
 
         let binary = ast::Binary {
-            left: &expr_minus_one,
-            operator: &token_star,
-            right: &expr_group_two,
+            left: Box::new(expr_minus_one),
+            operator: token_star,
+            right: Box::new(expr_group_two),
         };
 
         let mut printer = AstPrinter::new();
