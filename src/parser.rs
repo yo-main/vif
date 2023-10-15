@@ -54,7 +54,6 @@ impl Parser {
     }
 
     fn expression(&mut self) -> Result<Box<ast::Expr>, ZeusErrorType> {
-        println!("-> expression");
         let expr = self.equality()?;
 
         if self.r#match(&TokenType::Comma) {
@@ -69,9 +68,7 @@ impl Parser {
     }
 
     fn equality(&mut self) -> Result<Box<ast::Expr>, ZeusErrorType> {
-        println!("-> equality");
         let expr = self.comparison()?;
-        println!("<- equality");
 
         for token_type in [&TokenType::BangEqual, &TokenType::EqualEqual] {
             if self.r#match(token_type) {
@@ -87,9 +84,7 @@ impl Parser {
     }
 
     fn comparison(&mut self) -> Result<Box<ast::Expr>, ZeusErrorType> {
-        println!("-> comparison");
         let expr = self.term()?;
-        println!("<- comparison");
 
         for token in [
             &TokenType::Greater,
@@ -110,9 +105,7 @@ impl Parser {
     }
 
     fn term(&mut self) -> Result<Box<ast::Expr>, ZeusErrorType> {
-        println!("-> term");
         let expr = self.factor()?;
-        println!("<- term");
 
         for token in [&TokenType::Minus, &TokenType::Plus] {
             if self.r#match(token) {
@@ -128,9 +121,7 @@ impl Parser {
     }
 
     fn factor(&mut self) -> Result<Box<ast::Expr>, ZeusErrorType> {
-        println!("-> factor");
         let expr = self.unary()?;
-        println!("<- factor");
 
         for token in [&TokenType::Star, &TokenType::Slash] {
             if self.r#match(token) {
@@ -146,8 +137,7 @@ impl Parser {
     }
 
     fn unary(&mut self) -> Result<Box<ast::Expr>, ZeusErrorType> {
-        println!("-> unary");
-        for token in [&TokenType::Bang] {
+        for token in [&TokenType::Bang, &TokenType::Minus] {
             if self.r#match(token) {
                 let operator = self.advance().unwrap();
                 let right = self.unary()?;
@@ -159,7 +149,6 @@ impl Parser {
     }
 
     fn primary(&mut self) -> Result<Box<ast::Expr>, ZeusErrorType> {
-        println!("-> primary");
         let next = self.advance().unwrap();
 
         Ok(match next.r#type {
@@ -182,7 +171,6 @@ impl Parser {
     }
 
     fn consume(&mut self, expected: TokenType, msg: &str) -> Result<Token, ZeusErrorType> {
-        println!("-> consume");
         if self.check(&expected) {
             return self.advance();
         }
@@ -199,7 +187,6 @@ impl Parser {
     }
 
     fn advance(&mut self) -> Result<Token, ZeusErrorType> {
-        println!("-> advance");
         self.tokens.next().ok_or(ZeusErrorType::NoMoreTokens)
     }
 

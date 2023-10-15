@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 use std::fmt::Display;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum TokenType {
     // singles char
     LeftParen,
@@ -71,6 +71,7 @@ pub enum TokenType {
     EOF,
 }
 
+#[derive(Debug, PartialEq, Clone)]
 pub struct Token {
     pub r#type: TokenType,
     pub line: u64,
@@ -79,6 +80,10 @@ pub struct Token {
 impl Token {
     pub fn new(r#type: TokenType, line: u64) -> Self {
         Token { r#type, line }
+    }
+
+    pub fn create(r#type: TokenType) -> Self {
+        Token { r#type, line: 0 }
     }
 }
 

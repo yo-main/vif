@@ -95,7 +95,6 @@ impl<'a> Tokenizer<'a> {
                         self.advance().unwrap();
                         TokenType::MinusEqual
                     }
-                    d if d.is_digit(10) => self.parse_number('-'),
                     _ => TokenType::Minus,
                 },
                 '/' => match self.r#match('=') {

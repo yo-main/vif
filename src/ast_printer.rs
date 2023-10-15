@@ -28,34 +28,32 @@ impl AstPrinter {
 }
 
 impl AstVisitor for AstPrinter {
-    fn visit_operator(&mut self, item: &Operator) {
-        self.nodes.push(format!("{}", item.value.r#type))
+    type Item = String;
+
+    fn visit_operator(&mut self, item: &Operator) -> Self::Item {
+        format!("{}", item.value.r#type)
     }
 
-    fn visit_literal(&mut self, item: &Literal) {
-        self.nodes.push(format!("{}", item.value.r#type));
+    fn visit_literal(&mut self, item: &Literal) -> Self::Item {
+        format!("{}", item.value.r#type)
     }
 
-    fn visit_unary(&mut self, item: &Unary) {
-        self.nodes.push("(".to_owned());
-        self.nodes.push(format!("{}", item.operator.r#type));
-        item.right.accept(self);
-        self.nodes.push(")".to_owned());
+    fn visit_unary(&mut self, item: &Unary) -> Self::Item {
+        format!("({} {})", item.operator.r#type, item.right.accept(self))
     }
-    fn visit_binary(&mut self, item: &Binary) {
-        self.nodes.push("(".to_owned());
-        self.nodes.push(format!("{}", item.operator.r#type));
-        item.left.accept(self);
-        item.right.accept(self);
-        self.nodes.push(")".to_owned());
+    fn visit_binary(&mut self, item: &Binary) -> Self::Item {
+        format!(
+            "({} {} {})",
+            item.operator.r#type,
+            item.left.accept(self),
+            item.right.accept(self)
+        )
     }
-    fn visit_grouping(&mut self, item: &Grouping) {
-        self.nodes.push("(".to_owned());
-        self.nodes.push("group".to_owned());
-        item.expr.accept(self);
-        self.nodes.push(")".to_owned());
+    fn visit_grouping(&mut self, item: &Grouping) -> Self::Item {
+        format!("(group {})", item.expr.accept(self))
     }
-    fn visit_expr(&mut self, item: &Expr) {
+
+    fn visit_expr(&mut self, item: &Expr) -> Self::Item {
         match item {
             Expr::Operator(v) => v.accept(self),
             Expr::Binary(v) => v.accept(self),
