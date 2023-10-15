@@ -118,7 +118,7 @@ impl Display for TokenType {
                 TokenType::Greater => ">",
                 TokenType::Less => "<",
                 TokenType::Bang => "!",
-                TokenType::NewLine => "\n",
+                TokenType::NewLine => "\\n",
                 TokenType::At => "@",
                 TokenType::EqualEqual => "==",
                 TokenType::BangEqual => "!=",

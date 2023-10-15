@@ -18,8 +18,13 @@ impl Zeus {
         let mut tokenizer = Tokenizer::new(content.as_str());
         tokenizer.scan_tokens();
         let mut parser = Parser::new(tokenizer.tokens);
-        let expr = parser.expression()?;
-        println!("{}", expr);
+        let is_ok = parser.parse();
+        println!("Parsed success: {}", is_ok);
+        if !is_ok {
+            println!("Parsed errors: {:?}", parser.errors);
+        } else {
+            parser.ast.iter().for_each(|a| println!("{}", a));
+        }
 
         Ok(())
     }

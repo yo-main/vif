@@ -1,3 +1,5 @@
+use clap::error::Result;
+
 use crate::ast;
 use crate::errors::ZeusErrorType;
 use crate::tokens::Token;
@@ -7,23 +9,69 @@ use std::iter::Peekable;
 
 pub struct Parser {
     tokens: Peekable<std::vec::IntoIter<Token>>,
+    pub ast: Vec<Box<ast::Expr>>,
+    pub errors: Vec<ZeusErrorType>,
 }
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
         Parser {
             tokens: tokens.into_iter().peekable(),
+            ast: Vec::new(),
+            errors: Vec::new(),
         }
     }
 
-    pub fn expression(&mut self) -> Result<Box<ast::Expr>, ZeusErrorType> {
+    pub fn parse(&mut self) -> bool {
+        loop {
+            match self.expression() {
+                Ok(expr) => self.ast.push(expr),
+                Err(ZeusErrorType::EOF) => break,
+                Err(err) => self.errors.push(err),
+            }
+        }
+
+        self.errors.is_empty()
+    }
+
+    pub fn parse_error(&mut self) -> Result<(), ZeusErrorType> {
+        let prev = self.advance().unwrap(); // we know that one if wrong
+        if prev.r#type == TokenType::NewLine {
+            return Ok(());
+        }
+        loop {
+            match self.peek() {
+                Some(t) if t.r#type == TokenType::Class => return Ok(()),
+                Some(t) if t.r#type == TokenType::Def => return Ok(()),
+                Some(t) if t.r#type == TokenType::For => return Ok(()),
+                Some(t) if t.r#type == TokenType::While => return Ok(()),
+                Some(t) if t.r#type == TokenType::Return => return Ok(()),
+                Some(t) if t.r#type == TokenType::Let => return Ok(()),
+                Some(t) if t.r#type == TokenType::Const => return Ok(()),
+                _ => self.advance()?,
+            };
+        }
+    }
+
+    fn expression(&mut self) -> Result<Box<ast::Expr>, ZeusErrorType> {
         println!("-> expression");
-        self.equality()
+        let expr = self.equality()?;
+
+        if self.r#match(&TokenType::Comma) {
+            let operator = self.advance().unwrap();
+            let right = self.equality()?;
+            return Ok(Box::new(ast::Expr::Binary(ast::Binary::new(
+                expr, operator, right,
+            ))));
+        }
+
+        Ok(expr)
     }
 
     fn equality(&mut self) -> Result<Box<ast::Expr>, ZeusErrorType> {
         println!("-> equality");
         let expr = self.comparison()?;
+        println!("<- equality");
 
         for token_type in [&TokenType::BangEqual, &TokenType::EqualEqual] {
             if self.r#match(token_type) {
@@ -41,6 +89,7 @@ impl Parser {
     fn comparison(&mut self) -> Result<Box<ast::Expr>, ZeusErrorType> {
         println!("-> comparison");
         let expr = self.term()?;
+        println!("<- comparison");
 
         for token in [
             &TokenType::Greater,
@@ -63,6 +112,7 @@ impl Parser {
     fn term(&mut self) -> Result<Box<ast::Expr>, ZeusErrorType> {
         println!("-> term");
         let expr = self.factor()?;
+        println!("<- term");
 
         for token in [&TokenType::Minus, &TokenType::Plus] {
             if self.r#match(token) {
@@ -80,6 +130,7 @@ impl Parser {
     fn factor(&mut self) -> Result<Box<ast::Expr>, ZeusErrorType> {
         println!("-> factor");
         let expr = self.unary()?;
+        println!("<- factor");
 
         for token in [&TokenType::Star, &TokenType::Slash] {
             if self.r#match(token) {
@@ -120,6 +171,7 @@ impl Parser {
             TokenType::String(_) => Box::new(ast::Expr::Literal(ast::Literal::new(next))),
             TokenType::Identifier(_) => Box::new(ast::Expr::Literal(ast::Literal::new(next))),
             TokenType::NewLine => Box::new(ast::Expr::Literal(ast::Literal::new(next))),
+            TokenType::EOF => return Err(ZeusErrorType::EOF),
             TokenType::LeftParen => {
                 let expr = self.expression()?;
                 let right = self.consume(TokenType::RightParen, "expect ')' after expression")?;
@@ -139,7 +191,6 @@ impl Parser {
     }
 
     fn r#match(&mut self, token: &TokenType) -> bool {
-        println!("-> match");
         if self.check(token) {
             return true;
         }
@@ -153,12 +204,10 @@ impl Parser {
     }
 
     fn check(&mut self, token_type: &TokenType) -> bool {
-        println!("-> check");
         self.peek().is_some_and(|t| &t.r#type == token_type)
     }
 
     fn peek(&mut self) -> Option<&Token> {
-        println!("-> peek");
         self.tokens.peek()
     }
 }

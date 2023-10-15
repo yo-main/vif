@@ -107,11 +107,11 @@ impl std::fmt::Display for Unary {
 impl std::fmt::Display for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Expr::Operator(e) => write!(f, "Expr[{}]", e),
-            Expr::Binary(e) => write!(f, "Expr[{}]", e),
-            Expr::Unary(e) => write!(f, "Expr[{}]", e),
-            Expr::Grouping(e) => write!(f, "Expr[{}]", e),
-            Expr::Literal(e) => write!(f, "Expr[{}]", e),
+            Expr::Operator(e) => write!(f, "{}", e),
+            Expr::Binary(e) => write!(f, "{}", e),
+            Expr::Unary(e) => write!(f, "{}", e),
+            Expr::Grouping(e) => write!(f, "{}", e),
+            Expr::Literal(e) => write!(f, "{}", e),
         }
     }
 }
