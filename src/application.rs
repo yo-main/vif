@@ -29,7 +29,7 @@ impl Zeus {
             parser
                 .ast
                 .iter()
-                .for_each(|e| println!("{}", interpreter.visit_expr(e)));
+                .for_each(|e| println!("{}", interpreter.visit_expr(e).unwrap()));
         }
 
         Ok(())

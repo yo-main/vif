@@ -31,26 +31,30 @@ impl AstVisitor for AstPrinter {
     type Item = String;
 
     fn visit_operator(&mut self, item: &Operator) -> Self::Item {
-        format!("{}", item.value.r#type)
+        format!("{}", item)
     }
 
     fn visit_literal(&mut self, item: &Literal) -> Self::Item {
-        format!("{}", item.value.r#type)
+        format!("{}", item)
     }
 
     fn visit_unary(&mut self, item: &Unary) -> Self::Item {
-        format!("({} {})", item.operator.r#type, item.right.accept(self))
+        format!("({} {})", item.operator, item.right.accept(self))
     }
     fn visit_binary(&mut self, item: &Binary) -> Self::Item {
         format!(
             "({} {} {})",
-            item.operator.r#type,
+            item.operator,
             item.left.accept(self),
             item.right.accept(self)
         )
     }
     fn visit_grouping(&mut self, item: &Grouping) -> Self::Item {
         format!("(group {})", item.expr.accept(self))
+    }
+
+    fn visit_value(&mut self, item: &crate::ast::Value) -> Self::Item {
+        format!("{}", item)
     }
 
     fn visit_expr(&mut self, item: &Expr) -> Self::Item {
@@ -60,6 +64,7 @@ impl AstVisitor for AstPrinter {
             Expr::Unary(v) => v.accept(self),
             Expr::Grouping(v) => v.accept(self),
             Expr::Literal(v) => v.accept(self),
+            Expr::Value(v) => v.accept(self),
         }
     }
 }

@@ -1,5 +1,9 @@
-use crate::ast;
-use crate::tokens::{Token, TokenType};
+use crate::ast::{
+    AstVisitor, Binary, Expr, Group, Grouping, Literal, Number, Operator, Unary, UnaryOperator,
+    Value,
+};
+use crate::errors::ZeusErrorType;
+// use crate::tokens::{Token, TokenType};
 
 pub struct Interpreter {}
 
@@ -8,330 +12,458 @@ impl Interpreter {
         Interpreter {}
     }
 
-    fn is_truthy(&self, token_type: TokenType) -> TokenType {
-        match token_type {
-            TokenType::None => TokenType::False,
-            TokenType::Integer(0) => TokenType::False,
-            TokenType::Float(0.0) => TokenType::False,
-            TokenType::String(v) if v.is_empty() => TokenType::False,
-            _ => TokenType::True,
+    fn is_truthy(&self, value: Value) -> Value {
+        match value {
+            Value::None => Value::False,
+            Value::Integer(0) => Value::False,
+            Value::Float(0.0) => Value::False,
+            Value::String(v) if v.is_empty() => Value::False,
+            _ => Value::True,
         }
     }
 
-    fn not(&self, token_type: TokenType) -> TokenType {
-        match token_type {
-            TokenType::False => TokenType::True,
-            TokenType::True => TokenType::False,
+    fn not(&self, value: Value) -> Value {
+        match value {
+            Value::False => Value::True,
+            Value::True => Value::False,
             e => panic!("Not usage is not allowed for {}", e),
         }
     }
 }
 
-impl ast::AstVisitor for Interpreter {
-    type Item = Token;
+impl AstVisitor for Interpreter {
+    type Item = Result<Value, ZeusErrorType>;
 
-    fn visit_operator(&mut self, item: &ast::Operator) -> Self::Item {
-        item.value.clone()
+    fn visit_operator(&mut self, item: &Operator) -> Self::Item {
+        Ok(Value::Operator(item.clone()))
     }
-    fn visit_literal(&mut self, item: &ast::Literal) -> Self::Item {
-        item.value.clone()
-    }
-    fn visit_unary(&mut self, item: &ast::Unary) -> Self::Item {
-        let right = item.right.accept(self);
 
-        Token::create(match &item.operator.r#type {
-            TokenType::Minus => match right.r#type {
-                TokenType::Integer(v) => TokenType::Integer(v * -1),
-                TokenType::Float(v) => TokenType::Float(v * -1.0),
-                _ => panic!("Can't apply minus on something else than number"),
-            },
-            TokenType::Bang => self.not(self.is_truthy(right.r#type)),
-            e => panic!("[Unary] should not be reacheable: {}", e),
+    fn visit_literal(&mut self, item: &Literal) -> Self::Item {
+        Ok(match item {
+            Literal::String(v) => Value::String(v.clone()),
+            Literal::Indentifier(v) => Value::Identifier(v.clone()),
         })
     }
 
-    fn visit_binary(&mut self, item: &ast::Binary) -> Self::Item {
-        let right = item.right.accept(self);
-        let left = item.left.accept(self);
+    fn visit_unary(&mut self, item: &Unary) -> Self::Item {
+        let right = item.right.accept(self)?;
 
-        Token::create(match &item.operator.r#type {
-            TokenType::Minus => match left.r#type {
-                TokenType::Integer(l) => match right.r#type {
-                    TokenType::Integer(r) => TokenType::Integer(l - r),
-                    TokenType::Float(r) => TokenType::Integer(l - r as i64),
-                    TokenType::True => TokenType::Integer(l - 1),
-                    TokenType::False => TokenType::Integer(l),
-                    _ => panic!("[Binary] right expr must be a number, got {}", right),
-                },
-                TokenType::Float(l) => match right.r#type {
-                    TokenType::Integer(r) => TokenType::Float(l - r as f64),
-                    TokenType::Float(r) => TokenType::Float(l - r),
-                    TokenType::True => TokenType::Float(l - 1.0),
-                    TokenType::False => TokenType::Float(l),
-                    _ => panic!("[Binary] right expr must be a number, got {}", right),
-                },
-                TokenType::True => match right.r#type {
-                    TokenType::Integer(r) => TokenType::Integer(1 - r),
-                    TokenType::Float(r) => TokenType::Float(1.0 - r),
-                    TokenType::True => TokenType::Integer(0),
-                    TokenType::False => TokenType::Integer(-1),
-                    _ => panic!("[Binary] right expr must be a number, got {}", right),
-                },
-                TokenType::False => match right.r#type {
-                    TokenType::Integer(r) => TokenType::Integer(r),
-                    TokenType::Float(r) => TokenType::Float(r),
-                    TokenType::True => TokenType::Integer(-1),
-                    TokenType::False => TokenType::Integer(0),
-                    _ => panic!("[Binary] right expr must be a number, got {}", right),
-                },
-                _ => panic!("[Binary] minus operator not supported on {}", right),
+        match &item.operator {
+            UnaryOperator::Minus => match right {
+                Value::Integer(i) => Ok(Value::Integer(i * -1)),
+                Value::Float(f) => Ok(Value::Float(f * -1.0)),
+                e => Err(ZeusErrorType::InterpreterError(format!(
+                    "Can't have unary with {}",
+                    e
+                ))),
             },
-            TokenType::Slash => match left.r#type {
-                TokenType::Integer(l) => match right.r#type {
-                    TokenType::Integer(r) => TokenType::Integer(l / r),
-                    TokenType::Float(r) => TokenType::Integer(l / r as i64),
-                    _ => panic!("[Binary] right expr must be a number, got {}", right),
-                },
-                TokenType::Float(l) => match right.r#type {
-                    TokenType::Integer(r) => TokenType::Float(l / r as f64),
-                    TokenType::Float(r) => TokenType::Float(l / r),
-                    _ => panic!("[Binary] right expr must be a number, got {}", right),
-                },
-                _ => panic!("[Binary] minus operator not supported on {}", right),
-            },
-            TokenType::Star => match left.r#type {
-                TokenType::Integer(l) => match right.r#type {
-                    TokenType::Integer(r) => TokenType::Integer(l * r),
-                    TokenType::Float(r) => TokenType::Integer(l * r as i64),
-                    _ => panic!("[Binary] right expr must be a number, got {}", right),
-                },
-                TokenType::Float(l) => match right.r#type {
-                    TokenType::Integer(r) => TokenType::Float(l * r as f64),
-                    TokenType::Float(r) => TokenType::Float(l * r),
-                    _ => panic!("[Binary] right expr must be a number, got {}", right),
-                },
-                _ => panic!("[Binary] minus operator not supported on {}", right),
-            },
-            TokenType::Plus => match left.r#type {
-                TokenType::Integer(l) => match right.r#type {
-                    TokenType::Integer(r) => TokenType::Integer(l + r),
-                    TokenType::Float(r) => TokenType::Integer(l + r as i64),
-                    TokenType::True => TokenType::Integer(l + 1),
-                    TokenType::False => TokenType::Integer(l),
-                    _ => panic!("[Binary] right expr must be a number, got {:?}", right),
-                },
-                TokenType::Float(l) => match right.r#type {
-                    TokenType::Integer(r) => TokenType::Float(l + r as f64),
-                    TokenType::Float(r) => TokenType::Float(l + r),
-                    TokenType::True => TokenType::Float(l + 1.0),
-                    TokenType::False => TokenType::Float(l),
-                    _ => panic!("[Binary] right expr must be a number, got {}", right),
-                },
-                TokenType::String(l) => match right.r#type {
-                    TokenType::String(r) => TokenType::String(format!("{}{}", l, r)),
-                    _ => panic!("[Binary] can't add a string with {}", right),
-                },
-                TokenType::True => match right.r#type {
-                    TokenType::Integer(r) => TokenType::Integer(1 + r),
-                    TokenType::Float(r) => TokenType::Float(1.0 + r),
-                    TokenType::True => TokenType::Integer(2),
-                    TokenType::False => TokenType::Integer(1),
-                    _ => panic!("[Binary] right expr must be a number, got {}", right),
-                },
-                TokenType::False => match right.r#type {
-                    TokenType::Integer(r) => TokenType::Integer(r),
-                    TokenType::Float(r) => TokenType::Float(r),
-                    TokenType::True => TokenType::Integer(1),
-                    TokenType::False => TokenType::Integer(0),
-                    _ => panic!("[Binary] right expr must be a number, got {}", right),
-                },
-                _ => panic!("[Binary] plus operator not supported on {}", left),
-            },
-            TokenType::Greater => match left.r#type {
-                TokenType::Integer(l) => match right.r#type {
-                    TokenType::Integer(r) => match l > r {
-                        true => TokenType::True,
-                        false => TokenType::False,
-                    },
-                    TokenType::Float(r) => match l > r as i64 {
-                        true => TokenType::True,
-                        false => TokenType::False,
-                    },
-                    _ => panic!("[Binary] right expr must be a number, got {}", right),
-                },
-                TokenType::Float(l) => match right.r#type {
-                    TokenType::Integer(r) => match l > r as f64 {
-                        true => TokenType::True,
-                        false => TokenType::False,
-                    },
-                    TokenType::Float(r) => match l > r {
-                        true => TokenType::True,
-                        false => TokenType::False,
-                    },
-                    _ => panic!("[Binary] right expr must be a number, got {}", right),
-                },
-                _ => panic!("[Binary] minus operator not supported on {}", right),
-            },
-            TokenType::GreaterEqual => match left.r#type {
-                TokenType::Integer(l) => match right.r#type {
-                    TokenType::Integer(r) => match l >= r {
-                        true => TokenType::True,
-                        false => TokenType::False,
-                    },
-                    TokenType::Float(r) => match l >= r as i64 {
-                        true => TokenType::True,
-                        false => TokenType::False,
-                    },
-                    _ => panic!("[Binary] right expr must be a number, got {}", right),
-                },
-                TokenType::Float(l) => match right.r#type {
-                    TokenType::Integer(r) => match l >= r as f64 {
-                        true => TokenType::True,
-                        false => TokenType::False,
-                    },
-                    TokenType::Float(r) => match l >= r {
-                        true => TokenType::True,
-                        false => TokenType::False,
-                    },
-                    _ => panic!("[Binary] right expr must be a number, got {}", right),
-                },
-                _ => panic!("[Binary] minus operator not supported on {}", right),
-            },
-            TokenType::Less => match left.r#type {
-                TokenType::Integer(l) => match right.r#type {
-                    TokenType::Integer(r) => match l < r {
-                        true => TokenType::True,
-                        false => TokenType::False,
-                    },
-                    TokenType::Float(r) => match l < r as i64 {
-                        true => TokenType::True,
-                        false => TokenType::False,
-                    },
-                    _ => panic!("[Binary] right expr must be a number, got {}", right),
-                },
-                TokenType::Float(l) => match right.r#type {
-                    TokenType::Integer(r) => match l < r as f64 {
-                        true => TokenType::True,
-                        false => TokenType::False,
-                    },
-                    TokenType::Float(r) => match l < r {
-                        true => TokenType::True,
-                        false => TokenType::False,
-                    },
-                    _ => panic!("[Binary] right expr must be a number, got {}", right),
-                },
-                _ => panic!("[Binary] minus operator not supported on {}", right),
-            },
-            TokenType::LessEqual => match left.r#type {
-                TokenType::Integer(l) => match right.r#type {
-                    TokenType::Integer(r) => match l <= r {
-                        true => TokenType::True,
-                        false => TokenType::False,
-                    },
-                    TokenType::Float(r) => match l <= r as i64 {
-                        true => TokenType::True,
-                        false => TokenType::False,
-                    },
-                    _ => panic!("[Binary] right expr must be a number, got {}", right),
-                },
-                TokenType::Float(l) => match right.r#type {
-                    TokenType::Integer(r) => match l <= r as f64 {
-                        true => TokenType::True,
-                        false => TokenType::False,
-                    },
-                    TokenType::Float(r) => match l <= r {
-                        true => TokenType::True,
-                        false => TokenType::False,
-                    },
-                    _ => panic!("[Binary] right expr must be a number, got {}", right),
-                },
-                _ => panic!("[Binary] minus operator not supported on {}", right),
-            },
-            TokenType::EqualEqual => match left.r#type {
-                TokenType::Integer(l) => match right.r#type {
-                    TokenType::Integer(r) => match l == r {
-                        true => TokenType::True,
-                        false => TokenType::False,
-                    },
-                    TokenType::Float(r) => match l == r as i64 {
-                        true => TokenType::True,
-                        false => TokenType::False,
-                    },
-                    TokenType::None => TokenType::False,
-                    _ => panic!("[Binary] right expr must be a number, got {}", right),
-                },
-                TokenType::Float(l) => match right.r#type {
-                    TokenType::Integer(r) => match l == r as f64 {
-                        true => TokenType::True,
-                        false => TokenType::False,
-                    },
-                    TokenType::Float(r) => match l == r {
-                        true => TokenType::True,
-                        false => TokenType::False,
-                    },
-                    TokenType::None => TokenType::False,
-                    _ => panic!("[Binary] right expr must be a number, got {}", right),
-                },
-                TokenType::String(l) => match right.r#type {
-                    TokenType::String(r) => match l == r {
-                        true => TokenType::True,
-                        false => TokenType::False,
-                    },
-                    TokenType::None => TokenType::False,
-                    _ => panic!("[Binary] can't add a string with {}", right),
-                },
-                TokenType::None => TokenType::False,
-                _ => panic!("[Binary] minus operator not supported on {}", right),
-            },
-            TokenType::BangEqual => match left.r#type {
-                TokenType::Integer(l) => match right.r#type {
-                    TokenType::Integer(r) => match l != r {
-                        true => TokenType::True,
-                        false => TokenType::False,
-                    },
-                    TokenType::Float(r) => match l != r as i64 {
-                        true => TokenType::True,
-                        false => TokenType::False,
-                    },
-                    TokenType::None => TokenType::False,
-                    _ => panic!("[Binary] right expr must be a number, got {}", right),
-                },
-                TokenType::Float(l) => match right.r#type {
-                    TokenType::Integer(r) => match l != r as f64 {
-                        true => TokenType::True,
-                        false => TokenType::False,
-                    },
-                    TokenType::Float(r) => match l != r {
-                        true => TokenType::True,
-                        false => TokenType::False,
-                    },
-                    TokenType::None => TokenType::False,
-                    _ => panic!("[Binary] right expr must be a number, got {}", right),
-                },
-                TokenType::String(l) => match right.r#type {
-                    TokenType::String(r) => match l != r {
-                        true => TokenType::True,
-                        false => TokenType::False,
-                    },
-                    TokenType::None => TokenType::False,
-                    _ => panic!("[Binary] can't add a string with {}", right),
-                },
-                TokenType::None => TokenType::None,
-                _ => panic!("[Binary] minus operator not supported on {}", right),
-            },
-            t => panic!("[Binary] nope: {}", t),
-        })
+            UnaryOperator::Bang => Ok(self.not(self.is_truthy(right))),
+        }
     }
-    fn visit_grouping(&mut self, item: &ast::Grouping) -> Self::Item {
+
+    fn visit_binary(&mut self, item: &Binary) -> Self::Item {
+        let right = item.right.accept(self)?;
+        let left = item.left.accept(self)?;
+
+        match &item.operator {
+            Operator::Minus => match left {
+                Value::Integer(l) => match right {
+                    Value::Integer(r) => Ok(Value::Integer(l - r)),
+                    Value::Float(r) => Ok(Value::Integer(l - r as i64)),
+                    Value::True => Ok(Value::Integer(l - 1)),
+                    Value::False => Ok(Value::Integer(l)),
+                    _ => Err(ZeusErrorType::InterpreterError(format!(
+                        "[Binary] right expr must be a number, got {}",
+                        right
+                    ))),
+                },
+                Value::Float(l) => match right {
+                    Value::Integer(r) => Ok(Value::Float(l - r as f64)),
+                    Value::Float(r) => Ok(Value::Float(l - r)),
+                    Value::True => Ok(Value::Float(l - 1.0)),
+                    Value::False => Ok(Value::Float(l)),
+                    _ => Err(ZeusErrorType::InterpreterError(format!(
+                        "[Binary] right expr must be a number, got {}",
+                        right
+                    ))),
+                },
+                Value::True => match right {
+                    Value::Integer(r) => Ok(Value::Integer(1 - r)),
+                    Value::Float(r) => Ok(Value::Float(1.0 - r)),
+                    Value::True => Ok(Value::Integer(0)),
+                    Value::False => Ok(Value::Integer(-1)),
+                    _ => Err(ZeusErrorType::InterpreterError(format!(
+                        "[Binary] right expr must be a number, got {}",
+                        right
+                    ))),
+                },
+                Value::False => match right {
+                    Value::Integer(r) => Ok(Value::Integer(r)),
+                    Value::Float(r) => Ok(Value::Float(r)),
+                    Value::True => Ok(Value::Integer(-1)),
+                    Value::False => Ok(Value::Integer(0)),
+                    _ => Err(ZeusErrorType::InterpreterError(format!(
+                        "[Binary] right expr must be a number, got {}",
+                        right
+                    ))),
+                },
+                _ => Err(ZeusErrorType::InterpreterError(format!(
+                    "[Binary] minus operator not supported on {}",
+                    right
+                ))),
+            },
+            Operator::Divide => match left {
+                Value::Integer(l) => match right {
+                    Value::Integer(r) => Ok(Value::Integer(l / r)),
+                    Value::Float(r) => Ok(Value::Integer(l / r as i64)),
+                    _ => Err(ZeusErrorType::InterpreterError(format!(
+                        "[Binary] right expr must be a number, got {}",
+                        right
+                    ))),
+                },
+                Value::Float(l) => match right {
+                    Value::Integer(r) => Ok(Value::Float(l / r as f64)),
+                    Value::Float(r) => Ok(Value::Float(l / r)),
+                    _ => Err(ZeusErrorType::InterpreterError(format!(
+                        "[Binary] right expr must be a number, got {}",
+                        right
+                    ))),
+                },
+                _ => Err(ZeusErrorType::InterpreterError(format!(
+                    "[Binary] divide operator not supported on {}",
+                    right
+                ))),
+            },
+            Operator::Multiply => match left {
+                Value::Integer(l) => match right {
+                    Value::Integer(r) => Ok(Value::Integer(l * r)),
+                    Value::Float(r) => Ok(Value::Integer(l * r as i64)),
+                    _ => Err(ZeusErrorType::InterpreterError(format!(
+                        "[Binary] right expr must be a number, got {}",
+                        right
+                    ))),
+                },
+                Value::Float(l) => match right {
+                    Value::Integer(r) => Ok(Value::Float(l * r as f64)),
+                    Value::Float(r) => Ok(Value::Float(l * r)),
+                    _ => Err(ZeusErrorType::InterpreterError(format!(
+                        "[Binary] right expr must be a number, got {}",
+                        right
+                    ))),
+                },
+                _ => Err(ZeusErrorType::InterpreterError(format!(
+                    "[Binary] multiply operator not supported on {}",
+                    right
+                ))),
+            },
+            Operator::Plus => match left {
+                Value::Integer(l) => match right {
+                    Value::Integer(r) => Ok(Value::Integer(l + r)),
+                    Value::Float(r) => Ok(Value::Integer(l + r as i64)),
+                    Value::True => Ok(Value::Integer(l + 1)),
+                    Value::False => Ok(Value::Integer(l)),
+                    _ => Err(ZeusErrorType::InterpreterError(format!(
+                        "[Binary] right expr must be a number, got {}",
+                        right
+                    ))),
+                },
+                Value::Float(l) => match right {
+                    Value::Integer(r) => Ok(Value::Float(l + r as f64)),
+                    Value::Float(r) => Ok(Value::Float(l + r)),
+                    Value::True => Ok(Value::Float(l + 1.0)),
+                    Value::False => Ok(Value::Float(l)),
+                    _ => Err(ZeusErrorType::InterpreterError(format!(
+                        "[Binary] right expr must be a number, got {}",
+                        right
+                    ))),
+                },
+                Value::String(l) => match right {
+                    Value::String(r) => Ok(Value::String(format!("{}{}", l, r))),
+                    _ => Err(ZeusErrorType::InterpreterError(format!(
+                        "[Binary] can't add a string with {}",
+                        right
+                    ))),
+                },
+                Value::True => match right {
+                    Value::Integer(r) => Ok(Value::Integer(1 + r)),
+                    Value::Float(r) => Ok(Value::Float(1.0 + r)),
+                    Value::True => Ok(Value::Integer(2)),
+                    Value::False => Ok(Value::Integer(1)),
+                    _ => Err(ZeusErrorType::InterpreterError(format!(
+                        "[Binary] right expr must be a number, got {}",
+                        right
+                    ))),
+                },
+                Value::False => match right {
+                    Value::Integer(r) => Ok(Value::Integer(r)),
+                    Value::Float(r) => Ok(Value::Float(r)),
+                    Value::True => Ok(Value::Integer(1)),
+                    Value::False => Ok(Value::Integer(0)),
+                    _ => Err(ZeusErrorType::InterpreterError(format!(
+                        "[Binary] right expr must be a number, got {}",
+                        right
+                    ))),
+                },
+                _ => Err(ZeusErrorType::InterpreterError(format!(
+                    "[Binary] plus operator not supported on {}",
+                    right
+                ))),
+            },
+            Operator::Greater => match left {
+                Value::Integer(l) => match right {
+                    Value::Integer(r) => match l > r {
+                        true => Ok(Value::True),
+                        false => Ok(Value::False),
+                    },
+                    Value::Float(r) => match l > r as i64 {
+                        true => Ok(Value::True),
+                        false => Ok(Value::False),
+                    },
+                    _ => Err(ZeusErrorType::InterpreterError(format!(
+                        "[Binary] right expr must be a number, got {}",
+                        right
+                    ))),
+                },
+                Value::Float(l) => match right {
+                    Value::Integer(r) => match l > r as f64 {
+                        true => Ok(Value::True),
+                        false => Ok(Value::False),
+                    },
+                    Value::Float(r) => match l > r {
+                        true => Ok(Value::True),
+                        false => Ok(Value::False),
+                    },
+                    _ => Err(ZeusErrorType::InterpreterError(format!(
+                        "[Binary] right expr must be a number, got {}",
+                        right
+                    ))),
+                },
+                _ => Err(ZeusErrorType::InterpreterError(format!(
+                    "[Binary] greater operator not supported on {}",
+                    right
+                ))),
+            },
+            Operator::GreaterEqual => match left {
+                Value::Integer(l) => match right {
+                    Value::Integer(r) => match l >= r {
+                        true => Ok(Value::True),
+                        false => Ok(Value::False),
+                    },
+                    Value::Float(r) => match l >= r as i64 {
+                        true => Ok(Value::True),
+                        false => Ok(Value::False),
+                    },
+                    _ => Err(ZeusErrorType::InterpreterError(format!(
+                        "[Binary] right expr must be a number, got {}",
+                        right
+                    ))),
+                },
+                Value::Float(l) => match right {
+                    Value::Integer(r) => match l >= r as f64 {
+                        true => Ok(Value::True),
+                        false => Ok(Value::False),
+                    },
+                    Value::Float(r) => match l >= r {
+                        true => Ok(Value::True),
+                        false => Ok(Value::False),
+                    },
+                    _ => Err(ZeusErrorType::InterpreterError(format!(
+                        "[Binary] right expr must be a number, got {}",
+                        right
+                    ))),
+                },
+                _ => Err(ZeusErrorType::InterpreterError(format!(
+                    "[Binary] greaterEqual operator not supported on {}",
+                    right
+                ))),
+            },
+            Operator::Less => match left {
+                Value::Integer(l) => match right {
+                    Value::Integer(r) => match l < r {
+                        true => Ok(Value::True),
+                        false => Ok(Value::False),
+                    },
+                    Value::Float(r) => match l < r as i64 {
+                        true => Ok(Value::True),
+                        false => Ok(Value::False),
+                    },
+                    _ => Err(ZeusErrorType::InterpreterError(format!(
+                        "[Binary] right expr must be a number, got {}",
+                        right
+                    ))),
+                },
+                Value::Float(l) => match right {
+                    Value::Integer(r) => match l < r as f64 {
+                        true => Ok(Value::True),
+                        false => Ok(Value::False),
+                    },
+                    Value::Float(r) => match l < r {
+                        true => Ok(Value::True),
+                        false => Ok(Value::False),
+                    },
+                    _ => Err(ZeusErrorType::InterpreterError(format!(
+                        "[Binary] right expr must be a number, got {}",
+                        right
+                    ))),
+                },
+                _ => Err(ZeusErrorType::InterpreterError(format!(
+                    "[Binary] less operator not supported on {}",
+                    right
+                ))),
+            },
+            Operator::LessEqual => match left {
+                Value::Integer(l) => match right {
+                    Value::Integer(r) => match l <= r {
+                        true => Ok(Value::True),
+                        false => Ok(Value::False),
+                    },
+                    Value::Float(r) => match l <= r as i64 {
+                        true => Ok(Value::True),
+                        false => Ok(Value::False),
+                    },
+                    _ => Err(ZeusErrorType::InterpreterError(format!(
+                        "[Binary] right expr must be a number, got {}",
+                        right
+                    ))),
+                },
+                Value::Float(l) => match right {
+                    Value::Integer(r) => match l <= r as f64 {
+                        true => Ok(Value::True),
+                        false => Ok(Value::False),
+                    },
+                    Value::Float(r) => match l <= r {
+                        true => Ok(Value::True),
+                        false => Ok(Value::False),
+                    },
+                    _ => Err(ZeusErrorType::InterpreterError(format!(
+                        "[Binary] right expr must be a number, got {}",
+                        right
+                    ))),
+                },
+                _ => Err(ZeusErrorType::InterpreterError(format!(
+                    "[Binary] lessEqual operator not supported on {}",
+                    right
+                ))),
+            },
+            Operator::EqualEqual => match left {
+                Value::Integer(l) => match right {
+                    Value::Integer(r) => match l == r {
+                        true => Ok(Value::True),
+                        false => Ok(Value::False),
+                    },
+                    Value::Float(r) => match l == r as i64 {
+                        true => Ok(Value::True),
+                        false => Ok(Value::False),
+                    },
+                    _ => Ok(Value::False),
+                },
+                Value::Float(l) => match right {
+                    Value::Integer(r) => match l == r as f64 {
+                        true => Ok(Value::True),
+                        false => Ok(Value::False),
+                    },
+                    Value::Float(r) => match l == r {
+                        true => Ok(Value::True),
+                        false => Ok(Value::False),
+                    },
+                    Value::None => Ok(Value::False),
+                    Value::False => Ok(Value::False),
+                    _ => Ok(Value::False),
+                },
+                Value::String(l) => match right {
+                    Value::String(r) => match l == r {
+                        true => Ok(Value::True),
+                        false => Ok(Value::False),
+                    },
+                    Value::None => Ok(Value::False),
+                    Value::False => Ok(Value::False),
+                    _ => Ok(Value::False),
+                },
+                Value::False => match right {
+                    Value::True => Ok(Value::False),
+                    Value::False => Ok(Value::True),
+                    _ => Ok(Value::False),
+                },
+                Value::True => match right {
+                    Value::True => Ok(Value::True),
+                    Value::False => Ok(Value::False),
+                    Value::None => Ok(Value::False),
+                    _ => Ok(Value::True),
+                },
+                Value::None => Ok(Value::False),
+                _ => Ok(Value::False),
+            },
+            Operator::BangEqual => match left {
+                Value::Integer(l) => match right {
+                    Value::Integer(r) => match l != r {
+                        true => Ok(Value::True),
+                        false => Ok(Value::False),
+                    },
+                    Value::Float(r) => match l != r as i64 {
+                        true => Ok(Value::True),
+                        false => Ok(Value::False),
+                    },
+                    Value::None => Ok(Value::False),
+                    _ => Err(ZeusErrorType::InterpreterError(format!(
+                        "[Binary] right expr must be a number, got {}",
+                        right
+                    ))),
+                },
+                Value::Float(l) => match right {
+                    Value::Integer(r) => match l != r as f64 {
+                        true => Ok(Value::True),
+                        false => Ok(Value::False),
+                    },
+                    Value::Float(r) => match l != r {
+                        true => Ok(Value::True),
+                        false => Ok(Value::False),
+                    },
+                    Value::None => Ok(Value::False),
+                    _ => Err(ZeusErrorType::InterpreterError(format!(
+                        "[Binary] right expr must be a number, got {}",
+                        right
+                    ))),
+                },
+                Value::String(l) => match right {
+                    Value::String(r) => match l != r {
+                        true => Ok(Value::True),
+                        false => Ok(Value::False),
+                    },
+                    Value::None => Ok(Value::False),
+                    _ => Err(ZeusErrorType::InterpreterError(format!(
+                        "[Binary] can't compare a string with {}",
+                        right
+                    ))),
+                },
+                Value::None => Ok(Value::None),
+                _ => Err(ZeusErrorType::InterpreterError(format!(
+                    "[Binary] bangEqual operator not supported on {}",
+                    right
+                ))),
+            },
+            _ => Err(ZeusErrorType::InterpreterError(format!(
+                "[Binary] not implemented yet: {}",
+                right
+            ))),
+        }
+    }
+
+    fn visit_grouping(&mut self, item: &Grouping) -> Self::Item {
         item.expr.accept(self)
     }
-    fn visit_expr(&mut self, item: &ast::Expr) -> Self::Item {
+
+    fn visit_value(&mut self, item: &Value) -> Self::Item {
+        Ok(item.clone())
+    }
+
+    fn visit_expr(&mut self, item: &Expr) -> Self::Item {
         match item {
-            ast::Expr::Operator(v) => v.accept(self),
-            ast::Expr::Binary(v) => v.accept(self),
-            ast::Expr::Unary(v) => v.accept(self),
-            ast::Expr::Grouping(v) => v.accept(self),
-            ast::Expr::Literal(v) => v.accept(self),
+            Expr::Operator(v) => v.accept(self),
+            Expr::Binary(v) => v.accept(self),
+            Expr::Unary(v) => v.accept(self),
+            Expr::Grouping(v) => v.accept(self),
+            Expr::Literal(v) => v.accept(self),
+            Expr::Value(v) => v.accept(self),
         }
     }
 }

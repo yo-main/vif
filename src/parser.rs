@@ -1,6 +1,6 @@
 use clap::error::Result;
 
-use crate::ast;
+use crate::ast::{Binary, Expr, Grouping, Literal, Unary, Value};
 use crate::errors::ZeusErrorType;
 use crate::tokens::Token;
 use crate::tokens::TokenType;
@@ -9,7 +9,7 @@ use std::iter::Peekable;
 
 pub struct Parser {
     tokens: Peekable<std::vec::IntoIter<Token>>,
-    pub ast: Vec<Box<ast::Expr>>,
+    pub ast: Vec<Box<Expr>>,
     pub errors: Vec<ZeusErrorType>,
 }
 
@@ -53,37 +53,33 @@ impl Parser {
         }
     }
 
-    fn expression(&mut self) -> Result<Box<ast::Expr>, ZeusErrorType> {
+    fn expression(&mut self) -> Result<Box<Expr>, ZeusErrorType> {
         let expr = self.equality()?;
 
         if self.r#match(&TokenType::Comma) {
             let operator = self.advance().unwrap();
-            let right = self.equality()?;
-            return Ok(Box::new(ast::Expr::Binary(ast::Binary::new(
-                expr, operator, right,
-            ))));
+            let right = self.expression()?;
+            return Ok(Box::new(Expr::Binary(Binary::new(expr, operator, right)?)));
         }
 
         Ok(expr)
     }
 
-    fn equality(&mut self) -> Result<Box<ast::Expr>, ZeusErrorType> {
+    fn equality(&mut self) -> Result<Box<Expr>, ZeusErrorType> {
         let expr = self.comparison()?;
 
         for token_type in [&TokenType::BangEqual, &TokenType::EqualEqual] {
             if self.r#match(token_type) {
                 let operator = self.advance().unwrap();
-                let right = self.comparison()?;
-                return Ok(Box::new(ast::Expr::Binary(ast::Binary::new(
-                    expr, operator, right,
-                ))));
+                let right = self.equality()?;
+                return Ok(Box::new(Expr::Binary(Binary::new(expr, operator, right)?)));
             }
         }
 
         Ok(expr)
     }
 
-    fn comparison(&mut self) -> Result<Box<ast::Expr>, ZeusErrorType> {
+    fn comparison(&mut self) -> Result<Box<Expr>, ZeusErrorType> {
         let expr = self.term()?;
 
         for token in [
@@ -94,77 +90,71 @@ impl Parser {
         ] {
             if self.r#match(token) {
                 let operator = self.advance().unwrap();
-                let right = self.term()?;
-                return Ok(Box::new(ast::Expr::Binary(ast::Binary::new(
-                    expr, operator, right,
-                ))));
+                let right = self.comparison()?;
+                return Ok(Box::new(Expr::Binary(Binary::new(expr, operator, right)?)));
             }
         }
 
         Ok(expr)
     }
 
-    fn term(&mut self) -> Result<Box<ast::Expr>, ZeusErrorType> {
+    fn term(&mut self) -> Result<Box<Expr>, ZeusErrorType> {
         let expr = self.factor()?;
 
         for token in [&TokenType::Minus, &TokenType::Plus] {
             if self.r#match(token) {
                 let operator = self.advance().unwrap();
-                let right = self.factor()?;
-                return Ok(Box::new(ast::Expr::Binary(ast::Binary::new(
-                    expr, operator, right,
-                ))));
+                let right = self.term()?;
+                return Ok(Box::new(Expr::Binary(Binary::new(expr, operator, right)?)));
             }
         }
 
         Ok(expr)
     }
 
-    fn factor(&mut self) -> Result<Box<ast::Expr>, ZeusErrorType> {
+    fn factor(&mut self) -> Result<Box<Expr>, ZeusErrorType> {
         let expr = self.unary()?;
 
         for token in [&TokenType::Star, &TokenType::Slash] {
             if self.r#match(token) {
                 let operator = self.advance().unwrap();
-                let right = self.unary()?;
-                return Ok(Box::new(ast::Expr::Binary(ast::Binary::new(
-                    expr, operator, right,
-                ))));
+                let right = self.factor()?;
+                return Ok(Box::new(Expr::Binary(Binary::new(expr, operator, right)?)));
             }
         }
 
         Ok(expr)
     }
 
-    fn unary(&mut self) -> Result<Box<ast::Expr>, ZeusErrorType> {
+    fn unary(&mut self) -> Result<Box<Expr>, ZeusErrorType> {
         for token in [&TokenType::Bang, &TokenType::Minus] {
             if self.r#match(token) {
                 let operator = self.advance().unwrap();
                 let right = self.unary()?;
-                return Ok(Box::new(ast::Expr::Unary(ast::Unary::new(operator, right))));
+                return Ok(Box::new(Expr::Unary(Unary::new(operator, right)?)));
             }
         }
 
         self.primary()
     }
 
-    fn primary(&mut self) -> Result<Box<ast::Expr>, ZeusErrorType> {
+    fn primary(&mut self) -> Result<Box<Expr>, ZeusErrorType> {
         let next = self.advance().unwrap();
 
         Ok(match next.r#type {
-            TokenType::False => Box::new(ast::Expr::Literal(ast::Literal::new(next))),
-            TokenType::True => Box::new(ast::Expr::Literal(ast::Literal::new(next))),
-            TokenType::None => Box::new(ast::Expr::Literal(ast::Literal::new(next))),
-            TokenType::Integer(_) => Box::new(ast::Expr::Literal(ast::Literal::new(next))),
-            TokenType::Float(_) => Box::new(ast::Expr::Literal(ast::Literal::new(next))),
-            TokenType::String(_) => Box::new(ast::Expr::Literal(ast::Literal::new(next))),
-            TokenType::Identifier(_) => Box::new(ast::Expr::Literal(ast::Literal::new(next))),
-            TokenType::NewLine => Box::new(ast::Expr::Literal(ast::Literal::new(next))),
+            TokenType::False => Box::new(Expr::Value(Value::False)),
+            TokenType::True => Box::new(Expr::Value(Value::True)),
+            TokenType::None => Box::new(Expr::Value(Value::None)),
+            TokenType::Integer(i) => Box::new(Expr::Value(Value::Integer(i))),
+            TokenType::Float(f) => Box::new(Expr::Value(Value::Float(f))),
+            TokenType::String(s) => Box::new(Expr::Value(Value::String(s))),
+            TokenType::Identifier(s) => Box::new(Expr::Value(Value::Identifier(s))),
+            TokenType::NewLine => Box::new(Expr::Value(Value::NewLine)),
             TokenType::EOF => return Err(ZeusErrorType::EOF),
             TokenType::LeftParen => {
                 let expr = self.expression()?;
                 let right = self.consume(TokenType::RightParen, "expect ')' after expression")?;
-                Box::new(ast::Expr::Grouping(ast::Grouping::new(next, expr, right)))
+                Box::new(Expr::Grouping(Grouping::new(next, expr, right)?))
             }
             e => panic!("Parsing not yet implemented: {}", e),
         })

@@ -4,6 +4,7 @@ pub enum ZeusErrorType {
     EOF,
     NoMoreTokens,
     ParsingError(String),
+    InterpreterError(String),
 }
 
 #[derive(Debug)]
@@ -58,6 +59,11 @@ impl From<ZeusErrorType> for ZeusError {
             },
             ZeusErrorType::ParsingError(_) => ZeusError {
                 msg: "Parsing error".to_owned(),
+                line: None,
+                r#type: value,
+            },
+            ZeusErrorType::InterpreterError(_) => ZeusError {
+                msg: "Interpreter error".to_owned(),
                 line: None,
                 r#type: value,
             },
