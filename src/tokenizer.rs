@@ -242,7 +242,7 @@ impl<'a> Tokenizer<'a> {
             "elif" => TokenType::ElIf,
             "for" => TokenType::For,
             "while" => TokenType::While,
-            "let" => TokenType::Let,
+            "var" => TokenType::Var,
             "const" => TokenType::Const,
             "self" => TokenType::Self_,
             "return" => TokenType::Return,

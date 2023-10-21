@@ -46,7 +46,7 @@ impl Parser {
                 Some(t) if t.r#type == TokenType::For => return Ok(()),
                 Some(t) if t.r#type == TokenType::While => return Ok(()),
                 Some(t) if t.r#type == TokenType::Return => return Ok(()),
-                Some(t) if t.r#type == TokenType::Let => return Ok(()),
+                Some(t) if t.r#type == TokenType::Var => return Ok(()),
                 Some(t) if t.r#type == TokenType::Const => return Ok(()),
                 _ => self.advance()?,
             };
