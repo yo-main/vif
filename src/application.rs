@@ -1,5 +1,6 @@
 use crate::ast::AstVisitor;
 use crate::errors::ZeusError;
+use crate::interpreter;
 use std::fs;
 use std::io;
 use std::io::Write;
@@ -22,14 +23,10 @@ impl Zeus {
         let mut interpreter = Interpreter::new();
         let mut parser = Parser::new(tokenizer.tokens);
         let is_ok = parser.parse();
-        println!("Parsed success: {}", is_ok);
-        if !is_ok {
-            println!("Parsed errors: {:?}", parser.errors);
+        if is_ok {
+            interpreter.interpret(parser.statements);
         } else {
-            parser
-                .ast
-                .iter()
-                .for_each(|e| println!("{}", interpreter.visit_expr(e).unwrap()));
+            println!("errors: {:?}", parser.errors);
         }
 
         Ok(())

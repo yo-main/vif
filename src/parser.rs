@@ -1,6 +1,6 @@
 use clap::error::Result;
 
-use crate::ast::{Binary, Expr, Grouping, Literal, Unary, Value};
+use crate::ast::{Binary, Expr, Grouping, Literal, Stmt, Unary, Value};
 use crate::errors::ZeusErrorType;
 use crate::tokens::Token;
 use crate::tokens::TokenType;
@@ -9,7 +9,7 @@ use std::iter::Peekable;
 
 pub struct Parser {
     tokens: Peekable<std::vec::IntoIter<Token>>,
-    pub ast: Vec<Box<Expr>>,
+    pub statements: Vec<Stmt>,
     pub errors: Vec<ZeusErrorType>,
 }
 
@@ -17,15 +17,15 @@ impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
         Parser {
             tokens: tokens.into_iter().peekable(),
-            ast: Vec::new(),
+            statements: Vec::new(),
             errors: Vec::new(),
         }
     }
 
     pub fn parse(&mut self) -> bool {
         loop {
-            match self.expression() {
-                Ok(expr) => self.ast.push(expr),
+            match self.statement() {
+                Ok(stmt) => self.statements.push(stmt),
                 Err(ZeusErrorType::EOF) => break,
                 Err(err) => self.errors.push(err),
             }
@@ -51,6 +51,22 @@ impl Parser {
                 _ => self.advance()?,
             };
         }
+    }
+
+    fn statement(&mut self) -> Result<Stmt, ZeusErrorType> {
+        let stmt = match self.peek() {
+            Some(t) if t.r#type == TokenType::At => Stmt::Test(self.test_statement()?),
+            _ => Stmt::Expression(self.expression()?),
+        };
+
+        Ok(stmt)
+    }
+
+    fn test_statement(&mut self) -> Result<Box<Expr>, ZeusErrorType> {
+        self.advance().unwrap();
+        let expr = self.expression();
+        self.consume(TokenType::NewLine, "Expect new line after expression")?;
+        return expr;
     }
 
     fn expression(&mut self) -> Result<Box<Expr>, ZeusErrorType> {
@@ -80,7 +96,7 @@ impl Parser {
     }
 
     fn comparison(&mut self) -> Result<Box<Expr>, ZeusErrorType> {
-        let expr = self.term()?;
+        let expr = self.addition()?;
 
         for token in [
             &TokenType::Greater,
@@ -98,13 +114,27 @@ impl Parser {
         Ok(expr)
     }
 
-    fn term(&mut self) -> Result<Box<Expr>, ZeusErrorType> {
-        let expr = self.factor()?;
+    fn addition(&mut self) -> Result<Box<Expr>, ZeusErrorType> {
+        let expr = self.minus()?;
 
-        for token in [&TokenType::Minus, &TokenType::Plus] {
+        for token in [&TokenType::Plus] {
             if self.r#match(token) {
                 let operator = self.advance().unwrap();
-                let right = self.term()?;
+                let right = self.addition()?;
+                return Ok(Box::new(Expr::Binary(Binary::new(expr, operator, right)?)));
+            }
+        }
+
+        Ok(expr)
+    }
+
+    fn minus(&mut self) -> Result<Box<Expr>, ZeusErrorType> {
+        let expr = self.factor()?;
+
+        for token in [&TokenType::Minus] {
+            if self.r#match(token) {
+                let operator = self.advance().unwrap();
+                let right = self.minus()?;
                 return Ok(Box::new(Expr::Binary(Binary::new(expr, operator, right)?)));
             }
         }

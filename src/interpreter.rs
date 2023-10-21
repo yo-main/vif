@@ -1,6 +1,6 @@
 use crate::ast::{
-    AstVisitor, Binary, Expr, Group, Grouping, Literal, Number, Operator, Unary, UnaryOperator,
-    Value,
+    AstVisitor, Binary, Expr, Group, Grouping, Literal, Number, Operator, Stmt, Unary,
+    UnaryOperator, Value,
 };
 use crate::errors::ZeusErrorType;
 // use crate::tokens::{Token, TokenType};
@@ -28,6 +28,16 @@ impl Interpreter {
             Value::True => Value::False,
             e => panic!("Not usage is not allowed for {}", e),
         }
+    }
+
+    fn print(&self, expr: Value) {
+        print!("printing {}", expr);
+    }
+
+    pub fn interpret(&mut self, statements: Vec<Stmt>) {
+        statements
+            .iter()
+            .for_each(|e| println!("{}", e.accept(self).unwrap()));
     }
 }
 
@@ -464,6 +474,17 @@ impl AstVisitor for Interpreter {
             Expr::Grouping(v) => v.accept(self),
             Expr::Literal(v) => v.accept(self),
             Expr::Value(v) => v.accept(self),
+        }
+    }
+
+    fn visit_stmt(&mut self, item: &Stmt) -> Self::Item {
+        match item {
+            Stmt::Expression(e) => e.accept(self),
+            Stmt::Test(e) => {
+                let v = e.accept(self)?;
+                self.print(v);
+                Ok(Value::Ignore)
+            }
         }
     }
 }

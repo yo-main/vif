@@ -6,6 +6,7 @@ use crate::ast::Expr;
 use crate::ast::Grouping;
 use crate::ast::Literal;
 use crate::ast::Operator;
+use crate::ast::Stmt;
 use crate::ast::Unary;
 
 pub struct AstPrinter {
@@ -67,6 +68,13 @@ impl AstVisitor for AstPrinter {
             Expr::Value(v) => v.accept(self),
         }
     }
+
+    fn visit_stmt(&mut self, item: &Stmt) -> Self::Item {
+        match item {
+            Stmt::Expression(e) => e.accept(self),
+            Stmt::Test(t) => t.accept(self),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -84,18 +92,16 @@ mod test {
         let token_parent_left = Token::new(TokenType::LeftParen, 1);
         let token_parent_right = Token::new(TokenType::RightParen, 1);
 
-        let expr_one = ast::Expr::Literal(ast::Literal::new(token_one));
-        let expr_two = ast::Expr::Literal(ast::Literal::new(token_two));
-        let expr_minus_one = ast::Expr::Unary(Unary::new(token_minus, Box::new(expr_one)));
-        let expr_group_two = ast::Expr::Grouping(ast::Grouping::new(
-            token_parent_left,
-            Box::new(expr_two),
-            token_parent_right,
-        ));
+        let expr_one = ast::Expr::Literal(ast::Literal::new(token_one).unwrap());
+        let expr_two = ast::Expr::Literal(ast::Literal::new(token_two).unwrap());
+        let expr_minus_one = ast::Expr::Unary(Unary::new(token_minus, Box::new(expr_one)).unwrap());
+        let expr_group_two = ast::Expr::Grouping(
+            ast::Grouping::new(token_parent_left, Box::new(expr_two), token_parent_right).unwrap(),
+        );
 
         let binary = ast::Binary {
             left: Box::new(expr_minus_one),
-            operator: token_star,
+            operator: ast::Operator::new(token_star).unwrap(),
             right: Box::new(expr_group_two),
         };
 

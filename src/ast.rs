@@ -74,6 +74,7 @@ pub enum Value {
     True,
     False,
     None,
+    Ignore,
 }
 
 pub enum Expr {
@@ -85,7 +86,12 @@ pub enum Expr {
     Value(Value),
 }
 
-Visitor!(AstVisitor[Operator, Literal, Unary, Binary, Grouping, Expr, Value]);
+pub enum Stmt {
+    Expression(Box<Expr>),
+    Test(Box<Expr>),
+}
+
+Visitor!(AstVisitor[Operator, Literal, Unary, Binary, Grouping, Expr, Value, Stmt]);
 
 impl Literal {
     pub fn new(token: Token) -> Result<Self, ZeusErrorType> {
@@ -185,6 +191,19 @@ impl Grouping {
     }
 }
 
+impl std::fmt::Display for Stmt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Expression(e) => e,
+                Self::Test(t) => t,
+            }
+        )
+    }
+}
+
 impl std::fmt::Display for Literal {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -223,6 +242,7 @@ impl std::fmt::Display for Value {
             Self::False => write!(f, "False"),
             Self::None => write!(f, "None"),
             Self::NewLine => write!(f, "\\n"),
+            Self::Ignore => write!(f, ""),
         }
     }
 }
@@ -264,7 +284,7 @@ impl std::fmt::Display for Operator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Operator[{}]",
+            "{}",
             match self {
                 Self::Comma => ",",
                 Self::Plus => "+",
