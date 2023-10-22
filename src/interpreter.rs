@@ -2,14 +2,19 @@ use crate::ast::{
     AstVisitor, Binary, Expr, Group, Grouping, Literal, Number, Operator, Stmt, Unary,
     UnaryOperator, Value, Variable,
 };
+use crate::environment::Environment;
 use crate::errors::ZeusErrorType;
 // use crate::tokens::{Token, TokenType};
 
-pub struct Interpreter {}
+pub struct Interpreter {
+    env: Environment,
+}
 
 impl Interpreter {
     pub fn new() -> Self {
-        Interpreter {}
+        Interpreter {
+            env: Environment::new(),
+        }
     }
 
     fn is_truthy(&self, value: Value) -> Value {
@@ -463,7 +468,18 @@ impl AstVisitor for Interpreter {
     }
 
     fn visit_value(&mut self, item: &Value) -> Self::Item {
-        Ok(item.clone())
+        Ok(match item {
+            Value::Variable(name) => match self.env.get(name) {
+                Ok(value) => value.clone(),
+                Err(_) => {
+                    return Err(ZeusErrorType::InterpreterError(format!(
+                        "Unknown variable {}",
+                        name,
+                    )))
+                }
+            },
+            i => i.clone(),
+        })
     }
 
     fn visit_expr(&mut self, item: &Expr) -> Self::Item {
@@ -478,6 +494,8 @@ impl AstVisitor for Interpreter {
     }
 
     fn visit_variable(&mut self, item: &Variable) -> Self::Item {
+        let value = item.value.accept(self)?;
+        self.env.define(item.name.clone(), value);
         Ok(Value::Ignore)
     }
 

@@ -59,7 +59,7 @@ pub struct Grouping {
 }
 
 pub struct Variable {
-    pub name: Literal,
+    pub name: String,
     pub value: Box<Expr>,
 }
 
@@ -131,7 +131,7 @@ impl Group {
 impl Variable {
     pub fn new(name: Token, value: Box<Expr>) -> Result<Self, ZeusErrorType> {
         let name = match name.r#type {
-            TokenType::Identifier(s) => Literal::Indentifier(s),
+            TokenType::Identifier(s) => s,
             e => {
                 return Err(ZeusErrorType::ParsingError(format!(
                     "Not an identifier: {}",

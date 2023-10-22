@@ -5,6 +5,7 @@ pub enum ZeusErrorType {
     NoMoreTokens,
     ParsingError(String),
     InterpreterError(String),
+    UnassignedVariable(String),
 }
 
 #[derive(Debug)]
@@ -64,6 +65,11 @@ impl From<ZeusErrorType> for ZeusError {
             },
             ZeusErrorType::InterpreterError(_) => ZeusError {
                 msg: "Interpreter error".to_owned(),
+                line: None,
+                r#type: value,
+            },
+            ZeusErrorType::UnassignedVariable(_) => ZeusError {
+                msg: "Unassigned varible".to_owned(),
                 line: None,
                 r#type: value,
             },

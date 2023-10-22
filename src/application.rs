@@ -10,21 +10,24 @@ use crate::parser::Parser;
 use crate::tokenizer::Tokenizer;
 use std::path::PathBuf;
 
-pub struct Zeus {}
+pub struct Zeus {
+    interpreter: Interpreter,
+}
 
 impl Zeus {
     pub fn init() -> Self {
-        Zeus {}
+        Zeus {
+            interpreter: Interpreter::new(),
+        }
     }
 
-    fn run(&self, content: String) -> Result<(), ZeusError> {
+    fn run(&mut self, content: String) -> Result<(), ZeusError> {
         let mut tokenizer = Tokenizer::new(content.as_str());
         tokenizer.scan_tokens();
-        let mut interpreter = Interpreter::new();
         let mut parser = Parser::new(tokenizer.tokens);
         let is_ok = parser.parse();
         if is_ok {
-            interpreter.interpret(parser.statements);
+            self.interpreter.interpret(parser.statements);
         } else {
             println!("errors: {:?}", parser.errors);
         }
@@ -32,7 +35,7 @@ impl Zeus {
         Ok(())
     }
 
-    pub fn run_file(&self, path: PathBuf) -> Result<(), ZeusError> {
+    pub fn run_file(&mut self, path: PathBuf) -> Result<(), ZeusError> {
         match fs::read_to_string(path) {
             Ok(content) => self.run(content)?,
             _ => return Err(ZeusError::new("Couldn't open file")),
@@ -41,7 +44,7 @@ impl Zeus {
         Ok(())
     }
 
-    pub fn run_prompt(&self) -> Result<(), ZeusError> {
+    pub fn run_prompt(&mut self) -> Result<(), ZeusError> {
         loop {
             let mut line = String::new();
             print!(">>> ");
