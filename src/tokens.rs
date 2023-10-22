@@ -136,7 +136,7 @@ impl Display for TokenType {
             TokenType::ElIf => write!(f, "elif"),
             TokenType::Else => write!(f, "else"),
             TokenType::If => write!(f, "if"),
-            TokenType::Var => write!(f, "let"),
+            TokenType::Var => write!(f, "var"),
             TokenType::Const => write!(f, "const"),
             TokenType::For => write!(f, "for"),
             TokenType::Or => write!(f, "or"),

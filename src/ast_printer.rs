@@ -1,5 +1,3 @@
-use std::fmt::format;
-
 use crate::ast::AstVisitor;
 use crate::ast::Binary;
 use crate::ast::Expr;
@@ -8,6 +6,7 @@ use crate::ast::Literal;
 use crate::ast::Operator;
 use crate::ast::Stmt;
 use crate::ast::Unary;
+use crate::ast::Variable;
 
 pub struct AstPrinter {
     nodes: Vec<String>,
@@ -69,10 +68,15 @@ impl AstVisitor for AstPrinter {
         }
     }
 
+    fn visit_variable(&mut self, item: &Variable) -> Self::Item {
+        format!("{}", item)
+    }
+
     fn visit_stmt(&mut self, item: &Stmt) -> Self::Item {
         match item {
             Stmt::Expression(e) => e.accept(self),
             Stmt::Test(t) => t.accept(self),
+            Stmt::Var(v) => v.accept(self),
         }
     }
 }

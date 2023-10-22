@@ -58,6 +58,11 @@ pub struct Grouping {
     pub right: Group,
 }
 
+pub struct Variable {
+    pub name: Literal,
+    pub value: Box<Expr>,
+}
+
 pub enum Number {
     Integer(i64),
     Float(f64),
@@ -67,9 +72,9 @@ pub enum Number {
 pub enum Value {
     Operator(Operator),
     String(String),
-    Identifier(String),
     Integer(i64),
     Float(f64),
+    Variable(String),
     NewLine,
     True,
     False,
@@ -89,9 +94,10 @@ pub enum Expr {
 pub enum Stmt {
     Expression(Box<Expr>),
     Test(Box<Expr>),
+    Var(Variable),
 }
 
-Visitor!(AstVisitor[Operator, Literal, Unary, Binary, Grouping, Expr, Value, Stmt]);
+Visitor!(AstVisitor[Operator, Literal, Unary, Binary, Grouping, Expr, Value, Stmt, Variable]);
 
 impl Literal {
     pub fn new(token: Token) -> Result<Self, ZeusErrorType> {
@@ -119,6 +125,22 @@ impl Group {
                 e
             ))),
         }
+    }
+}
+
+impl Variable {
+    pub fn new(name: Token, value: Box<Expr>) -> Result<Self, ZeusErrorType> {
+        let name = match name.r#type {
+            TokenType::Identifier(s) => Literal::Indentifier(s),
+            e => {
+                return Err(ZeusErrorType::ParsingError(format!(
+                    "Not an identifier: {}",
+                    e
+                )))
+            }
+        };
+
+        Ok(Variable { name, value })
     }
 }
 
@@ -193,14 +215,17 @@ impl Grouping {
 
 impl std::fmt::Display for Stmt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Expression(e) => e,
-                Self::Test(t) => t,
-            }
-        )
+        match self {
+            Self::Expression(e) => write!(f, "{}", e),
+            Self::Test(t) => write!(f, "{}", t),
+            Self::Var(v) => write!(f, "{}", v),
+        }
+    }
+}
+
+impl std::fmt::Display for Variable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}={}", self.name, self.value)
     }
 }
 
@@ -235,7 +260,7 @@ impl std::fmt::Display for Value {
         match self {
             Self::Operator(v) => write!(f, "{}", v),
             Self::String(v) => write!(f, "{}", v),
-            Self::Identifier(v) => write!(f, "{}", v),
+            Self::Variable(v) => write!(f, "{}", v),
             Self::Integer(v) => write!(f, "{}", v),
             Self::Float(v) => write!(f, "{}", v),
             Self::True => write!(f, "True"),

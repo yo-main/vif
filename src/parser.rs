@@ -1,6 +1,6 @@
 use clap::error::Result;
 
-use crate::ast::{Binary, Expr, Grouping, Literal, Stmt, Unary, Value};
+use crate::ast::{Binary, Expr, Grouping, Literal, Stmt, Unary, Value, Variable};
 use crate::errors::ZeusErrorType;
 use crate::tokens::Token;
 use crate::tokens::TokenType;
@@ -24,11 +24,15 @@ impl Parser {
 
     pub fn parse(&mut self) -> bool {
         loop {
-            match self.statement() {
+            match self.declaration() {
                 Ok(stmt) => self.statements.push(stmt),
                 Err(ZeusErrorType::EOF) => break,
-                Err(err) => self.errors.push(err),
-            }
+                Err(err) => {
+                    self.parse_error()
+                        .expect(&format!("Could not recover from error: {:?}", err));
+                    self.errors.push(err);
+                }
+            };
         }
 
         self.errors.is_empty()
@@ -53,13 +57,48 @@ impl Parser {
         }
     }
 
-    fn statement(&mut self) -> Result<Stmt, ZeusErrorType> {
-        let stmt = match self.peek() {
-            Some(t) if t.r#type == TokenType::At => Stmt::Test(self.test_statement()?),
-            _ => Stmt::Expression(self.expression()?),
+    fn declaration(&mut self) -> Result<Stmt, ZeusErrorType> {
+        match self.peek() {
+            Some(t) if t.r#type == TokenType::Var => self.var_declaration(),
+            _ => self.statement(),
+        }
+    }
+
+    fn var_declaration(&mut self) -> Result<Stmt, ZeusErrorType> {
+        self.advance().unwrap();
+
+        let name = match self.peek() {
+            Some(t) => match &t.r#type {
+                TokenType::Identifier(_) => self.advance().unwrap(),
+                t => {
+                    return Err(ZeusErrorType::ParsingError(format!(
+                        "Expected an variable name, got {}",
+                        t
+                    )))
+                }
+            },
+            _ => {
+                return Err(ZeusErrorType::ParsingError(format!(
+                    "Expected an variable name, got EOF"
+                )))
+            }
         };
 
-        Ok(stmt)
+        self.consume(TokenType::Equal, "Expected an =")?;
+        let expr = self.expression()?;
+        self.consume(
+            TokenType::NewLine,
+            "Expected new line after variable declaration",
+        )?;
+
+        Ok(Stmt::Var(Variable::new(name, expr)?))
+    }
+
+    fn statement(&mut self) -> Result<Stmt, ZeusErrorType> {
+        Ok(match self.peek() {
+            Some(t) if t.r#type == TokenType::At => Stmt::Test(self.test_statement()?),
+            _ => Stmt::Expression(self.expression()?),
+        })
     }
 
     fn test_statement(&mut self) -> Result<Box<Expr>, ZeusErrorType> {
@@ -178,7 +217,7 @@ impl Parser {
             TokenType::Integer(i) => Box::new(Expr::Value(Value::Integer(i))),
             TokenType::Float(f) => Box::new(Expr::Value(Value::Float(f))),
             TokenType::String(s) => Box::new(Expr::Value(Value::String(s))),
-            TokenType::Identifier(s) => Box::new(Expr::Value(Value::Identifier(s))),
+            TokenType::Identifier(s) => Box::new(Expr::Value(Value::Variable(s))),
             TokenType::NewLine => Box::new(Expr::Value(Value::NewLine)),
             TokenType::EOF => return Err(ZeusErrorType::EOF),
             TokenType::LeftParen => {

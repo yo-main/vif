@@ -1,6 +1,6 @@
 use crate::ast::{
     AstVisitor, Binary, Expr, Group, Grouping, Literal, Number, Operator, Stmt, Unary,
-    UnaryOperator, Value,
+    UnaryOperator, Value, Variable,
 };
 use crate::errors::ZeusErrorType;
 // use crate::tokens::{Token, TokenType};
@@ -51,7 +51,7 @@ impl AstVisitor for Interpreter {
     fn visit_literal(&mut self, item: &Literal) -> Self::Item {
         Ok(match item {
             Literal::String(v) => Value::String(v.clone()),
-            Literal::Indentifier(v) => Value::Identifier(v.clone()),
+            Literal::Indentifier(v) => Value::Variable(v.clone()),
         })
     }
 
@@ -477,6 +477,10 @@ impl AstVisitor for Interpreter {
         }
     }
 
+    fn visit_variable(&mut self, item: &Variable) -> Self::Item {
+        Ok(Value::Ignore)
+    }
+
     fn visit_stmt(&mut self, item: &Stmt) -> Self::Item {
         match item {
             Stmt::Expression(e) => e.accept(self),
@@ -485,6 +489,7 @@ impl AstVisitor for Interpreter {
                 self.print(v);
                 Ok(Value::Ignore)
             }
+            Stmt::Var(var) => var.accept(self),
         }
     }
 }
