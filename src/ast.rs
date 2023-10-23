@@ -63,6 +63,11 @@ pub struct Variable {
     pub value: Box<Expr>,
 }
 
+pub struct Assign {
+    pub name: String,
+    pub value: Box<Expr>,
+}
+
 pub enum Number {
     Integer(i64),
     Float(f64),
@@ -89,6 +94,7 @@ pub enum Expr {
     Grouping(Grouping),
     Literal(Literal),
     Value(Value),
+    Assign(Assign),
 }
 
 pub enum Stmt {
@@ -97,7 +103,7 @@ pub enum Stmt {
     Var(Variable),
 }
 
-Visitor!(AstVisitor[Operator, Literal, Unary, Binary, Grouping, Expr, Value, Stmt, Variable]);
+Visitor!(AstVisitor[Operator, Literal, Unary, Binary, Grouping, Expr, Value, Stmt, Variable, Assign]);
 
 impl Literal {
     pub fn new(token: Token) -> Result<Self, ZeusErrorType> {
@@ -108,6 +114,12 @@ impl Literal {
                 e
             ))),
         }
+    }
+}
+
+impl Assign {
+    pub fn new(name: String, value: Box<Expr>) -> Result<Self, ZeusErrorType> {
+        Ok(Assign { name, value })
     }
 }
 
@@ -351,6 +363,12 @@ impl std::fmt::Display for Unary {
     }
 }
 
+impl std::fmt::Display for Assign {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Assign[{}={}]", self.name, self.value)
+    }
+}
+
 impl std::fmt::Display for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -360,6 +378,7 @@ impl std::fmt::Display for Expr {
             Expr::Grouping(e) => write!(f, "{}", e),
             Expr::Literal(e) => write!(f, "{}", e),
             Expr::Value(e) => write!(f, "{}", e),
+            Expr::Assign(e) => write!(f, "{}", e),
         }
     }
 }

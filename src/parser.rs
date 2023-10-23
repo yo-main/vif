@@ -1,6 +1,6 @@
 use clap::error::Result;
 
-use crate::ast::{Binary, Expr, Grouping, Literal, Stmt, Unary, Value, Variable};
+use crate::ast::{Assign, Binary, Expr, Grouping, Literal, Stmt, Unary, Value, Variable};
 use crate::errors::ZeusErrorType;
 use crate::tokens::Token;
 use crate::tokens::TokenType;
@@ -109,12 +109,30 @@ impl Parser {
     }
 
     fn expression(&mut self) -> Result<Box<Expr>, ZeusErrorType> {
+        // if self.r#match(&TokenType::Comma) {
+        //     let operator = self.advance().unwrap();
+        //     let right = self.expression()?;
+        //     return Ok(Box::new(Expr::Binary(Binary::new(expr, operator, right)?)));
+        // }
+        self.assignment()
+    }
+
+    fn assignment(&mut self) -> Result<Box<Expr>, ZeusErrorType> {
         let expr = self.equality()?;
 
-        if self.r#match(&TokenType::Comma) {
-            let operator = self.advance().unwrap();
-            let right = self.expression()?;
-            return Ok(Box::new(Expr::Binary(Binary::new(expr, operator, right)?)));
+        if self.r#match(&TokenType::Equal) {
+            self.advance().unwrap();
+            let value = self.assignment()?;
+
+            match *expr {
+                Expr::Value(Value::Variable(var)) => {
+                    return Ok(Box::new(Expr::Assign(Assign::new(var, value)?)))
+                }
+                ref e => self.errors.push(ZeusErrorType::ParsingError(format!(
+                    "Invalid assignement target: {}",
+                    e
+                ))),
+            };
         }
 
         Ok(expr)

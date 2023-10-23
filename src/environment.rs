@@ -22,6 +22,20 @@ impl Environment {
             .get(name)
             .ok_or_else(|| ZeusErrorType::UnassignedVariable(name.to_owned()))
     }
+
+    pub fn update(&mut self, name: &str, value: Value) -> Result<(), ZeusErrorType> {
+        match self.values.get_mut(name) {
+            Some(item) => *item = value,
+            _ => {
+                return Err(ZeusErrorType::InterpreterError(format!(
+                    "Can't assign - variable does not exit: {}",
+                    name
+                )))
+            }
+        };
+
+        Ok(())
+    }
 }
 
 impl std::fmt::Debug for Environment {

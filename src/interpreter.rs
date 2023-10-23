@@ -1,5 +1,5 @@
 use crate::ast::{
-    AstVisitor, Binary, Expr, Group, Grouping, Literal, Number, Operator, Stmt, Unary,
+    Assign, AstVisitor, Binary, Expr, Group, Grouping, Literal, Number, Operator, Stmt, Unary,
     UnaryOperator, Value, Variable,
 };
 use crate::environment::Environment;
@@ -40,9 +40,10 @@ impl Interpreter {
     }
 
     pub fn interpret(&mut self, statements: Vec<Stmt>) {
-        statements
-            .iter()
-            .for_each(|e| println!("{}", e.accept(self).unwrap()));
+        statements.iter().for_each(|e| match e.accept(self) {
+            Ok(res) => println!("{}", res),
+            Err(err) => println!("error: {:?}", err),
+        });
     }
 }
 
@@ -490,12 +491,19 @@ impl AstVisitor for Interpreter {
             Expr::Grouping(v) => v.accept(self),
             Expr::Literal(v) => v.accept(self),
             Expr::Value(v) => v.accept(self),
+            Expr::Assign(v) => v.accept(self),
         }
     }
 
     fn visit_variable(&mut self, item: &Variable) -> Self::Item {
         let value = item.value.accept(self)?;
         self.env.define(item.name.clone(), value);
+        Ok(Value::Ignore)
+    }
+
+    fn visit_assign(&mut self, item: &Assign) -> Self::Item {
+        let value = item.value.accept(self)?;
+        self.env.update(&item.name, value)?;
         Ok(Value::Ignore)
     }
 

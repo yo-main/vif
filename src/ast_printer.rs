@@ -57,6 +57,10 @@ impl AstVisitor for AstPrinter {
         format!("{}", item)
     }
 
+    fn visit_assign(&mut self, item: &crate::ast::Assign) -> Self::Item {
+        format!("{}", item)
+    }
+
     fn visit_expr(&mut self, item: &Expr) -> Self::Item {
         match item {
             Expr::Operator(v) => v.accept(self),
@@ -65,6 +69,7 @@ impl AstVisitor for AstPrinter {
             Expr::Grouping(v) => v.accept(self),
             Expr::Literal(v) => v.accept(self),
             Expr::Value(v) => v.accept(self),
+            Expr::Assign(v) => v.accept(self),
         }
     }
 
