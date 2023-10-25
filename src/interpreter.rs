@@ -35,12 +35,12 @@ impl Interpreter {
     }
 
     fn print(&self, expr: Value) {
-        print!("printing {}", expr);
+        println!("{}", expr);
     }
 
     pub fn interpret(&mut self, statements: Vec<Stmt>) {
         statements.iter().for_each(|e| match e.accept(self) {
-            Ok(res) => println!("{}", res),
+            Ok(_) => (),
             Err(err) => println!("error: {:?}", err),
         });
     }

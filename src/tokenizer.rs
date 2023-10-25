@@ -62,7 +62,7 @@ impl<'a> Tokenizer<'a> {
                 ',' => TokenType::Comma,
                 ':' => TokenType::DoubleDot,
                 ';' => TokenType::Semicolon,
-                '@' => TokenType::At,
+                // '@' => TokenType::At,
                 '#' => {
                     let mut str = String::new();
                     while !vec!['\n', '\0'].contains(self.peek()) {
@@ -175,6 +175,11 @@ impl<'a> Tokenizer<'a> {
             }
         }
 
+        match self.peek() {
+            &'\n' => return TokenType::Ignore,
+            _ => (),
+        }
+
         // println!("{} {}", stack, current_stack);
         if stack == current_stack {
             TokenType::Ignore
@@ -249,6 +254,7 @@ impl<'a> Tokenizer<'a> {
             "True" => TokenType::True,
             "False" => TokenType::False,
             "None" => TokenType::None,
+            "print" => TokenType::At,
             _ => TokenType::Identifier(str),
         }
     }
