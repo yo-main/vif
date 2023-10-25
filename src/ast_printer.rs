@@ -82,6 +82,11 @@ impl AstVisitor for AstPrinter {
             Stmt::Expression(e) => e.accept(self),
             Stmt::Test(t) => t.accept(self),
             Stmt::Var(v) => v.accept(self),
+            Stmt::Block(v) => v
+                .iter()
+                .map(|s| s.accept(self))
+                .collect::<Vec<String>>()
+                .join(" | "),
         }
     }
 }

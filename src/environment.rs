@@ -3,43 +3,56 @@ use crate::errors::ZeusErrorType;
 use std::collections::HashMap;
 
 pub struct Environment {
-    values: HashMap<String, Value>,
+    stack: Vec<HashMap<String, Value>>,
 }
 
 impl Environment {
     pub fn new() -> Self {
         Environment {
-            values: HashMap::new(),
+            stack: vec![HashMap::new()],
         }
     }
 
+    pub fn start_new(&mut self) {
+        self.stack.push(HashMap::new());
+    }
+
+    pub fn close(&mut self) {
+        self.stack.pop();
+    }
+
     pub fn define(&mut self, name: String, value: Value) -> Option<Value> {
-        self.values.insert(name, value)
+        let values = self.stack.last_mut().unwrap();
+        values.insert(name, value)
     }
 
     pub fn get(&self, name: &str) -> Result<&Value, ZeusErrorType> {
-        self.values
-            .get(name)
-            .ok_or_else(|| ZeusErrorType::UnassignedVariable(name.to_owned()))
+        for values in self.stack.iter().rev() {
+            if let Some(value) = values.get(name) {
+                return Ok(value);
+            }
+        }
+
+        return Err(ZeusErrorType::UnassignedVariable(name.to_owned()));
     }
 
     pub fn update(&mut self, name: &str, value: Value) -> Result<(), ZeusErrorType> {
-        match self.values.get_mut(name) {
-            Some(item) => *item = value,
-            _ => {
-                return Err(ZeusErrorType::InterpreterError(format!(
-                    "Can't assign - variable does not exit: {}",
-                    name
-                )))
+        for values in self.stack.iter_mut().rev() {
+            if let Some(item) = values.get_mut(name) {
+                *item = value;
+                return Ok(());
             }
-        };
+        }
 
-        Ok(())
+        return Err(ZeusErrorType::InterpreterError(format!(
+            "Can't assign - variable does not exit: {}",
+            name
+        )));
     }
 }
 
 impl std::fmt::Debug for Environment {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.values.keys())
+        write!(f, "{:?}", self.stack.last().unwrap().keys())
     }
 }

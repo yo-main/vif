@@ -97,8 +97,22 @@ impl Parser {
     fn statement(&mut self) -> Result<Stmt, ZeusErrorType> {
         Ok(match self.peek() {
             Some(t) if t.r#type == TokenType::At => Stmt::Test(self.test_statement()?),
+            Some(t) if t.r#type == TokenType::Indent => Stmt::Block(self.block()?),
             _ => Stmt::Expression(self.expression()?),
         })
+    }
+
+    fn block(&mut self) -> Result<Vec<Stmt>, ZeusErrorType> {
+        let mut stmts = Vec::new();
+        self.advance().unwrap();
+
+        while !self.check(&TokenType::Dedent) {
+            stmts.push(self.declaration()?);
+        }
+
+        self.consume(TokenType::Dedent, "Expected end of block")?;
+
+        Ok(stmts)
     }
 
     fn test_statement(&mut self) -> Result<Box<Expr>, ZeusErrorType> {

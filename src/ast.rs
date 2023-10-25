@@ -101,6 +101,7 @@ pub enum Stmt {
     Expression(Box<Expr>),
     Test(Box<Expr>),
     Var(Variable),
+    Block(Vec<Stmt>),
 }
 
 Visitor!(AstVisitor[Operator, Literal, Unary, Binary, Grouping, Expr, Value, Stmt, Variable, Assign]);
@@ -231,6 +232,10 @@ impl std::fmt::Display for Stmt {
             Self::Expression(e) => write!(f, "{}", e),
             Self::Test(t) => write!(f, "{}", t),
             Self::Var(v) => write!(f, "{}", v),
+            Self::Block(stmts) => {
+                let texts: Vec<String> = stmts.iter().map(|s| format!("{}", s)).collect();
+                return write!(f, "{}", texts.join(">"));
+            }
         }
     }
 }

@@ -4,7 +4,6 @@ use crate::ast::{
 };
 use crate::environment::Environment;
 use crate::errors::ZeusErrorType;
-// use crate::tokens::{Token, TokenType};
 
 pub struct Interpreter {
     env: Environment,
@@ -44,6 +43,16 @@ impl Interpreter {
             Ok(res) => println!("{}", res),
             Err(err) => println!("error: {:?}", err),
         });
+    }
+
+    pub fn execute_block(&mut self, statements: &Vec<Stmt>) -> Result<(), ZeusErrorType> {
+        self.env.start_new();
+        for stmt in statements {
+            stmt.accept(self)?;
+        }
+
+        self.env.close();
+        Ok(())
     }
 }
 
@@ -516,6 +525,10 @@ impl AstVisitor for Interpreter {
                 Ok(Value::Ignore)
             }
             Stmt::Var(var) => var.accept(self),
+            Stmt::Block(stmts) => {
+                self.execute_block(stmts)?;
+                Ok(Value::Ignore)
+            }
         }
     }
 }

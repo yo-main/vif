@@ -147,7 +147,7 @@ impl Display for TokenType {
             TokenType::Self_ => write!(f, "self"),
             TokenType::While => write!(f, "while"),
             TokenType::Indent => write!(f, "indent"),
-            TokenType::Dedent => write!(f, "dedant"),
+            TokenType::Dedent => write!(f, "dedent"),
             TokenType::Ignore => write!(f, "ignore"),
             TokenType::EOF => write!(f, "EOF"),
         }
