@@ -19,6 +19,7 @@ impl Interpreter {
     fn is_truthy(&self, value: Value) -> Value {
         match value {
             Value::None => Value::False,
+            Value::False => Value::False,
             Value::Integer(0) => Value::False,
             Value::Float(0.0) => Value::False,
             Value::String(v) if v.is_empty() => Value::False,
@@ -516,6 +517,21 @@ impl AstVisitor for Interpreter {
         Ok(Value::Ignore)
     }
 
+    fn visit_condition(&mut self, item: &crate::ast::Condition) -> Self::Item {
+        let condition = item.expr.accept(self)?;
+        match self.is_truthy(condition) {
+            Value::True => item.then.accept(self),
+            Value::False => match &item.r#else {
+                Some(stmt) => stmt.accept(self),
+                None => Ok(Value::Ignore),
+            },
+            e => Err(ZeusErrorType::InterpreterError(format!(
+                "Can't evaluate if condition: {}",
+                e
+            ))),
+        }
+    }
+
     fn visit_stmt(&mut self, item: &Stmt) -> Self::Item {
         match item {
             Stmt::Expression(e) => e.accept(self),
@@ -529,6 +545,7 @@ impl AstVisitor for Interpreter {
                 self.execute_block(stmts)?;
                 Ok(Value::Ignore)
             }
+            Stmt::Condition(c) => c.accept(self),
         }
     }
 }

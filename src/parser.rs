@@ -1,7 +1,10 @@
 use clap::error::Result;
 
-use crate::ast::{Assign, Binary, Expr, Grouping, Literal, Stmt, Unary, Value, Variable};
+use crate::ast::{
+    Assign, Binary, Condition, Expr, Grouping, Literal, Stmt, Unary, Value, Variable,
+};
 use crate::errors::ZeusErrorType;
+use crate::tokenizer::Tokenizer;
 use crate::tokens::Token;
 use crate::tokens::TokenType;
 use std::iter::Iterator;
@@ -98,8 +101,32 @@ impl Parser {
         Ok(match self.peek() {
             Some(t) if t.r#type == TokenType::At => Stmt::Test(self.test_statement()?),
             Some(t) if t.r#type == TokenType::Indent => Stmt::Block(self.block()?),
+            Some(t) if t.r#type == TokenType::If => Stmt::Condition(self.if_statement()?),
             _ => Stmt::Expression(self.expression()?),
         })
+    }
+
+    fn if_statement(&mut self) -> Result<Condition, ZeusErrorType> {
+        self.advance().unwrap();
+
+        let expr = self.expression()?;
+        self.consume(TokenType::DoubleDot, "Expect ':' after if condition")?;
+        self.consume(TokenType::NewLine, "Expect new line after :")?;
+
+        let then = Box::new(self.statement()?);
+        let r#else = match self.check(&TokenType::Else) {
+            true => {
+                self.advance().unwrap();
+
+                self.consume(TokenType::DoubleDot, "Expect ':' after else condition")?;
+                self.consume(TokenType::NewLine, "Expect new line after :")?;
+
+                Some(Box::new(self.statement()?))
+            }
+            false => None,
+        };
+
+        Ok(Condition::new(expr, then, r#else))
     }
 
     fn block(&mut self) -> Result<Vec<Stmt>, ZeusErrorType> {

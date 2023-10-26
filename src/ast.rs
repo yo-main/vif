@@ -41,6 +41,12 @@ pub enum Literal {
     Indentifier(String),
 }
 
+pub struct Condition {
+    pub expr: Box<Expr>,
+    pub then: Box<Stmt>,
+    pub r#else: Option<Box<Stmt>>,
+}
+
 pub struct Binary {
     pub left: Box<Expr>,
     pub operator: Operator,
@@ -102,9 +108,10 @@ pub enum Stmt {
     Test(Box<Expr>),
     Var(Variable),
     Block(Vec<Stmt>),
+    Condition(Condition),
 }
 
-Visitor!(AstVisitor[Operator, Literal, Unary, Binary, Grouping, Expr, Value, Stmt, Variable, Assign]);
+Visitor!(AstVisitor[Operator, Literal, Unary, Binary, Grouping, Expr, Value, Stmt, Variable, Assign, Condition]);
 
 impl Literal {
     pub fn new(token: Token) -> Result<Self, ZeusErrorType> {
@@ -138,6 +145,12 @@ impl Group {
                 e
             ))),
         }
+    }
+}
+
+impl Condition {
+    pub fn new(expr: Box<Expr>, then: Box<Stmt>, r#else: Option<Box<Stmt>>) -> Self {
+        Condition { expr, then, r#else }
     }
 }
 
@@ -236,7 +249,14 @@ impl std::fmt::Display for Stmt {
                 let texts: Vec<String> = stmts.iter().map(|s| format!("{}", s)).collect();
                 return write!(f, "{}", texts.join(">"));
             }
+            Self::Condition(c) => write!(f, "{}", c),
         }
+    }
+}
+
+impl std::fmt::Display for Condition {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} {} todo", self.expr, self.then)
     }
 }
 
