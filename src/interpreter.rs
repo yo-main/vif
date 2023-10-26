@@ -1,6 +1,6 @@
 use crate::ast::{
-    Assign, AstVisitor, Binary, Expr, Group, Grouping, Literal, Number, Operator, Stmt, Unary,
-    UnaryOperator, Value, Variable,
+    Assign, AstVisitor, Binary, Expr, Group, Grouping, Literal, Logical, LogicalOperator, Number,
+    Operator, Stmt, Unary, UnaryOperator, Value, Variable,
 };
 use crate::environment::Environment;
 use crate::errors::ZeusErrorType;
@@ -16,7 +16,7 @@ impl Interpreter {
         }
     }
 
-    fn is_truthy(&self, value: Value) -> Value {
+    fn is_truthy(&self, value: &Value) -> Value {
         match value {
             Value::None => Value::False,
             Value::False => Value::False,
@@ -83,8 +83,31 @@ impl AstVisitor for Interpreter {
                     e
                 ))),
             },
-            UnaryOperator::Bang => Ok(self.not(self.is_truthy(right))),
+            UnaryOperator::Bang => Ok(self.not(self.is_truthy(&right))),
         }
+    }
+
+    fn visit_logical(&mut self, item: &Logical) -> Self::Item {
+        let left = item.left.accept(self)?;
+
+        match item.operator {
+            LogicalOperator::And => {
+                match self.is_truthy(&left) {
+                    Value::False => return Ok(left),
+                    Value::True => (),
+                    _ => (), // impossible
+                };
+            }
+            LogicalOperator::Or => {
+                match self.is_truthy(&left) {
+                    Value::True => return Ok(left),
+                    Value::False => (),
+                    _ => (), // impossible
+                };
+            }
+        }
+
+        item.right.accept(self)
     }
 
     fn visit_binary(&mut self, item: &Binary) -> Self::Item {
@@ -502,6 +525,7 @@ impl AstVisitor for Interpreter {
             Expr::Literal(v) => v.accept(self),
             Expr::Value(v) => v.accept(self),
             Expr::Assign(v) => v.accept(self),
+            Expr::Logical(v) => v.accept(self),
         }
     }
 
@@ -519,7 +543,7 @@ impl AstVisitor for Interpreter {
 
     fn visit_condition(&mut self, item: &crate::ast::Condition) -> Self::Item {
         let condition = item.expr.accept(self)?;
-        match self.is_truthy(condition) {
+        match self.is_truthy(&condition) {
             Value::True => item.then.accept(self),
             Value::False => match &item.r#else {
                 Some(stmt) => stmt.accept(self),

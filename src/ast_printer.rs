@@ -78,10 +78,15 @@ impl AstVisitor for AstPrinter {
             Expr::Literal(v) => v.accept(self),
             Expr::Value(v) => v.accept(self),
             Expr::Assign(v) => v.accept(self),
+            Expr::Logical(v) => v.accept(self),
         }
     }
 
     fn visit_variable(&mut self, item: &Variable) -> Self::Item {
+        format!("{}", item)
+    }
+
+    fn visit_logical(&mut self, item: &crate::ast::Logical) -> Self::Item {
         format!("{}", item)
     }
 

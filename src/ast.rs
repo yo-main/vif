@@ -93,6 +93,17 @@ pub enum Value {
     Ignore,
 }
 
+pub enum LogicalOperator {
+    And,
+    Or,
+}
+
+pub struct Logical {
+    pub left: Box<Expr>,
+    pub operator: LogicalOperator,
+    pub right: Box<Expr>,
+}
+
 pub enum Expr {
     Operator(Operator),
     Binary(Binary),
@@ -101,6 +112,7 @@ pub enum Expr {
     Literal(Literal),
     Value(Value),
     Assign(Assign),
+    Logical(Logical),
 }
 
 pub enum Stmt {
@@ -111,7 +123,7 @@ pub enum Stmt {
     Condition(Condition),
 }
 
-Visitor!(AstVisitor[Operator, Literal, Unary, Binary, Grouping, Expr, Value, Stmt, Variable, Assign, Condition]);
+Visitor!(AstVisitor[Operator, Literal, Unary, Binary, Grouping, Expr, Value, Stmt, Variable, Assign, Condition, Logical]);
 
 impl Literal {
     pub fn new(token: Token) -> Result<Self, ZeusErrorType> {
@@ -229,6 +241,29 @@ impl Binary {
     }
 }
 
+impl LogicalOperator {
+    pub fn new(operator: Token) -> Result<Self, ZeusErrorType> {
+        match operator {
+            t if t.r#type == TokenType::And => Ok(LogicalOperator::And),
+            t if t.r#type == TokenType::Or => Ok(LogicalOperator::Or),
+            e => Err(ZeusErrorType::ParsingError(format!(
+                "Not a logical operator: {}",
+                e
+            ))),
+        }
+    }
+}
+
+impl Logical {
+    pub fn new(left: Box<Expr>, operator: Token, right: Box<Expr>) -> Result<Self, ZeusErrorType> {
+        Ok(Logical {
+            left,
+            operator: LogicalOperator::new(operator)?,
+            right,
+        })
+    }
+}
+
 impl Grouping {
     pub fn new(left: Token, expr: Box<Expr>, right: Token) -> Result<Self, ZeusErrorType> {
         Ok(Grouping {
@@ -257,6 +292,25 @@ impl std::fmt::Display for Stmt {
 impl std::fmt::Display for Condition {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} {} todo", self.expr, self.then)
+    }
+}
+
+impl std::fmt::Display for LogicalOperator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                LogicalOperator::And => "and",
+                LogicalOperator::Or => "or",
+            }
+        )
+    }
+}
+
+impl std::fmt::Display for Logical {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} {} {}", self.left, self.operator, self.right)
     }
 }
 
@@ -404,6 +458,7 @@ impl std::fmt::Display for Expr {
             Expr::Literal(e) => write!(f, "{}", e),
             Expr::Value(e) => write!(f, "{}", e),
             Expr::Assign(e) => write!(f, "{}", e),
+            Expr::Logical(e) => write!(f, "{}", e),
         }
     }
 }

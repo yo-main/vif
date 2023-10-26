@@ -1,7 +1,7 @@
 use clap::error::Result;
 
 use crate::ast::{
-    Assign, Binary, Condition, Expr, Grouping, Literal, Stmt, Unary, Value, Variable,
+    Assign, Binary, Condition, Expr, Grouping, Literal, Logical, Stmt, Unary, Value, Variable,
 };
 use crate::errors::ZeusErrorType;
 use crate::tokenizer::Tokenizer;
@@ -159,7 +159,7 @@ impl Parser {
     }
 
     fn assignment(&mut self) -> Result<Box<Expr>, ZeusErrorType> {
-        let expr = self.equality()?;
+        let expr = self.or()?;
 
         if self.r#match(&TokenType::Equal) {
             self.advance().unwrap();
@@ -175,6 +175,34 @@ impl Parser {
                 ))),
             };
         }
+
+        Ok(expr)
+    }
+
+    fn or(&mut self) -> Result<Box<Expr>, ZeusErrorType> {
+        let expr = self.and()?;
+
+        if self.check(&TokenType::Or) {
+            let operator = self.advance().unwrap();
+            let right = self.or()?;
+            return Ok(Box::new(Expr::Logical(Logical::new(
+                expr, operator, right,
+            )?)));
+        };
+
+        Ok(expr)
+    }
+
+    fn and(&mut self) -> Result<Box<Expr>, ZeusErrorType> {
+        let expr = self.equality()?;
+
+        if self.check(&TokenType::And) {
+            let operator = self.advance().unwrap();
+            let right = self.and()?;
+            return Ok(Box::new(Expr::Logical(Logical::new(
+                expr, operator, right,
+            )?)));
+        };
 
         Ok(expr)
     }
