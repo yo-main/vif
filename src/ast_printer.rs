@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::ast::AstVisitor;
 use crate::ast::Binary;
 use crate::ast::Expr;
@@ -90,12 +92,17 @@ impl AstVisitor for AstPrinter {
         format!("{}", item)
     }
 
+    fn visit_while(&mut self, item: &crate::ast::While) -> Self::Item {
+        format!("while {} [{}]", item.condition, item.body)
+    }
+
     fn visit_stmt(&mut self, item: &Stmt) -> Self::Item {
         match item {
             Stmt::Expression(e) => e.accept(self),
             Stmt::Test(t) => t.accept(self),
             Stmt::Var(v) => v.accept(self),
             Stmt::Condition(c) => c.accept(self),
+            Stmt::While(w) => w.accept(self),
             Stmt::Block(v) => v
                 .iter()
                 .map(|s| s.accept(self))

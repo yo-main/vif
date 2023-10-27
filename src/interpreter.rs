@@ -1,6 +1,6 @@
 use crate::ast::{
-    Assign, AstVisitor, Binary, Expr, Group, Grouping, Literal, Logical, LogicalOperator, Number,
-    Operator, Stmt, Unary, UnaryOperator, Value, Variable,
+    Assign, AstVisitor, Binary, Expr, Grouping, Literal, Logical, LogicalOperator, Number,
+    Operator, Stmt, Unary, UnaryOperator, Value, Variable, While,
 };
 use crate::environment::Environment;
 use crate::errors::ZeusErrorType;
@@ -556,6 +556,18 @@ impl AstVisitor for Interpreter {
         }
     }
 
+    fn visit_while(&mut self, item: &While) -> Self::Item {
+        loop {
+            let cond = &mut item.condition.accept(self)?;
+            match self.is_truthy(cond) {
+                Value::True => item.body.accept(self)?,
+                _ => break, // impossible
+            };
+        }
+
+        Ok(Value::Ignore)
+    }
+
     fn visit_stmt(&mut self, item: &Stmt) -> Self::Item {
         match item {
             Stmt::Expression(e) => e.accept(self),
@@ -570,6 +582,7 @@ impl AstVisitor for Interpreter {
                 Ok(Value::Ignore)
             }
             Stmt::Condition(c) => c.accept(self),
+            Stmt::While(w) => w.accept(self),
         }
     }
 }

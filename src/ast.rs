@@ -79,6 +79,11 @@ pub enum Number {
     Float(f64),
 }
 
+pub struct While {
+    pub condition: Box<Expr>,
+    pub body: Box<Stmt>,
+}
+
 #[derive(Clone)]
 pub enum Value {
     Operator(Operator),
@@ -121,9 +126,10 @@ pub enum Stmt {
     Var(Variable),
     Block(Vec<Stmt>),
     Condition(Condition),
+    While(While),
 }
 
-Visitor!(AstVisitor[Operator, Literal, Unary, Binary, Grouping, Expr, Value, Stmt, Variable, Assign, Condition, Logical]);
+Visitor!(AstVisitor[Operator, Literal, Unary, Binary, Grouping, Expr, Value, Stmt, Variable, Assign, Condition, Logical, While]);
 
 impl Literal {
     pub fn new(token: Token) -> Result<Self, ZeusErrorType> {
@@ -134,6 +140,12 @@ impl Literal {
                 e
             ))),
         }
+    }
+}
+
+impl While {
+    pub fn new(condition: Box<Expr>, body: Box<Stmt>) -> Self {
+        While { condition, body }
     }
 }
 
@@ -285,7 +297,14 @@ impl std::fmt::Display for Stmt {
                 return write!(f, "{}", texts.join(">"));
             }
             Self::Condition(c) => write!(f, "{}", c),
+            Self::While(w) => write!(f, "{}", w),
         }
+    }
+}
+
+impl std::fmt::Display for While {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "while {} [{}]", self.condition, self.body)
     }
 }
 

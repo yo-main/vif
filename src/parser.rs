@@ -2,6 +2,7 @@ use clap::error::Result;
 
 use crate::ast::{
     Assign, Binary, Condition, Expr, Grouping, Literal, Logical, Stmt, Unary, Value, Variable,
+    While,
 };
 use crate::errors::ZeusErrorType;
 use crate::tokenizer::Tokenizer;
@@ -102,8 +103,20 @@ impl Parser {
             Some(t) if t.r#type == TokenType::At => Stmt::Test(self.test_statement()?),
             Some(t) if t.r#type == TokenType::Indent => Stmt::Block(self.block()?),
             Some(t) if t.r#type == TokenType::If => Stmt::Condition(self.if_statement()?),
+            Some(t) if t.r#type == TokenType::While => Stmt::While(self.while_statement()?),
             _ => Stmt::Expression(self.expression()?),
         })
+    }
+
+    fn while_statement(&mut self) -> Result<While, ZeusErrorType> {
+        self.advance().unwrap();
+
+        let condition = self.expression()?;
+        self.consume(TokenType::DoubleDot, "Expect ':' after if condition")?;
+        self.consume(TokenType::NewLine, "Expect new line after :")?;
+
+        let stmt = self.statement()?;
+        Ok(While::new(condition, Box::new(stmt)))
     }
 
     fn if_statement(&mut self) -> Result<Condition, ZeusErrorType> {
