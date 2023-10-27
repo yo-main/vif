@@ -3,6 +3,7 @@ pub enum ZeusErrorType {
     Generic,
     EOF,
     NoMoreTokens,
+    Break,
     ParsingError(String),
     InterpreterError(String),
     UnassignedVariable(String),
@@ -70,6 +71,11 @@ impl From<ZeusErrorType> for ZeusError {
             },
             ZeusErrorType::UnassignedVariable(_) => ZeusError {
                 msg: "Unassigned varible".to_owned(),
+                line: None,
+                r#type: value,
+            },
+            ZeusErrorType::Break => ZeusError {
+                msg: "Break".to_owned(),
                 line: None,
                 r#type: value,
             },

@@ -502,18 +502,17 @@ impl AstVisitor for Interpreter {
     }
 
     fn visit_value(&mut self, item: &Value) -> Self::Item {
-        Ok(match item {
+        match item {
             Value::Variable(name) => match self.env.get(name) {
-                Ok(value) => value.clone(),
-                Err(_) => {
-                    return Err(ZeusErrorType::InterpreterError(format!(
-                        "Unknown variable {}",
-                        name,
-                    )))
-                }
+                Ok(value) => Ok(value.clone()),
+                Err(_) => Err(ZeusErrorType::InterpreterError(format!(
+                    "Unknown variable {}",
+                    name,
+                ))),
             },
-            i => i.clone(),
-        })
+            Value::Break => Err(ZeusErrorType::Break),
+            i => Ok(i.clone()),
+        }
     }
 
     fn visit_expr(&mut self, item: &Expr) -> Self::Item {
@@ -560,7 +559,11 @@ impl AstVisitor for Interpreter {
         loop {
             let cond = &mut item.condition.accept(self)?;
             match self.is_truthy(cond) {
-                Value::True => item.body.accept(self)?,
+                Value::True => match item.body.accept(self) {
+                    Err(ZeusErrorType::Break) => break,
+                    Err(e) => return Err(e),
+                    _ => (),
+                },
                 _ => break, // impossible
             };
         }

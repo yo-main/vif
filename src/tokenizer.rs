@@ -255,6 +255,7 @@ impl<'a> Tokenizer<'a> {
             "False" => TokenType::False,
             "None" => TokenType::None,
             "print" => TokenType::At,
+            "break" => TokenType::Break,
             _ => TokenType::Identifier(str),
         }
     }
