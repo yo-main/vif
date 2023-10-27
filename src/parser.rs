@@ -146,8 +146,12 @@ impl Parser {
         let mut stmts = Vec::new();
         self.advance().unwrap();
 
-        while !self.check(&TokenType::Dedent) {
-            stmts.push(self.declaration()?);
+        loop {
+            match self.peek() {
+                Some(t) if t.r#type == TokenType::Dedent => break,
+                Some(t) if t.r#type == TokenType::EOF => return Ok(stmts),
+                _ => stmts.push(self.declaration()?),
+            }
         }
 
         self.consume(TokenType::Dedent, "Expected end of block")?;
@@ -157,9 +161,9 @@ impl Parser {
 
     fn test_statement(&mut self) -> Result<Box<Expr>, ZeusErrorType> {
         self.advance().unwrap();
-        let expr = self.expression();
+        let expr = self.expression()?;
         self.consume(TokenType::NewLine, "Expect new line after expression")?;
-        return expr;
+        return Ok(expr);
     }
 
     fn expression(&mut self) -> Result<Box<Expr>, ZeusErrorType> {
