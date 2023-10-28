@@ -1,6 +1,13 @@
+use crate::environment::Environment;
 use crate::errors::ZeusErrorType;
+use crate::interpreter::Interpreter;
 use crate::tokens::{Token, TokenType};
 use crate::Visitor;
+
+#[derive(Clone)]
+pub struct UserFunction {
+    pub declaration: Function,
+}
 
 #[derive(Clone)]
 pub enum Operator {
@@ -22,11 +29,13 @@ pub enum Operator {
     LessEqual,
 }
 
+#[derive(Clone)]
 pub enum UnaryOperator {
     Minus,
     Bang,
 }
 
+#[derive(Clone)]
 pub enum Group {
     LeftParen,
     RightParen,
@@ -36,54 +45,76 @@ pub enum Group {
     RightAccolade,
 }
 
+#[derive(Clone)]
 pub enum Literal {
     String(String),
     Indentifier(String),
 }
 
+#[derive(Clone)]
 pub struct Condition {
     pub expr: Box<Expr>,
     pub then: Box<Stmt>,
     pub r#else: Option<Box<Stmt>>,
 }
 
+#[derive(Clone)]
 pub struct Binary {
     pub left: Box<Expr>,
     pub operator: Operator,
     pub right: Box<Expr>,
 }
 
+#[derive(Clone)]
 pub struct Unary {
     pub operator: UnaryOperator,
     pub right: Box<Expr>,
 }
 
+#[derive(Clone)]
 pub struct Grouping {
     pub left: Group,
     pub expr: Box<Expr>,
     pub right: Group,
 }
 
+#[derive(Clone)]
 pub struct Variable {
     pub name: String,
     pub value: Box<Expr>,
 }
 
+#[derive(Clone)]
 pub struct Assign {
     pub name: String,
     pub value: Box<Expr>,
 }
 
+#[derive(Clone)]
 pub struct Call {
     pub callee: Box<Expr>,
     pub arguments: Vec<Box<Expr>>,
 }
 
+#[derive(Clone)]
 pub enum Number {
     Integer(i64),
     Float(f64),
 }
 
+#[derive(Clone)]
+pub struct Function {
+    pub name: String,
+    pub params: Vec<String>,
+    pub body: Vec<Stmt>,
+}
+
+// pub struct Parameter {
+//     pub name: String,
+//     pub expr: Box<Expr>,
+// }
+
+#[derive(Clone)]
 pub struct While {
     pub condition: Box<Expr>,
     pub body: Box<Stmt>,
@@ -95,7 +126,7 @@ pub enum BuiltIn {
     GetTime,
 }
 
-#[derive(Clone)]
+#[derive(Clone)] // TODO: remove that clone
 pub enum Value {
     Operator(Operator),
     String(String),
@@ -103,6 +134,7 @@ pub enum Value {
     Float(f64),
     Variable(String),
     BuiltIn(BuiltIn),
+    UserFunction(UserFunction),
     NewLine,
     True,
     False,
@@ -112,17 +144,20 @@ pub enum Value {
     Ignore,
 }
 
+#[derive(Clone)]
 pub enum LogicalOperator {
     And,
     Or,
 }
 
+#[derive(Clone)]
 pub struct Logical {
     pub left: Box<Expr>,
     pub operator: LogicalOperator,
     pub right: Box<Expr>,
 }
 
+#[derive(Clone)]
 pub enum Expr {
     Operator(Operator),
     Binary(Binary),
@@ -135,15 +170,17 @@ pub enum Expr {
     Call(Call),
 }
 
+#[derive(Clone)]
 pub enum Stmt {
     Expression(Box<Expr>),
     Var(Variable),
+    Function(Function),
     Block(Vec<Stmt>),
     Condition(Condition),
     While(While),
 }
 
-Visitor!(AstVisitor[Operator, Literal, Unary, Binary, Grouping, Expr, Value, Stmt, Variable, Assign, Condition, Logical, While, Call]);
+Visitor!(AstVisitor[Operator, Literal, Unary, Binary, Grouping, Expr, Value, Stmt, Variable, Assign, Condition, Logical, While, Call, Function]);
 
 impl Literal {
     pub fn new(token: Token) -> Result<Self, ZeusErrorType> {
@@ -154,6 +191,18 @@ impl Literal {
                 e
             ))),
         }
+    }
+}
+
+// impl Parameter {
+//     pub fn new(name: String, expr: Box<Expr>) -> Self {
+//         Parameter { name, expr }
+//     }
+// }
+
+impl Function {
+    pub fn new(name: String, params: Vec<String>, body: Vec<Stmt>) -> Self {
+        Function { name, params, body }
     }
 }
 
@@ -306,6 +355,26 @@ impl Grouping {
     }
 }
 
+impl UserFunction {
+    pub fn new(declaration: Function) -> Self {
+        UserFunction { declaration }
+    }
+
+    pub fn call(
+        &mut self,
+        interpreter: &mut Interpreter,
+        arguments: Vec<Value>,
+    ) -> Result<Value, ZeusErrorType> {
+        let mut env = Environment::new();
+
+        for (i, argument) in arguments.into_iter().enumerate() {
+            env.define(self.declaration.params[i].clone(), argument);
+        }
+
+        interpreter.execute_block(&self.declaration.body, Some(env))
+    }
+}
+
 impl std::fmt::Display for Stmt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -317,7 +386,14 @@ impl std::fmt::Display for Stmt {
             }
             Self::Condition(c) => write!(f, "{}", c),
             Self::While(w) => write!(f, "{}", w),
+            Self::Function(v) => write!(f, "{}", v),
         }
+    }
+}
+
+impl std::fmt::Display for Function {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "function[{}]", self.name)
     }
 }
 
@@ -390,6 +466,12 @@ impl std::fmt::Display for BuiltIn {
     }
 }
 
+// impl std::fmt::Display for Parameter {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         write!(f, "{}={}", self.name, self.expr)
+//     }
+// }
+
 impl std::fmt::Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -406,7 +488,14 @@ impl std::fmt::Display for Value {
             Self::Ignore => write!(f, ""),
             Self::Break => write!(f, "break"),
             Self::Continue => write!(f, "continue"),
+            Self::UserFunction(v) => write!(f, "{}", v),
         }
+    }
+}
+
+impl std::fmt::Display for UserFunction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "function {}", self.declaration.name)
     }
 }
 

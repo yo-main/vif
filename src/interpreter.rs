@@ -1,12 +1,12 @@
-use clap::Arg;
-
 use crate::ast::{
-    Assign, AstVisitor, Binary, BuiltIn, Call, Expr, Grouping, Literal, Logical, LogicalOperator,
-    Number, Operator, Stmt, Unary, UnaryOperator, Value, Variable, While,
+    Assign, AstVisitor, Binary, BuiltIn, Call, Expr, Function, Grouping, Literal, Logical,
+    LogicalOperator, Number, Operator, Stmt, Unary, UnaryOperator, UserFunction, Value, Variable,
+    While,
 };
 use crate::builtin::{get_time, print};
 use crate::environment::Environment;
 use crate::errors::ZeusErrorType;
+use crate::tokens::TokenType;
 
 pub struct Interpreter {
     env: Environment,
@@ -75,14 +75,27 @@ impl Interpreter {
         });
     }
 
-    pub fn execute_block(&mut self, statements: &Vec<Stmt>) -> Result<(), ZeusErrorType> {
+    pub fn execute_block(
+        &mut self,
+        statements: &Vec<Stmt>,
+        mut env: Option<Environment>,
+    ) -> Result<Value, ZeusErrorType> {
+        if let Some(mut e) = env.as_mut() {
+            std::mem::swap(&mut self.env, &mut e);
+        };
+
         self.env.start_new();
+
         for stmt in statements {
             stmt.accept(self)?;
         }
 
         self.env.close();
-        Ok(())
+
+        if let Some(mut e) = env.as_mut() {
+            std::mem::swap(&mut self.env, &mut e);
+        };
+        Ok(Value::Ignore)
     }
 }
 
@@ -147,12 +160,33 @@ impl AstVisitor for Interpreter {
 
         match item.callee.accept(self)? {
             Value::BuiltIn(v) => self.execute_builtin(v, arguments),
+            Value::UserFunction(v) => {
+                let mut function = match self.env.get(&v.declaration.name)? {
+                    Value::UserFunction(f) => f,
+                    e => {
+                        return Err(ZeusErrorType::InterpreterError(format!(
+                            "Not a function: {}",
+                            e
+                        )))
+                    }
+                }
+                .clone();
+                function.call(self, arguments)
+            }
             e => {
                 return Err(ZeusErrorType::InterpreterError(format!(
-                    "Not a function: e"
+                    "Not a function: {}",
+                    e
                 )))
             }
         }
+    }
+
+    fn visit_function(&mut self, item: &Function) -> Self::Item {
+        let f = UserFunction::new(item.clone());
+        self.env
+            .define(f.declaration.name.clone(), Value::UserFunction(f));
+        Ok(Value::Ignore)
     }
 
     fn visit_binary(&mut self, item: &Binary) -> Self::Item {
@@ -623,12 +657,10 @@ impl AstVisitor for Interpreter {
         match item {
             Stmt::Expression(e) => e.accept(self),
             Stmt::Var(var) => var.accept(self),
-            Stmt::Block(stmts) => {
-                self.execute_block(stmts)?;
-                Ok(Value::Ignore)
-            }
+            Stmt::Block(stmts) => self.execute_block(stmts, None),
             Stmt::Condition(c) => c.accept(self),
             Stmt::While(w) => w.accept(self),
+            Stmt::Function(f) => f.accept(self),
         }
     }
 }

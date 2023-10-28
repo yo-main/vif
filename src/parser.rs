@@ -1,8 +1,8 @@
 use clap::error::Result;
 
 use crate::ast::{
-    Assign, Binary, Call, Condition, Expr, Grouping, Literal, Logical, Stmt, Unary, Value,
-    Variable, While,
+    Assign, Binary, Call, Condition, Expr, Function, Grouping, Literal, Logical, Stmt, Unary,
+    Value, Variable, While,
 };
 use crate::errors::ZeusErrorType;
 use crate::tokenizer::Tokenizer;
@@ -64,8 +64,72 @@ impl Parser {
     fn declaration(&mut self) -> Result<Stmt, ZeusErrorType> {
         match self.peek() {
             Some(t) if t.r#type == TokenType::Var => self.var_declaration(),
+            Some(t) if t.r#type == TokenType::Def => self.function("function"),
             _ => self.statement(),
         }
+    }
+
+    fn function(&mut self, kind: &str) -> Result<Stmt, ZeusErrorType> {
+        self.advance().unwrap();
+
+        let name = match self.advance() {
+            Ok(t) => match t.r#type {
+                TokenType::Identifier(s) => s,
+                _ => {
+                    return Err(ZeusErrorType::ParsingError(format!(
+                        "Expected an identifier after def"
+                    )))
+                }
+            },
+            Err(e) => return Err(e),
+        };
+
+        self.consume(TokenType::LeftParen, "Expect ( after function name")?;
+        let mut parameters = Vec::new();
+
+        loop {
+            match self.peek() {
+                Some(t) => match &t.r#type {
+                    TokenType::RightParen => break,
+                    TokenType::Comma => {
+                        self.advance().unwrap();
+                        continue;
+
+                        // parameters.push(match self.peek() {
+                        //     Some(t) => match &t.r#type {
+                        //         TokenType::Identifier(s) => s.clone(),
+                        //         _ => {
+                        //             return Err(ZeusErrorType::ParsingError(format!(
+                        //                 "Expects parameter name"
+                        //             )))
+                        //         }
+                        //     },
+                        //     None => return Err(ZeusErrorType::NoMoreTokens),
+                        // });
+                    }
+                    TokenType::Identifier(s) => {
+                        parameters.push(s.clone());
+                        self.advance().unwrap();
+                    }
+                    _ => {
+                        return Err(ZeusErrorType::InterpreterError(format!(
+                            "Expected a parameter name"
+                        )))
+                    }
+                },
+                _ => break,
+            };
+        }
+
+        self.consume(TokenType::RightParen, "Expect ) to close function")?;
+        self.consume(TokenType::DoubleDot, "Expect : after function declaration")?;
+        self.consume(TokenType::NewLine, "Expect : after function declaration")?;
+
+        Ok(Stmt::Function(Function::new(
+            name,
+            parameters,
+            self.block()?,
+        )))
     }
 
     fn var_declaration(&mut self) -> Result<Stmt, ZeusErrorType> {

@@ -3,7 +3,7 @@ use crate::errors::ZeusErrorType;
 use std::collections::HashMap;
 
 pub struct Environment {
-    stack: Vec<HashMap<String, Value>>,
+    stack: Vec<HashMap<String, Value>>, // TODO: store ref of values, not them directly (allow to easily pass them through functions)
 }
 
 impl Environment {

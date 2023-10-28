@@ -13,6 +13,7 @@ mod parser;
 mod tokenizer;
 mod tokens;
 mod visitor;
+mod zeus_function;
 
 fn main() {
     let config = config::get_config();
