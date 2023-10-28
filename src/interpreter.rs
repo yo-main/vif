@@ -511,6 +511,7 @@ impl AstVisitor for Interpreter {
                 ))),
             },
             Value::Break => Err(ZeusErrorType::Break),
+            Value::Continue => Err(ZeusErrorType::Continue),
             i => Ok(i.clone()),
         }
     }
@@ -561,6 +562,7 @@ impl AstVisitor for Interpreter {
             match self.is_truthy(cond) {
                 Value::True => match item.body.accept(self) {
                     Err(ZeusErrorType::Break) => break,
+                    Err(ZeusErrorType::Continue) => continue,
                     Err(e) => return Err(e),
                     _ => (),
                 },

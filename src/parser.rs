@@ -327,6 +327,10 @@ impl Parser {
                 self.consume(TokenType::NewLine, "Expect new line after break")?;
                 Box::new(Expr::Value(Value::Break))
             }
+            TokenType::Continue => {
+                self.consume(TokenType::NewLine, "Expect new line after continue")?;
+                Box::new(Expr::Value(Value::Continue))
+            }
             TokenType::EOF => return Err(ZeusErrorType::EOF),
             TokenType::LeftParen => {
                 let expr = self.expression()?;

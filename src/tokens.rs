@@ -62,6 +62,7 @@ pub enum TokenType {
     Self_,
     While,
     Break,
+    Continue,
 
     // indents
     Indent,
@@ -151,6 +152,7 @@ impl Display for TokenType {
             TokenType::Dedent => write!(f, "dedent"),
             TokenType::Ignore => write!(f, "ignore"),
             TokenType::Break => write!(f, "break"),
+            TokenType::Continue => write!(f, "continue"),
             TokenType::EOF => write!(f, "EOF"),
         }
     }

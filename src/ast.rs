@@ -95,6 +95,7 @@ pub enum Value {
     True,
     False,
     Break,
+    Continue,
     None,
     Ignore,
 }
@@ -380,6 +381,7 @@ impl std::fmt::Display for Value {
             Self::NewLine => write!(f, "\\n"),
             Self::Ignore => write!(f, ""),
             Self::Break => write!(f, "break"),
+            Self::Continue => write!(f, "continue"),
         }
     }
 }

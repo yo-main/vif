@@ -4,6 +4,7 @@ pub enum ZeusErrorType {
     EOF,
     NoMoreTokens,
     Break,
+    Continue,
     ParsingError(String),
     InterpreterError(String),
     UnassignedVariable(String),
@@ -76,6 +77,11 @@ impl From<ZeusErrorType> for ZeusError {
             },
             ZeusErrorType::Break => ZeusError {
                 msg: "Break".to_owned(),
+                line: None,
+                r#type: value,
+            },
+            ZeusErrorType::Continue => ZeusError {
+                msg: "Continue".to_owned(),
                 line: None,
                 r#type: value,
             },
