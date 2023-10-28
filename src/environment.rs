@@ -1,4 +1,4 @@
-use crate::ast::Value;
+use crate::ast::{BuiltIn, Value};
 use crate::errors::ZeusErrorType;
 use std::collections::HashMap;
 
@@ -8,8 +8,13 @@ pub struct Environment {
 
 impl Environment {
     pub fn new() -> Self {
+        let global = HashMap::from([
+            ("print".to_owned(), Value::BuiltIn(BuiltIn::Print)),
+            ("get_time".to_owned(), Value::BuiltIn(BuiltIn::GetTime)),
+        ]);
+
         Environment {
-            stack: vec![HashMap::new()],
+            stack: vec![global],
         }
     }
 

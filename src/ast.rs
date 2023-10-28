@@ -74,6 +74,11 @@ pub struct Assign {
     pub value: Box<Expr>,
 }
 
+pub struct Call {
+    pub callee: Box<Expr>,
+    pub arguments: Vec<Box<Expr>>,
+}
+
 pub enum Number {
     Integer(i64),
     Float(f64),
@@ -85,12 +90,19 @@ pub struct While {
 }
 
 #[derive(Clone)]
+pub enum BuiltIn {
+    Print,
+    GetTime,
+}
+
+#[derive(Clone)]
 pub enum Value {
     Operator(Operator),
     String(String),
     Integer(i64),
     Float(f64),
     Variable(String),
+    BuiltIn(BuiltIn),
     NewLine,
     True,
     False,
@@ -120,18 +132,18 @@ pub enum Expr {
     Value(Value),
     Assign(Assign),
     Logical(Logical),
+    Call(Call),
 }
 
 pub enum Stmt {
     Expression(Box<Expr>),
-    Test(Box<Expr>),
     Var(Variable),
     Block(Vec<Stmt>),
     Condition(Condition),
     While(While),
 }
 
-Visitor!(AstVisitor[Operator, Literal, Unary, Binary, Grouping, Expr, Value, Stmt, Variable, Assign, Condition, Logical, While]);
+Visitor!(AstVisitor[Operator, Literal, Unary, Binary, Grouping, Expr, Value, Stmt, Variable, Assign, Condition, Logical, While, Call]);
 
 impl Literal {
     pub fn new(token: Token) -> Result<Self, ZeusErrorType> {
@@ -142,6 +154,12 @@ impl Literal {
                 e
             ))),
         }
+    }
+}
+
+impl Call {
+    pub fn new(callee: Box<Expr>, arguments: Vec<Box<Expr>>) -> Self {
+        Call { callee, arguments }
     }
 }
 
@@ -292,7 +310,6 @@ impl std::fmt::Display for Stmt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Expression(e) => write!(f, "{}", e),
-            Self::Test(t) => write!(f, "{}", t),
             Self::Var(v) => write!(f, "{}", v),
             Self::Block(stmts) => {
                 let texts: Vec<String> = stmts.iter().map(|s| format!("{}", s)).collect();
@@ -367,6 +384,12 @@ impl std::fmt::Display for Number {
     }
 }
 
+impl std::fmt::Display for BuiltIn {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
 impl std::fmt::Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -375,6 +398,7 @@ impl std::fmt::Display for Value {
             Self::Variable(v) => write!(f, "{}", v),
             Self::Integer(v) => write!(f, "{}", v),
             Self::Float(v) => write!(f, "{}", v),
+            Self::BuiltIn(v) => write!(f, "{}", v),
             Self::True => write!(f, "True"),
             Self::False => write!(f, "False"),
             Self::None => write!(f, "None"),
@@ -471,6 +495,12 @@ impl std::fmt::Display for Assign {
     }
 }
 
+impl std::fmt::Display for Call {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Function[{}]", self.callee)
+    }
+}
+
 impl std::fmt::Display for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -482,6 +512,7 @@ impl std::fmt::Display for Expr {
             Expr::Value(e) => write!(f, "{}", e),
             Expr::Assign(e) => write!(f, "{}", e),
             Expr::Logical(e) => write!(f, "{}", e),
+            Expr::Call(e) => write!(f, "{}", e),
         }
     }
 }

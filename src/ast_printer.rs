@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
+use crate::ast::Assign;
 use crate::ast::AstVisitor;
 use crate::ast::Binary;
+use crate::ast::Call;
 use crate::ast::Expr;
 use crate::ast::Grouping;
 use crate::ast::Literal;
@@ -67,8 +69,12 @@ impl AstVisitor for AstPrinter {
         )
     }
 
-    fn visit_assign(&mut self, item: &crate::ast::Assign) -> Self::Item {
+    fn visit_assign(&mut self, item: &Assign) -> Self::Item {
         format!("{}", item)
+    }
+
+    fn visit_call(&mut self, item: &Call) -> Self::Item {
+        format!("Call[{}]", item.callee)
     }
 
     fn visit_expr(&mut self, item: &Expr) -> Self::Item {
@@ -81,6 +87,7 @@ impl AstVisitor for AstPrinter {
             Expr::Value(v) => v.accept(self),
             Expr::Assign(v) => v.accept(self),
             Expr::Logical(v) => v.accept(self),
+            Expr::Call(v) => v.accept(self),
         }
     }
 
@@ -99,7 +106,6 @@ impl AstVisitor for AstPrinter {
     fn visit_stmt(&mut self, item: &Stmt) -> Self::Item {
         match item {
             Stmt::Expression(e) => e.accept(self),
-            Stmt::Test(t) => t.accept(self),
             Stmt::Var(v) => v.accept(self),
             Stmt::Condition(c) => c.accept(self),
             Stmt::While(w) => w.accept(self),

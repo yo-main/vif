@@ -1,8 +1,8 @@
 use clap::error::Result;
 
 use crate::ast::{
-    Assign, Binary, Condition, Expr, Grouping, Literal, Logical, Stmt, Unary, Value, Variable,
-    While,
+    Assign, Binary, Call, Condition, Expr, Grouping, Literal, Logical, Stmt, Unary, Value,
+    Variable, While,
 };
 use crate::errors::ZeusErrorType;
 use crate::tokenizer::Tokenizer;
@@ -100,7 +100,6 @@ impl Parser {
 
     fn statement(&mut self) -> Result<Stmt, ZeusErrorType> {
         Ok(match self.peek() {
-            Some(t) if t.r#type == TokenType::At => Stmt::Test(self.test_statement()?),
             Some(t) if t.r#type == TokenType::Indent => Stmt::Block(self.block()?),
             Some(t) if t.r#type == TokenType::If => Stmt::Condition(self.if_statement()?),
             Some(t) if t.r#type == TokenType::While => Stmt::While(self.while_statement()?),
@@ -157,13 +156,6 @@ impl Parser {
         self.consume(TokenType::Dedent, "Expected end of block")?;
 
         Ok(stmts)
-    }
-
-    fn test_statement(&mut self) -> Result<Box<Expr>, ZeusErrorType> {
-        self.advance().unwrap();
-        let expr = self.expression()?;
-        self.consume(TokenType::NewLine, "Expect new line after expression")?;
-        return Ok(expr);
     }
 
     fn expression(&mut self) -> Result<Box<Expr>, ZeusErrorType> {
@@ -308,7 +300,40 @@ impl Parser {
             }
         }
 
-        self.primary()
+        self.call()
+    }
+
+    fn call(&mut self) -> Result<Box<Expr>, ZeusErrorType> {
+        let mut expr = self.primary()?;
+
+        loop {
+            if self.check(&TokenType::LeftParen) {
+                self.advance().unwrap();
+                expr = self.finish_call(expr)?;
+            } else {
+                break;
+            }
+        }
+        Ok(expr)
+    }
+
+    fn finish_call(&mut self, callee: Box<Expr>) -> Result<Box<Expr>, ZeusErrorType> {
+        let mut arguments = Vec::new();
+
+        loop {
+            match self.peek() {
+                Some(t) if t.r#type == TokenType::Comma => {
+                    self.advance().unwrap();
+                    arguments.push(self.expression()?);
+                }
+                Some(t) if t.r#type == TokenType::RightParen => break,
+                _ => arguments.push(self.expression()?),
+            }
+        }
+
+        self.consume(TokenType::RightParen, "Expected ) after arguments")?;
+
+        Ok(Box::new(Expr::Call(Call::new(callee, arguments))))
     }
 
     fn primary(&mut self) -> Result<Box<Expr>, ZeusErrorType> {

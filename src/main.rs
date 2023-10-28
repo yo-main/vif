@@ -3,6 +3,7 @@
 mod application;
 mod ast;
 mod ast_printer;
+mod builtin;
 mod cli;
 mod config;
 mod environment;

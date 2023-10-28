@@ -1,7 +1,10 @@
+use clap::Arg;
+
 use crate::ast::{
-    Assign, AstVisitor, Binary, Expr, Grouping, Literal, Logical, LogicalOperator, Number,
-    Operator, Stmt, Unary, UnaryOperator, Value, Variable, While,
+    Assign, AstVisitor, Binary, BuiltIn, Call, Expr, Grouping, Literal, Logical, LogicalOperator,
+    Number, Operator, Stmt, Unary, UnaryOperator, Value, Variable, While,
 };
+use crate::builtin::{get_time, print};
 use crate::environment::Environment;
 use crate::errors::ZeusErrorType;
 
@@ -35,8 +38,34 @@ impl Interpreter {
         }
     }
 
-    fn print(&self, expr: Value) {
-        println!("{}", expr);
+    fn print(&self, values: Vec<Value>) -> Result<Value, ZeusErrorType> {
+        if values.len() != 1 {
+            return Err(ZeusErrorType::InterpreterError(format!(
+                "print function expects only one argument"
+            )));
+        };
+        print(format!("{}", values.first().unwrap()).as_str());
+        Ok(Value::Ignore)
+    }
+
+    fn get_time(&self, values: Vec<Value>) -> Result<Value, ZeusErrorType> {
+        if values.len() != 0 {
+            return Err(ZeusErrorType::InterpreterError(format!(
+                "get_time function does not expect any argument"
+            )));
+        };
+        Ok(Value::Integer(get_time()))
+    }
+
+    fn execute_builtin(
+        &self,
+        callee: BuiltIn,
+        arguments: Vec<Value>,
+    ) -> Result<Value, ZeusErrorType> {
+        match callee {
+            BuiltIn::Print => self.print(arguments),
+            BuiltIn::GetTime => self.get_time(arguments),
+        }
     }
 
     pub fn interpret(&mut self, statements: Vec<Stmt>) {
@@ -108,6 +137,22 @@ impl AstVisitor for Interpreter {
         }
 
         item.right.accept(self)
+    }
+
+    fn visit_call(&mut self, item: &Call) -> Self::Item {
+        let mut arguments = Vec::new();
+        for arg in item.arguments.iter() {
+            arguments.push(arg.accept(self)?)
+        }
+
+        match item.callee.accept(self)? {
+            Value::BuiltIn(v) => self.execute_builtin(v, arguments),
+            e => {
+                return Err(ZeusErrorType::InterpreterError(format!(
+                    "Not a function: e"
+                )))
+            }
+        }
     }
 
     fn visit_binary(&mut self, item: &Binary) -> Self::Item {
@@ -526,6 +571,7 @@ impl AstVisitor for Interpreter {
             Expr::Value(v) => v.accept(self),
             Expr::Assign(v) => v.accept(self),
             Expr::Logical(v) => v.accept(self),
+            Expr::Call(v) => v.accept(self),
         }
     }
 
@@ -576,11 +622,6 @@ impl AstVisitor for Interpreter {
     fn visit_stmt(&mut self, item: &Stmt) -> Self::Item {
         match item {
             Stmt::Expression(e) => e.accept(self),
-            Stmt::Test(e) => {
-                let v = e.accept(self)?;
-                self.print(v);
-                Ok(Value::Ignore)
-            }
             Stmt::Var(var) => var.accept(self),
             Stmt::Block(stmts) => {
                 self.execute_block(stmts)?;
