@@ -39,12 +39,13 @@ impl Interpreter {
     }
 
     fn print(&self, values: Vec<Value>) -> Result<Value, ZeusErrorType> {
-        if values.len() != 1 {
-            return Err(ZeusErrorType::InterpreterError(format!(
-                "print function expects only one argument"
-            )));
-        };
-        print(format!("{}", values.first().unwrap()).as_str());
+        print(
+            &values
+                .iter()
+                .map(|v| format!("{}", v))
+                .collect::<Vec<String>>()
+                .join(" "),
+        );
         Ok(Value::None)
     }
 
