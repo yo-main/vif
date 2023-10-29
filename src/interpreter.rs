@@ -75,28 +75,28 @@ impl Interpreter {
         });
     }
 
-    pub fn execute_block(
+    pub fn execute_block_with_env(
         &mut self,
         statements: &Vec<Stmt>,
-        mut env: Option<Environment>,
+        mut env: Environment,
     ) -> Result<Value, ZeusErrorType> {
-        if let Some(mut e) = env.as_mut() {
-            std::mem::swap(&mut self.env, &mut e);
-        };
+        std::mem::swap(&mut self.env, &mut env);
 
+        let res = self.execute_block(statements);
+
+        std::mem::swap(&mut self.env, &mut env);
+
+        res
+    }
+
+    pub fn execute_block(&mut self, statements: &Vec<Stmt>) -> Result<Value, ZeusErrorType> {
         self.env.start_new();
 
-        let results: Vec<Result<Value, ZeusErrorType>> =
-            statements.iter().map(|s| s.accept(self)).collect();
+        for statement in statements {
+            statement.accept(self)?;
+        }
 
         self.env.close();
-        if let Some(mut e) = env.as_mut() {
-            std::mem::swap(&mut self.env, &mut e);
-        };
-
-        for r in results {
-            r?; // we need to check them later so that we can close the env in any case
-        }
 
         Ok(Value::Ignore)
     }
@@ -660,7 +660,7 @@ impl AstVisitor for Interpreter {
         match item {
             Stmt::Expression(e) => e.accept(self),
             Stmt::Var(var) => var.accept(self),
-            Stmt::Block(stmts) => self.execute_block(stmts, None),
+            Stmt::Block(stmts) => self.execute_block(stmts),
             Stmt::Condition(c) => c.accept(self),
             Stmt::While(w) => w.accept(self),
             Stmt::Function(f) => f.accept(self),

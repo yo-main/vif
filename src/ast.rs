@@ -371,7 +371,7 @@ impl UserFunction {
             env.define(self.declaration.params[i].clone(), argument);
         }
 
-        interpreter.execute_block(&self.declaration.body, Some(env))
+        interpreter.execute_block_with_env(&self.declaration.body, env)
     }
 }
 

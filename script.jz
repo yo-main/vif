@@ -1,0 +1,14 @@
+var hello = "Hello !!"
+print(hello) # built in function !
+
+def my_own_printer(my_variable):
+    var test = "testing"
+    print(my_variable) 
+    print(hello) # fails (but will not in the future !)
+
+my_own_printer("yeaahhhhh")
+
+print(hello)
+print(test) # fails
+
+
