@@ -382,6 +382,10 @@ impl UserFunction {
         for (i, argument) in arguments.into_iter().enumerate() {
             env.define(self.declaration.params[i].clone(), argument);
         }
+        env.define(
+            self.declaration.name.clone(),
+            Value::UserFunction(self.clone()),
+        );
 
         match interpreter.execute_block_with_env(&self.declaration.body, env) {
             Err(ZeusErrorType::Return(v)) => Ok(v),
