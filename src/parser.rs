@@ -1,8 +1,8 @@
 use clap::error::Result;
 
 use crate::ast::{
-    Assign, Binary, Call, Condition, Expr, Function, Grouping, Literal, Logical, Stmt, Unary,
-    Value, Variable, While,
+    Assign, Binary, Call, Condition, Expr, Function, Grouping, Literal, Logical, Return, Stmt,
+    Unary, Value, Variable, While,
 };
 use crate::errors::ZeusErrorType;
 use crate::tokenizer::Tokenizer;
@@ -94,18 +94,6 @@ impl Parser {
                     TokenType::Comma => {
                         self.advance().unwrap();
                         continue;
-
-                        // parameters.push(match self.peek() {
-                        //     Some(t) => match &t.r#type {
-                        //         TokenType::Identifier(s) => s.clone(),
-                        //         _ => {
-                        //             return Err(ZeusErrorType::ParsingError(format!(
-                        //                 "Expects parameter name"
-                        //             )))
-                        //         }
-                        //     },
-                        //     None => return Err(ZeusErrorType::NoMoreTokens),
-                        // });
                     }
                     TokenType::Identifier(s) => {
                         parameters.push(s.clone());
@@ -167,8 +155,25 @@ impl Parser {
             Some(t) if t.r#type == TokenType::Indent => Stmt::Block(self.block()?),
             Some(t) if t.r#type == TokenType::If => Stmt::Condition(self.if_statement()?),
             Some(t) if t.r#type == TokenType::While => Stmt::While(self.while_statement()?),
+            Some(t) if t.r#type == TokenType::Return => Stmt::Return(self.return_statement()?),
             _ => Stmt::Expression(self.expression()?),
         })
+    }
+
+    fn return_statement(&mut self) -> Result<Return, ZeusErrorType> {
+        self.advance().unwrap();
+
+        let stmt = Return::new(match self.peek() {
+            Some(t) if t.r#type == TokenType::NewLine => Box::new(Expr::Value(Value::None)),
+            _ => self.expression()?,
+        });
+
+        self.consume(
+            TokenType::NewLine,
+            "expects new line after return statement",
+        )?;
+
+        Ok(stmt)
     }
 
     fn while_statement(&mut self) -> Result<While, ZeusErrorType> {

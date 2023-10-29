@@ -4,12 +4,12 @@ use crate::interpreter::Interpreter;
 use crate::tokens::{Token, TokenType};
 use crate::Visitor;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct UserFunction {
     pub declaration: Function,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Operator {
     Comma,
     Plus,
@@ -29,13 +29,13 @@ pub enum Operator {
     LessEqual,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum UnaryOperator {
     Minus,
     Bang,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Group {
     LeftParen,
     RightParen,
@@ -45,64 +45,69 @@ pub enum Group {
     RightAccolade,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Literal {
     String(String),
     Indentifier(String),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Condition {
     pub expr: Box<Expr>,
     pub then: Box<Stmt>,
     pub r#else: Option<Box<Stmt>>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Binary {
     pub left: Box<Expr>,
     pub operator: Operator,
     pub right: Box<Expr>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Unary {
     pub operator: UnaryOperator,
     pub right: Box<Expr>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Grouping {
     pub left: Group,
     pub expr: Box<Expr>,
     pub right: Group,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Variable {
     pub name: String,
     pub value: Box<Expr>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Assign {
     pub name: String,
     pub value: Box<Expr>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Call {
     pub callee: Box<Expr>,
     pub arguments: Vec<Box<Expr>>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
+pub struct Return {
+    pub value: Box<Expr>,
+}
+
+#[derive(Clone, Debug)]
 pub enum Number {
     Integer(i64),
     Float(f64),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Function {
     pub name: String,
     pub params: Vec<String>,
@@ -114,19 +119,19 @@ pub struct Function {
 //     pub expr: Box<Expr>,
 // }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct While {
     pub condition: Box<Expr>,
     pub body: Box<Stmt>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum BuiltIn {
     Print,
     GetTime,
 }
 
-#[derive(Clone)] // TODO: remove that clone
+#[derive(Clone, Debug)] // TODO: remove that clone
 pub enum Value {
     Operator(Operator),
     String(String),
@@ -144,20 +149,20 @@ pub enum Value {
     Ignore,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum LogicalOperator {
     And,
     Or,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Logical {
     pub left: Box<Expr>,
     pub operator: LogicalOperator,
     pub right: Box<Expr>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Expr {
     Operator(Operator),
     Binary(Binary),
@@ -170,7 +175,7 @@ pub enum Expr {
     Call(Call),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Stmt {
     Expression(Box<Expr>),
     Var(Variable),
@@ -178,9 +183,10 @@ pub enum Stmt {
     Block(Vec<Stmt>),
     Condition(Condition),
     While(While),
+    Return(Return),
 }
 
-Visitor!(AstVisitor[Operator, Literal, Unary, Binary, Grouping, Expr, Value, Stmt, Variable, Assign, Condition, Logical, While, Call, Function]);
+Visitor!(AstVisitor[Operator, Literal, Unary, Binary, Grouping, Expr, Value, Stmt, Variable, Assign, Condition, Logical, While, Call, Function, Return]);
 
 impl Literal {
     pub fn new(token: Token) -> Result<Self, ZeusErrorType> {
@@ -199,6 +205,12 @@ impl Literal {
 //         Parameter { name, expr }
 //     }
 // }
+
+impl Return {
+    pub fn new(value: Box<Expr>) -> Self {
+        Return { value }
+    }
+}
 
 impl Function {
     pub fn new(name: String, params: Vec<String>, body: Vec<Stmt>) -> Self {
@@ -371,7 +383,16 @@ impl UserFunction {
             env.define(self.declaration.params[i].clone(), argument);
         }
 
-        interpreter.execute_block_with_env(&self.declaration.body, env)
+        match interpreter.execute_block_with_env(&self.declaration.body, env) {
+            Err(ZeusErrorType::Return(v)) => Ok(v),
+            e => e,
+        }
+    }
+}
+
+impl std::fmt::Display for Return {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "return {}", self.value)
     }
 }
 
@@ -387,6 +408,7 @@ impl std::fmt::Display for Stmt {
             Self::Condition(c) => write!(f, "{}", c),
             Self::While(w) => write!(f, "{}", w),
             Self::Function(v) => write!(f, "{}", v),
+            Self::Return(v) => write!(f, "{}", v),
         }
     }
 }

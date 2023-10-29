@@ -1,3 +1,5 @@
+use crate::ast::Value;
+
 #[derive(Debug)]
 pub enum ZeusErrorType {
     Generic,
@@ -5,6 +7,7 @@ pub enum ZeusErrorType {
     NoMoreTokens,
     Break,
     Continue,
+    Return(Value),
     ParsingError(String),
     InterpreterError(String),
     UnassignedVariable(String),
@@ -82,6 +85,11 @@ impl From<ZeusErrorType> for ZeusError {
             },
             ZeusErrorType::Continue => ZeusError {
                 msg: "Continue".to_owned(),
+                line: None,
+                r#type: value,
+            },
+            ZeusErrorType::Return(_) => ZeusError {
+                msg: "Return".to_owned(),
                 line: None,
                 r#type: value,
             },

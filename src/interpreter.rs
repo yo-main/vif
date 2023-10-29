@@ -45,7 +45,7 @@ impl Interpreter {
             )));
         };
         print(format!("{}", values.first().unwrap()).as_str());
-        Ok(Value::Ignore)
+        Ok(Value::None)
     }
 
     fn get_time(&self, values: Vec<Value>) -> Result<Value, ZeusErrorType> {
@@ -98,7 +98,7 @@ impl Interpreter {
 
         self.env.close();
 
-        Ok(Value::Ignore)
+        Ok(Value::None)
     }
 }
 
@@ -656,6 +656,11 @@ impl AstVisitor for Interpreter {
         Ok(Value::Ignore)
     }
 
+    fn visit_return(&mut self, item: &crate::ast::Return) -> Self::Item {
+        let value = item.value.accept(self)?;
+        Err(ZeusErrorType::Return(value))
+    }
+
     fn visit_stmt(&mut self, item: &Stmt) -> Self::Item {
         match item {
             Stmt::Expression(e) => e.accept(self),
@@ -664,6 +669,7 @@ impl AstVisitor for Interpreter {
             Stmt::Condition(c) => c.accept(self),
             Stmt::While(w) => w.accept(self),
             Stmt::Function(f) => f.accept(self),
+            Stmt::Return(f) => f.accept(self),
         }
     }
 }
