@@ -86,15 +86,18 @@ impl Interpreter {
 
         self.env.start_new();
 
-        for stmt in statements {
-            stmt.accept(self)?;
-        }
+        let results: Vec<Result<Value, ZeusErrorType>> =
+            statements.iter().map(|s| s.accept(self)).collect();
 
         self.env.close();
-
         if let Some(mut e) = env.as_mut() {
             std::mem::swap(&mut self.env, &mut e);
         };
+
+        for r in results {
+            r?; // we need to check them later so that we can close the env in any case
+        }
+
         Ok(Value::Ignore)
     }
 }
