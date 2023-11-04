@@ -1,3 +1,10 @@
 /target
 /zeus_ast/target
 /zeus_byte/target
+
+
+# Added by cargo
+#
+# already existing elements were commented out
+
+#/target

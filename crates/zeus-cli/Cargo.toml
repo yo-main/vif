@@ -1,0 +1,12 @@
+[package]
+name = "zeus-cli"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+chrono = "0.4.31"
+fern = "0.6.2"
+log = "0.4.20"
+zeus-vm = { version = "0.1.0", path = "../zeus-vm" }
