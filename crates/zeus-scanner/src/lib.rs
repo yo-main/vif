@@ -1,14 +1,9 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
+mod error;
+mod scanner;
+mod token;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use error::ScanningError;
+pub use error::ScanningErrorType;
+pub use scanner::Scanner;
+pub use token::Token;
+pub use token::TokenType;
