@@ -447,6 +447,7 @@ name = "zeus-cli"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "clap",
  "fern",
  "log",
  "zeus-vm",

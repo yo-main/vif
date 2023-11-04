@@ -45,11 +45,12 @@ impl<'c> VM<'c> {
         }
     }
 
-    pub fn interpret<'a>(&mut self, chunk: &'a mut Chunk<'c>) -> Result<(), InterpreterError>
+    pub fn interpret<'a>(&mut self, content: &str) -> Result<(), InterpreterError>
     where
         'a: 'c,
     {
-        self.run(chunk)
+        return Ok(());
+        // self.run(chunk)
         // TODO: could we have an iterator somehow instead of ip ?
     }
 

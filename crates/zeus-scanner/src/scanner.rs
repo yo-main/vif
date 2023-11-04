@@ -7,42 +7,29 @@ use std::str::Chars;
 
 pub struct Scanner<'a> {
     source: Peekable<Chars<'a>>,
-    pub tokens: Vec<Token>,
     line: u64,
     line_start: bool,
     indent_stack: Vec<u8>,
-    pub has_error: bool,
 }
 
 impl<'a> Scanner<'a> {
     pub fn new(source: &'a str) -> Self {
         Self {
             source: source.chars().peekable(),
-            tokens: Vec::new(),
             line: 1,
             line_start: true,
             indent_stack: vec![0],
-            has_error: false,
         }
     }
 
-    pub fn scan(&mut self) -> Result<&Vec<Token>, ScanningError> {
-        loop {
-            match self.scan_token() {
-                Err(e) => match e.r#type {
-                    ScanningErrorType::EOF => break,
-                    _ => return Err(e),
-                },
-                Ok(_) => continue,
-            }
+    pub fn scan(&mut self) -> Result<Token, ScanningError> {
+        match self.scan_token() {
+            Err(e) => match e.r#type {
+                ScanningErrorType::EOF => return Ok(Token::new(TokenType::EOF, self.line)),
+                _ => return Err(e),
+            },
+            Ok(t) => Ok(t),
         }
-
-        self.tokens.push(Token {
-            r#type: TokenType::EOF,
-            line: self.line,
-        });
-
-        Ok(&self.tokens)
     }
 
     fn report_error(&mut self, error_type: ScanningErrorType) -> ScanningError {
@@ -51,7 +38,7 @@ impl<'a> Scanner<'a> {
         err
     }
 
-    fn scan_token(&mut self) -> Result<(), ScanningError> {
+    fn scan_token(&mut self) -> Result<Token, ScanningError> {
         let token_type = if self.line_start {
             self.line_start = false;
             self.parse_indentation()?
@@ -131,12 +118,10 @@ impl<'a> Scanner<'a> {
         log::debug!("Scanned token: {:?}, {}", token_type, self.line_start);
 
         match token_type {
-            TokenType::Comment(_) => (),
-            TokenType::Ignore => (),
-            _ => self.add_token(token_type),
-        };
-
-        Ok(())
+            TokenType::Ignore => self.scan_token(),
+            TokenType::Comment(_) => self.scan_token(),
+            t => Ok(Token::new(t, self.line)),
+        }
     }
 
     fn advance(&mut self) -> Result<char, ScanningError> {
@@ -155,10 +140,6 @@ impl<'a> Scanner<'a> {
 
     fn peek(&mut self) -> &char {
         self.source.peek().unwrap_or(&'\0')
-    }
-
-    fn add_token(&mut self, token_type: TokenType) {
-        self.tokens.push(Token::new(token_type, self.line));
     }
 
     fn parse_indentation(&mut self) -> Result<TokenType, ScanningError> {
