@@ -1,4 +1,3 @@
-use crate::error::ZeusError;
 use crate::opcode::Chunk;
 use crate::opcode::OpCode;
 use crate::value::Value;

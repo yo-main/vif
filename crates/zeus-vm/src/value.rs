@@ -1,5 +1,3 @@
-use crate::error::ZeusError;
-
 #[derive(Debug)]
 pub enum Value<'c> {
     Integer(i64),
@@ -69,20 +67,20 @@ impl<'c> Values<'c> {
         self.values.len() - 1
     }
 
-    pub fn get(&self, index: usize) -> Result<&Value<'c>, ZeusError> {
-        self.values.get(index).ok_or(ZeusError::ValueNotFound)
+    pub fn get(&self, index: usize) -> Option<&Value<'c>> {
+        self.values.get(index)
     }
 
-    pub fn last(&self) -> Result<&Value<'c>, ZeusError> {
-        self.values.last().ok_or(ZeusError::ValueNotFound)
+    pub fn last(&self) -> Option<&Value<'c>> {
+        self.values.last()
     }
 
-    pub fn last_mut(&mut self) -> Result<&mut Value<'c>, ZeusError> {
-        self.values.last_mut().ok_or(ZeusError::ValueNotFound)
+    pub fn last_mut(&mut self) -> Option<&mut Value<'c>> {
+        self.values.last_mut()
     }
 
-    pub fn pop(&mut self) -> Result<Value, ZeusError> {
-        self.values.pop().ok_or(ZeusError::ValueNotFound)
+    pub fn pop(&mut self) -> Option<Value> {
+        self.values.pop()
     }
 
     pub fn clear(&mut self) {

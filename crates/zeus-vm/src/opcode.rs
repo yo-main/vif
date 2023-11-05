@@ -1,7 +1,6 @@
-use crate::error::ZeusError;
+use crate::error::InterpreterError;
 use crate::value::Constant;
 use crate::value::Value;
-use crate::value::Values;
 
 pub enum OpCode<'c> {
     OP_RETURN,
@@ -46,6 +45,10 @@ impl<'c> Chunk<'c> {
         }
     }
 
+    pub fn compile(&mut self, content: String) -> Result<(), InterpreterError> {
+        Ok(())
+    }
+
     pub fn write_chunk(&mut self, chunk: OpCode<'c>, line: i64) {
         self.code.push(chunk);
         self.lines.push(line);
@@ -57,8 +60,10 @@ impl<'c> Chunk<'c> {
         self.constants.len() - 1
     }
 
-    pub fn get_constant(&self, index: usize) -> Result<&Constant, ZeusError> {
-        self.constants.get(index).ok_or(ZeusError::ValueNotFound)
+    pub fn get_constant(&self, index: usize) -> Result<&Constant, InterpreterError> {
+        self.constants
+            .get(index)
+            .ok_or(InterpreterError::ConstantNotFound)
     }
 
     pub fn get_line(&self, index: usize) -> i64 {

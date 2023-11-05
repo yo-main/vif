@@ -1,79 +1,46 @@
-use std::slice::Chunks;
-
-use crate::debug::disassemble_instruction;
-use crate::error::ZeusError;
+use crate::error::InterpreterError;
+use crate::error::RuntimeErrorType;
 use crate::opcode::Chunk;
 use crate::opcode::OpCode;
 use crate::value::Constant;
 use crate::value::Value;
 use crate::value::Values;
 
-pub enum InterpreterError {
-    Ok,
-    CompileError(String),
-    RuntimeError(String),
-}
-
-impl std::fmt::Display for InterpreterError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Ok => write!(f, "OK error"),
-            Self::CompileError(e) => write!(f, "Compiling error: {e}"),
-            Self::RuntimeError(e) => write!(f, "Interpreter error: {e}"),
-        }
-    }
-}
-
-impl std::fmt::Debug for InterpreterError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Ok => write!(f, "OK error"),
-            Self::CompileError(e) => write!(f, "Compiling error: {e}"),
-            Self::RuntimeError(e) => write!(f, "Interpreter error: {e}"),
-        }
-    }
-}
-
 pub struct VM<'c> {
-    stack: Values<'c>,
+    stack: Vec<Value<'c>>,
 }
 
 impl<'c> VM<'c> {
     pub fn new() -> Self {
-        VM {
-            stack: Values::new(),
-        }
+        VM { stack: Vec::new() }
     }
 
-    pub fn interpret<'a>(&mut self, content: &str) -> Result<(), InterpreterError>
-    where
-        'a: 'c,
-    {
+    pub fn interpret(&mut self, content: String) -> Result<(), InterpreterError> {
+        let mut chunk = Chunk::new();
+        chunk.compile(content)?;
+        // let refe: &'c mut Chunk = &mut chunk;
+
+        self.run(&mut chunk)?;
+
         return Ok(());
         // self.run(chunk)
         // TODO: could we have an iterator somehow instead of ip ?
     }
 
     pub fn push(&mut self, value: Value<'c>) {
-        self.stack.add(value);
+        self.stack.push(value);
     }
 
     pub fn pop(&mut self) -> Result<Value, InterpreterError> {
-        self.stack
-            .pop()
-            .map_err(|e| InterpreterError::RuntimeError(format!("Empty stack")))
+        self.stack.pop().ok_or(InterpreterError::EmptyStack)
     }
 
     fn get_last(&mut self) -> Result<&mut Value<'c>, InterpreterError> {
-        self.stack
-            .last_mut()
-            .map_err(|e| InterpreterError::RuntimeError(format!("Empty stack")))
+        self.stack.last_mut().ok_or(InterpreterError::EmptyStack)
     }
 
     fn get(&self) -> Result<&Value<'c>, InterpreterError> {
-        self.stack
-            .last()
-            .map_err(|e| InterpreterError::RuntimeError(format!("Empty stack")))
+        self.stack.last().ok_or(InterpreterError::EmptyStack)
     }
 
     fn run<'a>(&mut self, chunk: &'a mut Chunk<'c>) -> Result<(), InterpreterError>
@@ -88,9 +55,8 @@ impl<'c> VM<'c> {
                     break;
                 }
                 OpCode::OP_CONSTANT(i) => {
-                    let constant = chunk.get_constant(*i).map_err(|_| {
-                        InterpreterError::CompileError(format!("Constant not found"))
-                    })?;
+                    let i = *i;
+                    let constant = chunk.get_constant(i)?;
                     self.push(Value::Constant(constant));
                 }
                 OpCode::OP_NEGATE => {
@@ -98,7 +64,7 @@ impl<'c> VM<'c> {
                     match value {
                         Value::Integer(ref mut i) => *i *= -1,
                         Value::Index(_) => {
-                            return Err(InterpreterError::RuntimeError(format!(
+                            return Err(InterpreterError::value_error(format!(
                                 "Can't negate an index"
                             )))
                         }
@@ -108,7 +74,7 @@ impl<'c> VM<'c> {
                                 Value::Constant(c) => match c {
                                     Constant::Integer(i) => Value::Integer(i * -1),
                                     Constant::String(_) => {
-                                        return Err(InterpreterError::RuntimeError(format!(
+                                        return Err(InterpreterError::value_error(format!(
                                             "Can't negate a string"
                                         )))
                                     }
@@ -119,7 +85,7 @@ impl<'c> VM<'c> {
                             self.push(new_value);
                         }
                         v => {
-                            return Err(InterpreterError::RuntimeError(format!("Can't negate {v}")))
+                            return Err(InterpreterError::value_error(format!("Can't negate {v}")))
                         }
                     };
                 }
@@ -135,7 +101,7 @@ impl<'c> VM<'c> {
                                 self.push(Value::Integer(j + i));
                             }
                             e => {
-                                return Err(InterpreterError::RuntimeError(format!(
+                                return Err(InterpreterError::value_error(format!(
                                     "Can't add int and {}",
                                     e
                                 )))
@@ -149,7 +115,7 @@ impl<'c> VM<'c> {
                                 self.push(Value::Index(j + i));
                             }
                             e => {
-                                return Err(InterpreterError::RuntimeError(format!(
+                                return Err(InterpreterError::value_error(format!(
                                     "Can't add Index and {}",
                                     e
                                 )))
@@ -165,7 +131,7 @@ impl<'c> VM<'c> {
                                     self.push(Value::Integer(j + i));
                                 }
                                 e => {
-                                    return Err(InterpreterError::RuntimeError(format!(
+                                    return Err(InterpreterError::value_error(format!(
                                         "Can't add Integer and {}",
                                         e
                                     )))
@@ -173,7 +139,7 @@ impl<'c> VM<'c> {
                             }
                         }
                         e => {
-                            return Err(InterpreterError::RuntimeError(format!(
+                            return Err(InterpreterError::value_error(format!(
                                 "Can't use {} in a addition",
                                 e
                             )))
@@ -192,7 +158,7 @@ impl<'c> VM<'c> {
                                 self.push(Value::Integer(j - i));
                             }
                             e => {
-                                return Err(InterpreterError::RuntimeError(format!(
+                                return Err(InterpreterError::value_error(format!(
                                     "Can't substract int and {}",
                                     e
                                 )))
@@ -206,7 +172,7 @@ impl<'c> VM<'c> {
                                 self.push(Value::Index(j - i));
                             }
                             e => {
-                                return Err(InterpreterError::RuntimeError(format!(
+                                return Err(InterpreterError::value_error(format!(
                                     "Can't substract Index and {}",
                                     e
                                 )))
@@ -222,7 +188,7 @@ impl<'c> VM<'c> {
                                     self.push(Value::Integer(j + i));
                                 }
                                 e => {
-                                    return Err(InterpreterError::RuntimeError(format!(
+                                    return Err(InterpreterError::value_error(format!(
                                         "Can't add Integer and {}",
                                         e
                                     )))
@@ -230,7 +196,7 @@ impl<'c> VM<'c> {
                             }
                         }
                         e => {
-                            return Err(InterpreterError::RuntimeError(format!(
+                            return Err(InterpreterError::value_error(format!(
                                 "Can't use {} in a substraction",
                                 e
                             )))
@@ -249,7 +215,7 @@ impl<'c> VM<'c> {
                                 self.push(Value::Integer(j * i));
                             }
                             e => {
-                                return Err(InterpreterError::RuntimeError(format!(
+                                return Err(InterpreterError::value_error(format!(
                                     "Can't multiply int and {}",
                                     e
                                 )))
@@ -263,7 +229,7 @@ impl<'c> VM<'c> {
                                 self.push(Value::Index(j * i));
                             }
                             e => {
-                                return Err(InterpreterError::RuntimeError(format!(
+                                return Err(InterpreterError::value_error(format!(
                                     "Can't multiply Index and {}",
                                     e
                                 )))
@@ -279,7 +245,7 @@ impl<'c> VM<'c> {
                                     self.push(Value::Integer(j + i));
                                 }
                                 e => {
-                                    return Err(InterpreterError::RuntimeError(format!(
+                                    return Err(InterpreterError::value_error(format!(
                                         "Can't multiply Integer and {}",
                                         e
                                     )))
@@ -287,7 +253,7 @@ impl<'c> VM<'c> {
                             }
                         }
                         e => {
-                            return Err(InterpreterError::RuntimeError(format!(
+                            return Err(InterpreterError::value_error(format!(
                                 "Can't use {} in a multiplication",
                                 e
                             )))
@@ -306,7 +272,7 @@ impl<'c> VM<'c> {
                                 self.push(Value::Integer(j / i));
                             }
                             e => {
-                                return Err(InterpreterError::RuntimeError(format!(
+                                return Err(InterpreterError::value_error(format!(
                                     "Can't divide int and {}",
                                     e
                                 )))
@@ -320,7 +286,7 @@ impl<'c> VM<'c> {
                                 self.push(Value::Index(j / i));
                             }
                             e => {
-                                return Err(InterpreterError::RuntimeError(format!(
+                                return Err(InterpreterError::value_error(format!(
                                     "Can't divide Index and {}",
                                     e
                                 )))
@@ -336,7 +302,7 @@ impl<'c> VM<'c> {
                                     self.push(Value::Integer(j + i));
                                 }
                                 e => {
-                                    return Err(InterpreterError::RuntimeError(format!(
+                                    return Err(InterpreterError::value_error(format!(
                                         "Can't divide Integer and {}",
                                         e
                                     )))
@@ -344,7 +310,7 @@ impl<'c> VM<'c> {
                             }
                         }
                         e => {
-                            return Err(InterpreterError::RuntimeError(format!(
+                            return Err(InterpreterError::value_error(format!(
                                 "Can't use {} in a division",
                                 e
                             )))
@@ -363,7 +329,7 @@ impl<'c> VM<'c> {
                                 self.push(Value::Integer(j % i));
                             }
                             e => {
-                                return Err(InterpreterError::RuntimeError(format!(
+                                return Err(InterpreterError::value_error(format!(
                                     "Can't add modulo and {}",
                                     e
                                 )))
@@ -377,7 +343,7 @@ impl<'c> VM<'c> {
                                 self.push(Value::Index(j % i));
                             }
                             e => {
-                                return Err(InterpreterError::RuntimeError(format!(
+                                return Err(InterpreterError::value_error(format!(
                                     "Can't modulo Index and {}",
                                     e
                                 )))
@@ -393,7 +359,7 @@ impl<'c> VM<'c> {
                                     self.push(Value::Integer(j + i));
                                 }
                                 e => {
-                                    return Err(InterpreterError::RuntimeError(format!(
+                                    return Err(InterpreterError::value_error(format!(
                                         "Can't modulo Integer and {}",
                                         e
                                     )))
@@ -401,7 +367,7 @@ impl<'c> VM<'c> {
                             }
                         }
                         e => {
-                            return Err(InterpreterError::RuntimeError(format!(
+                            return Err(InterpreterError::value_error(format!(
                                 "Can't use {} in a modulo",
                                 e
                             )))

@@ -17,7 +17,7 @@ impl<'c> Zeus<'c> {
     }
 
     fn run(&mut self, content: String) -> Result<(), ZeusError> {
-        self.vm.interpret(content.as_str());
+        self.vm.interpret(content);
 
         // let mut tokenizer = Tokenizer::new(content.as_str());
         // tokenizer.scan_tokens();
