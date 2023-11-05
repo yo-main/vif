@@ -456,6 +456,10 @@ dependencies = [
 [[package]]
 name = "zeus-compiler"
 version = "0.1.0"
+dependencies = [
+ "log",
+ "zeus-scanner",
+]
 
 [[package]]
 name = "zeus-scanner"

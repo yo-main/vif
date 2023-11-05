@@ -49,3 +49,9 @@ impl ScanningError {
         }
     }
 }
+
+impl std::fmt::Display for ScanningError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Scanning error [{}]: {}", self.line, self.msg)
+    }
+}

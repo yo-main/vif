@@ -1,6 +1,9 @@
 #[derive(Debug)]
 pub enum CompilerError {
     ConstantNotFound,
+    ScanningError(String),
+    SyntaxError(String),
+    Unknown(String),
 }
 
 impl std::fmt::Display for CompilerError {

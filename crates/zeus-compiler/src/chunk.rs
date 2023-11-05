@@ -5,7 +5,7 @@ use crate::CompilerError;
 pub struct Chunk {
     pub code: Vec<OpCode>,
     pub constants: Vec<Constant>,
-    pub lines: Vec<i64>,
+    pub lines: Vec<u64>,
 }
 
 impl Chunk {
@@ -17,7 +17,7 @@ impl Chunk {
         }
     }
 
-    pub fn write_chunk(&mut self, chunk: OpCode, line: i64) {
+    pub fn write_chunk(&mut self, chunk: OpCode, line: u64) {
         self.code.push(chunk);
         self.lines.push(line);
     }
@@ -34,8 +34,8 @@ impl Chunk {
             .ok_or(CompilerError::ConstantNotFound)
     }
 
-    pub fn get_line(&self, index: usize) -> i64 {
-        *self.lines.get(index).unwrap_or(&-1)
+    pub fn get_line(&self, index: usize) -> u64 {
+        *self.lines.get(index).unwrap_or(&0)
     }
 
     pub fn free_chunk(&mut self) {

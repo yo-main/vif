@@ -22,6 +22,10 @@ impl<'a> Scanner<'a> {
         }
     }
 
+    pub fn get_line(&self) -> u64 {
+        self.line
+    }
+
     pub fn scan(&mut self) -> Result<Token, ScanningError> {
         match self.scan_token() {
             Err(e) => match e.r#type {
