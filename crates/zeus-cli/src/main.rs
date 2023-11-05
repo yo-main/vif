@@ -1,6 +1,3 @@
-use zeus_vm::opcode;
-use zeus_vm::value;
-
 mod application;
 mod cli;
 mod config;

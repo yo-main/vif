@@ -1,6 +1,5 @@
 /target
-/zeus_ast/target
-/zeus_byte/target
+/crates/**/target
 
 
 # Added by cargo

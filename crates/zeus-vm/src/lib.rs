@@ -1,18 +1,19 @@
-use error::InterpreterError;
-use opcode::Chunk;
-
-mod debug;
 mod error;
-pub mod opcode;
 pub mod value;
 mod vm;
 
+use error::InterpreterError;
+use zeus_compiler::compile;
+
 pub fn interpret(content: String) -> Result<(), InterpreterError> {
-    let mut chunk = Chunk::new();
-    let mut stack = Vec::new();
     let vm = vm::VM::new();
 
-    chunk.compile(content)?;
+    let chunk = match compile(content) {
+        Ok(c) => c,
+        Err(e) => return Err(InterpreterError::CompileError(format!("{}", e))),
+    };
+
+    let mut stack = Vec::new();
 
     for byte in chunk.iter() {
         vm.interpret(byte, &mut stack, &chunk.constants)?;

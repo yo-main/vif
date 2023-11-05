@@ -9,4 +9,5 @@ edition = "2021"
 chrono = "0.4.31"
 fern = "0.6.2"
 log = "0.4.20"
+zeus-compiler = { version = "0.1.0", path = "../zeus-compiler" }
 zeus-scanner = { version = "0.1", path = "../zeus-scanner"}

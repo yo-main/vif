@@ -1,7 +1,7 @@
 use crate::error::InterpreterError;
-use crate::opcode::OpCode;
-use crate::value::Constant;
 use crate::value::Value;
+use zeus_compiler::Constant;
+use zeus_compiler::OpCode;
 
 pub struct VM {}
 
@@ -12,7 +12,7 @@ impl VM {
 
     pub fn interpret<'a, 'b>(
         &self,
-        op_code: &OpCode<'_>,
+        op_code: &OpCode,
         stack: &'a mut Vec<Value<'b>>,
         constants: &'b Vec<Constant>,
     ) -> Result<(), InterpreterError> {
@@ -362,7 +362,6 @@ impl VM {
                     }
                 }
             }
-            OpCode::OP_TEST(_) => (),
         }
 
         Ok(())
