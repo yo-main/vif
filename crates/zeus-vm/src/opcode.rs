@@ -32,7 +32,7 @@ impl std::fmt::Display for OpCode<'_> {
 
 pub struct Chunk<'c> {
     pub code: Vec<OpCode<'c>>,
-    constants: Vec<Constant>,
+    pub constants: Vec<Constant>,
     pub lines: Vec<i64>,
 }
 

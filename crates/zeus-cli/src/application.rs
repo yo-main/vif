@@ -4,20 +4,18 @@ use std::fs;
 use std::io;
 use std::io::Write;
 use std::path::PathBuf;
-use zeus_vm::vm::VM;
 // use zeus_vm::vm::VM;
+use zeus_vm::interpret;
 
-pub struct Zeus<'c> {
-    vm: VM<'c>,
-}
+pub struct Zeus {}
 
-impl<'c> Zeus<'c> {
+impl Zeus {
     pub fn init() -> Self {
-        Zeus { vm: VM::new() }
+        Zeus {}
     }
 
     fn run(&mut self, content: String) -> Result<(), ZeusError> {
-        self.vm.interpret(content);
+        interpret(content);
 
         // let mut tokenizer = Tokenizer::new(content.as_str());
         // tokenizer.scan_tokens();

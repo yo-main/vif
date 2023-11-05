@@ -1,6 +1,5 @@
 use zeus_vm::opcode;
 use zeus_vm::value;
-use zeus_vm::vm;
 
 mod application;
 mod cli;
