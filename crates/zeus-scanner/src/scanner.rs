@@ -27,7 +27,9 @@ impl<'a> Scanner<'a> {
     }
 
     pub fn scan(&mut self) -> Result<Token, ScanningError> {
-        self.scan_token()
+        let token = self.scan_token();
+        log::debug!("Scanned token: {:?}", token);
+        token
     }
 
     fn report_error(&mut self, error_type: ScanningErrorType) -> ScanningError {
@@ -113,19 +115,18 @@ impl<'a> Scanner<'a> {
             }
             _ => self.line_start = false,
         };
-        log::debug!("Scanned token: {:?}, {}", token_type, self.line_start);
 
         match token_type {
             TokenType::Ignore => self.scan_token(),
+            TokenType::Indent => self.scan_token(), // TODO: remove that when ready
             TokenType::Comment(_) => self.scan_token(),
             t => Ok(Token::new(t, self.line)),
         }
     }
 
     fn advance(&mut self) -> Result<char, ScanningError> {
-        self.source
-            .next()
-            .ok_or(self.report_error(ScanningErrorType::EOF))
+        let next = self.source.next();
+        next.ok_or_else(|| self.report_error(ScanningErrorType::EOF))
     }
 
     fn r#match(&mut self, expected: char) -> bool {

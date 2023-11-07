@@ -10,7 +10,8 @@ pub trait PrattParser {
 }
 
 impl PrattParser for TokenType {
-    fn infix(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+    fn prefix(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+        println!("Infix: {}", self);
         match self {
             Self::LeftParen => compiler.grouping(),
             Self::Minus => compiler.unary(self),
@@ -19,7 +20,8 @@ impl PrattParser for TokenType {
         }
     }
 
-    fn prefix(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+    fn infix(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
+        println!("Prefix: {}", self);
         match self {
             Self::Minus => compiler.binary(self),
             Self::Plus => compiler.binary(self),

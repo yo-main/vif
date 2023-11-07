@@ -35,7 +35,10 @@ impl<'a> Compiler<'a> {
 
     pub fn advance(&mut self) -> Result<Token, CompilerError> {
         match self.scanner.scan() {
-            Ok(token) => Ok(token),
+            Ok(token) => match token.r#type {
+                TokenType::Ignore => self.advance(),
+                _ => Ok(token),
+            },
             Err(e) => match e.r#type {
                 ScanningErrorType::EOF => Err(CompilerError::EOF),
                 _ => {
@@ -59,14 +62,23 @@ impl<'a> Compiler<'a> {
     }
 
     fn parse_precedence(&mut self, precedence: Precedence) -> Result<(), CompilerError> {
-        let mut token = self.advance()?;
+        let token = self.advance()?;
         token.r#type.prefix(self)?;
+        log::debug!("parse precedence in with {}", precedence);
+
         let precedence = precedence as u8;
 
-        while token.r#type.precedence() as u8 <= precedence {
-            token = self.advance()?;
+        loop {
+            let token = self.advance()?;
+            if precedence > token.r#type.precedence() as u8 {
+                break;
+            }
             token.r#type.infix(self)?;
         }
+        log::debug!(
+            "parse precedence out with {}",
+            token.r#type.precedence() as u8
+        );
 
         Ok(())
     }
@@ -94,17 +106,20 @@ impl<'a> Compiler<'a> {
     }
 
     pub fn unary(&mut self, token_type: &TokenType) -> Result<(), CompilerError> {
+        log::debug!("Unary starting");
         self.parse_precedence(Precedence::Unary)?;
         self.emit_op_code(OpCode::OP_NEGATE);
         Ok(())
     }
 
     pub fn grouping(&mut self) -> Result<(), CompilerError> {
+        log::debug!("Grouping starting");
         self.expression()?;
         self.consume(TokenType::RightParen, "Expect ')' after an expression")
     }
 
     pub fn number(&mut self, number: &TokenType) -> Result<(), CompilerError> {
+        log::debug!("Number starting");
         match number {
             TokenType::Integer(i) => self.emit_constant(Constant::Integer(*i)),
             _ => {

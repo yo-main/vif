@@ -157,11 +157,11 @@ impl VM {
                     Value::Constant(Constant::Integer(i)) => {
                         let i = *i;
                         match stack.last_mut().ok_or(InterpreterError::EmptyStack)? {
-                            Value::Integer(ref mut j) => *j += i,
-                            Value::Index(ref mut j) => *j += i,
+                            Value::Integer(ref mut j) => *j -= i,
+                            Value::Index(ref mut j) => *j -= i,
                             Value::Constant(Constant::Integer(j)) => {
                                 stack.pop().ok_or(InterpreterError::EmptyStack)?;
-                                stack.push(Value::Integer(j + i));
+                                stack.push(Value::Integer(j - i));
                             }
                             e => {
                                 return Err(InterpreterError::value_error(format!(
@@ -218,11 +218,11 @@ impl VM {
                     Value::Constant(Constant::Integer(i)) => {
                         let i = *i;
                         match stack.last_mut().ok_or(InterpreterError::EmptyStack)? {
-                            Value::Integer(ref mut j) => *j += i,
-                            Value::Index(ref mut j) => *j += i,
+                            Value::Integer(ref mut j) => *j *= i,
+                            Value::Index(ref mut j) => *j *= i,
                             Value::Constant(Constant::Integer(j)) => {
                                 stack.pop().ok_or(InterpreterError::EmptyStack)?;
-                                stack.push(Value::Integer(j + i));
+                                stack.push(Value::Integer(j * i));
                             }
                             e => {
                                 return Err(InterpreterError::value_error(format!(
@@ -279,11 +279,11 @@ impl VM {
                     Value::Constant(Constant::Integer(i)) => {
                         let i = *i;
                         match stack.last_mut().ok_or(InterpreterError::EmptyStack)? {
-                            Value::Integer(ref mut j) => *j += i,
-                            Value::Index(ref mut j) => *j += i,
+                            Value::Integer(ref mut j) => *j /= i,
+                            Value::Index(ref mut j) => *j /= i,
                             Value::Constant(Constant::Integer(j)) => {
                                 stack.pop().ok_or(InterpreterError::EmptyStack)?;
-                                stack.push(Value::Integer(j + i));
+                                stack.push(Value::Integer(j / i));
                             }
                             e => {
                                 return Err(InterpreterError::value_error(format!(
@@ -340,11 +340,11 @@ impl VM {
                     Value::Constant(Constant::Integer(i)) => {
                         let i = *i;
                         match stack.last_mut().ok_or(InterpreterError::EmptyStack)? {
-                            Value::Integer(ref mut j) => *j += i,
-                            Value::Index(ref mut j) => *j += i,
+                            Value::Integer(ref mut j) => *j %= i,
+                            Value::Index(ref mut j) => *j %= i,
                             Value::Constant(Constant::Integer(j)) => {
                                 stack.pop().ok_or(InterpreterError::EmptyStack)?;
-                                stack.push(Value::Integer(j + i));
+                                stack.push(Value::Integer(j % i));
                             }
                             e => {
                                 return Err(InterpreterError::value_error(format!(
