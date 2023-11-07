@@ -1,5 +1,6 @@
 #[derive(Debug)]
 pub enum CompilerError {
+    EOF,
     ConstantNotFound,
     ScanningError(String),
     SyntaxError(String),

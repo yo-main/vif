@@ -4,6 +4,7 @@ mod constant;
 mod debug;
 mod error;
 mod op_code;
+mod parser_rule;
 mod precedence;
 
 pub use crate::chunk::Chunk;

@@ -27,13 +27,7 @@ impl<'a> Scanner<'a> {
     }
 
     pub fn scan(&mut self) -> Result<Token, ScanningError> {
-        match self.scan_token() {
-            Err(e) => match e.r#type {
-                ScanningErrorType::EOF => return Ok(Token::new(TokenType::EOF, self.line)),
-                _ => return Err(e),
-            },
-            Ok(t) => Ok(t),
-        }
+        self.scan_token()
     }
 
     fn report_error(&mut self, error_type: ScanningErrorType) -> ScanningError {

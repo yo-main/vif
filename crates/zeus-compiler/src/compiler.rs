@@ -1,8 +1,15 @@
+use std::collections::HashMap;
+
 use zeus_scanner::Scanner;
+use zeus_scanner::ScanningErrorType;
 use zeus_scanner::Token;
 use zeus_scanner::TokenType;
 
+use crate::debug::disassemble_chunk;
 use crate::error::CompilerError;
+use crate::parser_rule;
+use crate::parser_rule::PrattParser;
+use crate::precedence;
 use crate::precedence::Precedence;
 use crate::Chunk;
 use crate::Constant;
@@ -26,18 +33,17 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    pub fn advance(&mut self) -> Result<(), CompilerError> {
-        loop {
-            match self.scanner.scan() {
-                Ok(t) if t.r#type == TokenType::EOF => break,
-                Ok(token) => self.tokens.push(token),
-                Err(e) => {
-                    log::error!("{}", e);
-                    return Err(CompilerError::ScanningError(format!("{e}")));
+    pub fn advance(&mut self) -> Result<Token, CompilerError> {
+        match self.scanner.scan() {
+            Ok(token) => Ok(token),
+            Err(e) => match e.r#type {
+                ScanningErrorType::EOF => Err(CompilerError::EOF),
+                _ => {
+                    log::error!("{}", e.msg);
+                    Err(CompilerError::ScanningError(format!("{e}")))
                 }
-            };
+            },
         }
-        Ok(())
     }
     pub fn expression(&mut self) -> Result<(), CompilerError> {
         self.parse_precedence(Precedence::Assignement)?;
@@ -53,16 +59,25 @@ impl<'a> Compiler<'a> {
     }
 
     fn parse_precedence(&mut self, precedence: Precedence) -> Result<(), CompilerError> {
+        let mut token = self.advance()?;
+        token.r#type.prefix(self)?;
+        let precedence = precedence as u8;
+
+        while token.r#type.precedence() as u8 <= precedence {
+            token = self.advance()?;
+            token.r#type.infix(self)?;
+        }
+
         Ok(())
     }
 
-    fn get_rule(&mut self, token_type: &TokenType) -> Result<Precedence, CompilerError> {
-        Ok(Precedence::Assignement)
+    fn get_rule(&mut self, token_type: &TokenType) -> Precedence {
+        token_type.precedence()
     }
 
-    fn binary(&mut self, token_type: &TokenType) -> Result<(), CompilerError> {
-        let rule = self.get_rule(token_type)?;
-        self.parse_precedence(rule);
+    pub fn binary(&mut self, token_type: &TokenType) -> Result<(), CompilerError> {
+        let rule = self.get_rule(token_type);
+        self.parse_precedence(rule)?;
 
         match token_type {
             TokenType::Plus => self.emit_op_code(OpCode::OP_ADD),
@@ -78,18 +93,18 @@ impl<'a> Compiler<'a> {
         Ok(())
     }
 
-    fn unary(&mut self, token_type: &TokenType) -> Result<(), CompilerError> {
-        self.parse_precedence(Precedence::Unary);
+    pub fn unary(&mut self, token_type: &TokenType) -> Result<(), CompilerError> {
+        self.parse_precedence(Precedence::Unary)?;
         self.emit_op_code(OpCode::OP_NEGATE);
         Ok(())
     }
 
-    fn grouping(&mut self) -> Result<(), CompilerError> {
+    pub fn grouping(&mut self) -> Result<(), CompilerError> {
         self.expression()?;
         self.consume(TokenType::RightParen, "Expect ')' after an expression")
     }
 
-    fn number(&mut self, number: &TokenType) -> Result<(), CompilerError> {
+    pub fn number(&mut self, number: &TokenType) -> Result<(), CompilerError> {
         match number {
             TokenType::Integer(i) => self.emit_constant(Constant::Integer(*i)),
             _ => {
@@ -103,7 +118,8 @@ impl<'a> Compiler<'a> {
     }
 
     pub fn end(&mut self) {
-        self.emit_op_code(OpCode::OP_RETURN)
+        self.emit_op_code(OpCode::OP_RETURN);
+        disassemble_chunk(&self.compiling_chunk, "code");
     }
 
     fn emit_constant(&mut self, constant: Constant) {
