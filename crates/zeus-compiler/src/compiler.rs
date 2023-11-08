@@ -7,9 +7,7 @@ use zeus_scanner::TokenType;
 
 use crate::debug::disassemble_chunk;
 use crate::error::CompilerError;
-use crate::parser_rule;
 use crate::parser_rule::PrattParser;
-use crate::precedence;
 use crate::precedence::Precedence;
 use crate::Chunk;
 use crate::Constant;
@@ -17,7 +15,7 @@ use crate::OpCode;
 
 pub struct Compiler<'a> {
     scanner: Scanner<'a>,
-    tokens: Vec<Token>,
+    pending: Option<Token>,
     pub compiling_chunk: Chunk,
 }
 
@@ -28,12 +26,16 @@ impl<'a> Compiler<'a> {
     pub fn new(scanner: Scanner<'a>) -> Self {
         Compiler {
             scanner,
-            tokens: Vec::new(),
+            pending: None,
             compiling_chunk: Chunk::new(),
         }
     }
 
     pub fn advance(&mut self) -> Result<Token, CompilerError> {
+        if self.pending.is_some() {
+            return Ok(self.pending.take().unwrap());
+        };
+
         match self.scanner.scan() {
             Ok(token) => match token.r#type {
                 TokenType::Ignore => self.advance(),
@@ -71,14 +73,12 @@ impl<'a> Compiler<'a> {
         loop {
             let token = self.advance()?;
             if precedence > token.r#type.precedence() as u8 {
+                self.pending = Some(token);
                 break;
             }
             token.r#type.infix(self)?;
         }
-        log::debug!(
-            "parse precedence out with {}",
-            token.r#type.precedence() as u8
-        );
+        log::debug!("parse precedence out with {}", token.r#type.precedence());
 
         Ok(())
     }

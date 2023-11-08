@@ -1,4 +1,4 @@
-use crate::compiler::Compiler;
+use crate::compiler::{self, Compiler};
 use crate::error::CompilerError;
 use crate::precedence::Precedence;
 use zeus_scanner::TokenType;
@@ -11,17 +11,18 @@ pub trait PrattParser {
 
 impl PrattParser for TokenType {
     fn prefix(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
-        println!("Infix: {}", self);
+        println!("Prefix: {}", self);
         match self {
             Self::LeftParen => compiler.grouping(),
             Self::Minus => compiler.unary(self),
             Self::Integer(_) => compiler.number(self),
+            Self::NewLine => compiler.expression(),
             _ => Ok(()),
         }
     }
 
     fn infix(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
-        println!("Prefix: {}", self);
+        println!("Infix: {}", self);
         match self {
             Self::Minus => compiler.binary(self),
             Self::Plus => compiler.binary(self),
@@ -37,6 +38,7 @@ impl PrattParser for TokenType {
             TokenType::Plus => Precedence::Term,
             TokenType::Slash => Precedence::Factor,
             TokenType::Star => Precedence::Factor,
+            TokenType::NewLine => Precedence::Assignement,
             _ => Precedence::None,
         }
     }

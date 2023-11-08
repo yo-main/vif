@@ -118,7 +118,6 @@ impl<'a> Scanner<'a> {
 
         match token_type {
             TokenType::Ignore => self.scan_token(),
-            TokenType::Indent => self.scan_token(), // TODO: remove that when ready
             TokenType::Comment(_) => self.scan_token(),
             t => Ok(Token::new(t, self.line)),
         }
