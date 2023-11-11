@@ -46,6 +46,7 @@ pub enum TokenType {
     Comment(String),
 
     // keywords
+    Not,
     And,
     Def,
     Class,
@@ -87,6 +88,7 @@ impl Hash for TokenType {
             Self::DoubleDot => state.write_u8(8),
             Self::Minus => state.write_u8(9),
             Self::Plus => state.write_u8(10),
+            Self::Not => state.write_u8(11),
             Self::Modulo => state.write_u8(12),
             Self::Semicolon => state.write_u8(13),
             Self::Hash => state.write_u8(14),
@@ -220,6 +222,7 @@ impl Display for TokenType {
             TokenType::Break => write!(f, "break"),
             TokenType::Continue => write!(f, "continue"),
             TokenType::EOF => write!(f, "EOF"),
+            TokenType::Not => write!(f, "not"),
         }
     }
 }

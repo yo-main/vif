@@ -1,5 +1,6 @@
 use crate::error::InterpreterError;
 use crate::value::Value;
+use crate::value_error;
 use zeus_compiler::Constant;
 use zeus_compiler::OpCode;
 
@@ -20,7 +21,6 @@ impl VM {
         match op_code {
             OpCode::OP_RETURN => {
                 println!("{:?}", stack.pop().ok_or(InterpreterError::EmptyStack)?);
-                return Ok(());
             }
             OpCode::OP_CONSTANT(i) => {
                 let i = *i;
@@ -29,340 +29,171 @@ impl VM {
                     None => return Err(InterpreterError::ConstantNotFound),
                 };
             }
+            OpCode::OP_NOT => {
+                let value = stack.last_mut().ok_or(InterpreterError::EmptyStack)?;
+                match value {
+                    Value::Integer(_) => match stack.pop().ok_or(InterpreterError::EmptyStack)? {
+                        Value::Integer(i) => stack.push(Value::Boolean(i == 0)),
+                        _ => return Err(InterpreterError::Impossible),
+                    },
+                    Value::Index(_) => match stack.pop().ok_or(InterpreterError::EmptyStack)? {
+                        Value::Index(i) => stack.push(Value::Boolean(i == 0)),
+                        _ => return Err(InterpreterError::Impossible),
+                    },
+                    Value::Float(_) => match stack.pop().ok_or(InterpreterError::EmptyStack)? {
+                        Value::Float(f) => stack.push(Value::Boolean(f == 0.0)),
+                        _ => return Err(InterpreterError::Impossible),
+                    },
+                    Value::Boolean(ref mut b) => *b = !*b,
+                    Value::None => *value = Value::Boolean(true),
+                    Value::Constant(_) => {
+                        let v = stack.pop().ok_or(InterpreterError::EmptyStack)?;
+                        let new_value = match v {
+                            Value::Constant(c) => match c {
+                                Constant::Integer(i) => Value::Boolean(*i == 0),
+                                Constant::Float(f) => Value::Boolean(*f == 0.0),
+                                Constant::String(s) => Value::Boolean(s.is_empty()),
+                            },
+                            _ => return Err(InterpreterError::Impossible), // impossible
+                        };
+
+                        stack.push(new_value);
+                    }
+                    Value::String(_) => return value_error!("Can't negate {value}"),
+                    Value::BinaryOp(_) => return value_error!("Can't negate {value}"),
+                };
+            }
             OpCode::OP_NEGATE => {
                 let value = stack.last_mut().ok_or(InterpreterError::EmptyStack)?;
                 match value {
                     Value::Integer(ref mut i) => *i *= -1,
-                    Value::Index(_) => {
-                        return Err(InterpreterError::value_error(format!(
-                            "Can't negate an index"
-                        )))
-                    }
+                    Value::Float(ref mut f) => *f *= -1.0,
+                    Value::Index(_) => return value_error!("Can't negate index {value}"),
+                    Value::Boolean(ref mut b) => *b = b == &false,
                     Value::Constant(_) => {
                         let v = stack.pop().ok_or(InterpreterError::EmptyStack)?;
                         let new_value = match v {
                             Value::Constant(c) => match c {
                                 Constant::Integer(i) => Value::Integer(i * -1),
+                                Constant::Float(f) => Value::Float(f * -1.0),
                                 Constant::String(_) => {
-                                    return Err(InterpreterError::value_error(format!(
-                                        "Can't negate a string"
-                                    )))
+                                    return value_error!("Can't negate a string")
                                 }
                             },
-                            _ => return Err(InterpreterError::Ok), // impossible
+                            _ => return Err(InterpreterError::Impossible),
                         };
 
                         stack.push(new_value);
                     }
-                    v => return Err(InterpreterError::value_error(format!("Can't negate {v}"))),
+                    Value::String(_) => return value_error!("Can't negate {value}"),
+                    Value::BinaryOp(_) => return value_error!("Can't negate {value}"),
+                    Value::None => return value_error!("Can't negate {value}"),
                 };
             }
-            OpCode::OP_ADD => {
+            OpCode::OP_TRUE => stack.push(Value::Boolean(true)),
+            OpCode::OP_FALSE => stack.push(Value::Boolean(false)),
+            OpCode::OP_NONE => stack.push(Value::None),
+            OpCode::OP_EQUAL => {
+                let a = stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 let b = stack.pop().ok_or(InterpreterError::EmptyStack)?;
-
-                match b {
-                    Value::Integer(i) => {
-                        match stack.last_mut().ok_or(InterpreterError::EmptyStack)? {
-                            Value::Integer(ref mut j) => *j += i,
-                            Value::Index(ref mut j) => *j += i,
-                            Value::Constant(Constant::Integer(j)) => {
-                                stack.pop().ok_or(InterpreterError::EmptyStack)?;
-                                stack.push(Value::Integer(j + i));
-                            }
-                            e => {
-                                return Err(InterpreterError::value_error(format!(
-                                    "Can't add int and {}",
-                                    e
-                                )))
-                            }
+                stack.push(Value::Boolean(a.eq(&b)))
+            }
+            OpCode::OP_NOT_EQUAL => {
+                let a = stack.pop().ok_or(InterpreterError::EmptyStack)?;
+                let b = stack.pop().ok_or(InterpreterError::EmptyStack)?;
+                stack.push(Value::Boolean(a.neq(&b)))
+            }
+            OpCode::OP_GREATER => {
+                let a = stack.pop().ok_or(InterpreterError::EmptyStack)?;
+                let b = stack.pop().ok_or(InterpreterError::EmptyStack)?;
+                stack.push(Value::Boolean(b.gt(&a)?))
+            }
+            OpCode::OP_GREATER_OR_EQUAL => {
+                let a = stack.pop().ok_or(InterpreterError::EmptyStack)?;
+                let b = stack.pop().ok_or(InterpreterError::EmptyStack)?;
+                stack.push(Value::Boolean(b.gte(&a)?))
+            }
+            OpCode::OP_LESS => {
+                let a = stack.pop().ok_or(InterpreterError::EmptyStack)?;
+                let b = stack.pop().ok_or(InterpreterError::EmptyStack)?;
+                stack.push(Value::Boolean(b.lt(&a)?))
+            }
+            OpCode::OP_LESS_OR_EQUAL => {
+                let a = stack.pop().ok_or(InterpreterError::EmptyStack)?;
+                let b = stack.pop().ok_or(InterpreterError::EmptyStack)?;
+                stack.push(Value::Boolean(b.lte(&a)?))
+            }
+            OpCode::OP_ADD => {
+                let other = stack.pop().ok_or(InterpreterError::EmptyStack)?;
+                match stack.last_mut() {
+                    Some(ptr) => match ptr.add(other) {
+                        Ok(Some(value)) => {
+                            stack.pop().ok_or(InterpreterError::Impossible)?;
+                            stack.push(value);
                         }
-                    }
-                    Value::Index(i) => {
-                        match stack.last_mut().ok_or(InterpreterError::EmptyStack)? {
-                            Value::Integer(ref mut j) => *j += i,
-                            Value::Index(ref mut j) => *j += i,
-                            Value::Constant(Constant::Integer(j)) => {
-                                stack.pop().ok_or(InterpreterError::EmptyStack)?;
-                                stack.push(Value::Index(j + i));
-                            }
-                            e => {
-                                return Err(InterpreterError::value_error(format!(
-                                    "Can't add Index and {}",
-                                    e
-                                )))
-                            }
-                        }
-                    }
-                    Value::Constant(Constant::Integer(i)) => {
-                        let i = *i;
-                        match stack.last_mut().ok_or(InterpreterError::EmptyStack)? {
-                            Value::Integer(ref mut j) => *j += i,
-                            Value::Index(ref mut j) => *j += i,
-                            Value::Constant(Constant::Integer(j)) => {
-                                stack.pop().ok_or(InterpreterError::EmptyStack)?;
-                                stack.push(Value::Integer(j + i));
-                            }
-                            e => {
-                                return Err(InterpreterError::value_error(format!(
-                                    "Can't add Integer and {}",
-                                    e
-                                )))
-                            }
-                        }
-                    }
-                    e => {
-                        return Err(InterpreterError::value_error(format!(
-                            "Can't use {} in a addition",
-                            e
-                        )))
-                    }
+                        Ok(None) => (),
+                        Err(e) => return Err(e),
+                    },
+                    None => return Err(InterpreterError::EmptyStack),
                 }
             }
             OpCode::OP_SUBSTRACT => {
-                let b = stack.pop().ok_or(InterpreterError::EmptyStack)?;
-
-                match b {
-                    Value::Integer(i) => {
-                        match stack.last_mut().ok_or(InterpreterError::EmptyStack)? {
-                            Value::Integer(ref mut j) => *j -= i,
-                            Value::Index(ref mut j) => *j -= i,
-                            Value::Constant(Constant::Integer(j)) => {
-                                stack.pop().ok_or(InterpreterError::EmptyStack)?;
-                                stack.push(Value::Integer(j - i));
-                            }
-                            e => {
-                                return Err(InterpreterError::value_error(format!(
-                                    "Can't substract int and {}",
-                                    e
-                                )))
-                            }
+                let other = stack.pop().ok_or(InterpreterError::EmptyStack)?;
+                match stack.last_mut() {
+                    Some(ptr) => match ptr.substract(other) {
+                        Ok(Some(value)) => {
+                            stack.pop().ok_or(InterpreterError::Impossible)?;
+                            stack.push(value);
                         }
-                    }
-                    Value::Index(i) => {
-                        match stack.last_mut().ok_or(InterpreterError::EmptyStack)? {
-                            Value::Integer(ref mut j) => *j -= i,
-                            Value::Index(ref mut j) => *j -= i,
-                            Value::Constant(Constant::Integer(j)) => {
-                                stack.pop().ok_or(InterpreterError::EmptyStack)?;
-                                stack.push(Value::Index(j - i));
-                            }
-                            e => {
-                                return Err(InterpreterError::value_error(format!(
-                                    "Can't substract Index and {}",
-                                    e
-                                )))
-                            }
-                        }
-                    }
-                    Value::Constant(Constant::Integer(i)) => {
-                        let i = *i;
-                        match stack.last_mut().ok_or(InterpreterError::EmptyStack)? {
-                            Value::Integer(ref mut j) => *j -= i,
-                            Value::Index(ref mut j) => *j -= i,
-                            Value::Constant(Constant::Integer(j)) => {
-                                stack.pop().ok_or(InterpreterError::EmptyStack)?;
-                                stack.push(Value::Integer(j - i));
-                            }
-                            e => {
-                                return Err(InterpreterError::value_error(format!(
-                                    "Can't add Integer and {}",
-                                    e
-                                )))
-                            }
-                        }
-                    }
-                    e => {
-                        return Err(InterpreterError::value_error(format!(
-                            "Can't use {} in a substraction",
-                            e
-                        )))
-                    }
+                        Ok(None) => (),
+                        Err(e) => return Err(e),
+                    },
+                    None => return Err(InterpreterError::EmptyStack),
                 }
             }
             OpCode::OP_MULTIPLY => {
-                let b = stack.pop().ok_or(InterpreterError::EmptyStack)?;
-
-                match b {
-                    Value::Integer(i) => {
-                        match stack.last_mut().ok_or(InterpreterError::EmptyStack)? {
-                            Value::Integer(ref mut j) => *j *= i,
-                            Value::Index(ref mut j) => *j *= i,
-                            Value::Constant(Constant::Integer(j)) => {
-                                stack.pop().ok_or(InterpreterError::EmptyStack)?;
-                                stack.push(Value::Integer(j * i));
-                            }
-                            e => {
-                                return Err(InterpreterError::value_error(format!(
-                                    "Can't multiply int and {}",
-                                    e
-                                )))
-                            }
+                let other = stack.pop().ok_or(InterpreterError::EmptyStack)?;
+                match stack.last_mut() {
+                    Some(ptr) => match ptr.multiply(other) {
+                        Ok(Some(value)) => {
+                            stack.pop().ok_or(InterpreterError::Impossible)?;
+                            stack.push(value);
                         }
-                    }
-                    Value::Index(i) => {
-                        match stack.last_mut().ok_or(InterpreterError::EmptyStack)? {
-                            Value::Integer(ref mut j) => *j *= i,
-                            Value::Index(ref mut j) => *j *= i,
-                            Value::Constant(Constant::Integer(j)) => {
-                                stack.pop().ok_or(InterpreterError::EmptyStack)?;
-                                stack.push(Value::Index(j * i));
-                            }
-                            e => {
-                                return Err(InterpreterError::value_error(format!(
-                                    "Can't multiply Index and {}",
-                                    e
-                                )))
-                            }
-                        }
-                    }
-                    Value::Constant(Constant::Integer(i)) => {
-                        let i = *i;
-                        match stack.last_mut().ok_or(InterpreterError::EmptyStack)? {
-                            Value::Integer(ref mut j) => *j *= i,
-                            Value::Index(ref mut j) => *j *= i,
-                            Value::Constant(Constant::Integer(j)) => {
-                                stack.pop().ok_or(InterpreterError::EmptyStack)?;
-                                stack.push(Value::Integer(j * i));
-                            }
-                            e => {
-                                return Err(InterpreterError::value_error(format!(
-                                    "Can't multiply Integer and {}",
-                                    e
-                                )))
-                            }
-                        }
-                    }
-                    e => {
-                        return Err(InterpreterError::value_error(format!(
-                            "Can't use {} in a multiplication",
-                            e
-                        )))
-                    }
+                        Ok(None) => (),
+                        Err(e) => return Err(e),
+                    },
+                    None => return Err(InterpreterError::EmptyStack),
                 }
             }
             OpCode::OP_DIVIDE => {
-                let b = stack.pop().ok_or(InterpreterError::EmptyStack)?;
-
-                match b {
-                    Value::Integer(i) => {
-                        match stack.last_mut().ok_or(InterpreterError::EmptyStack)? {
-                            Value::Integer(ref mut j) => *j /= i,
-                            Value::Index(ref mut j) => *j /= i,
-                            Value::Constant(Constant::Integer(j)) => {
-                                stack.pop().ok_or(InterpreterError::EmptyStack)?;
-                                stack.push(Value::Integer(j / i));
-                            }
-                            e => {
-                                return Err(InterpreterError::value_error(format!(
-                                    "Can't divide int and {}",
-                                    e
-                                )))
-                            }
+                let other = stack.pop().ok_or(InterpreterError::EmptyStack)?;
+                match stack.last_mut() {
+                    Some(ptr) => match ptr.divide(other) {
+                        Ok(Some(value)) => {
+                            stack.pop().ok_or(InterpreterError::Impossible)?;
+                            stack.push(value);
                         }
-                    }
-                    Value::Index(i) => {
-                        match stack.last_mut().ok_or(InterpreterError::EmptyStack)? {
-                            Value::Integer(ref mut j) => *j /= i,
-                            Value::Index(ref mut j) => *j /= i,
-                            Value::Constant(Constant::Integer(j)) => {
-                                stack.pop().ok_or(InterpreterError::EmptyStack)?;
-                                stack.push(Value::Index(j / i));
-                            }
-                            e => {
-                                return Err(InterpreterError::value_error(format!(
-                                    "Can't divide Index and {}",
-                                    e
-                                )))
-                            }
-                        }
-                    }
-                    Value::Constant(Constant::Integer(i)) => {
-                        let i = *i;
-                        match stack.last_mut().ok_or(InterpreterError::EmptyStack)? {
-                            Value::Integer(ref mut j) => *j /= i,
-                            Value::Index(ref mut j) => *j /= i,
-                            Value::Constant(Constant::Integer(j)) => {
-                                stack.pop().ok_or(InterpreterError::EmptyStack)?;
-                                stack.push(Value::Integer(j / i));
-                            }
-                            e => {
-                                return Err(InterpreterError::value_error(format!(
-                                    "Can't divide Integer and {}",
-                                    e
-                                )))
-                            }
-                        }
-                    }
-                    e => {
-                        return Err(InterpreterError::value_error(format!(
-                            "Can't use {} in a division",
-                            e
-                        )))
-                    }
+                        Ok(None) => (),
+                        Err(e) => return Err(e),
+                    },
+                    None => return Err(InterpreterError::EmptyStack),
                 }
             }
             OpCode::OP_MODULO => {
-                let b = stack.pop().ok_or(InterpreterError::EmptyStack)?;
-
-                match b {
-                    Value::Integer(i) => {
-                        match stack.last_mut().ok_or(InterpreterError::EmptyStack)? {
-                            Value::Integer(ref mut j) => *j %= i,
-                            Value::Index(ref mut j) => *j %= i,
-                            Value::Constant(Constant::Integer(j)) => {
-                                stack.pop().ok_or(InterpreterError::EmptyStack)?;
-                                stack.push(Value::Integer(j % i));
-                            }
-                            e => {
-                                return Err(InterpreterError::value_error(format!(
-                                    "Can't add modulo and {}",
-                                    e
-                                )))
-                            }
+                let other = stack.pop().ok_or(InterpreterError::EmptyStack)?;
+                match stack.last_mut() {
+                    Some(ptr) => match ptr.modulo(other) {
+                        Ok(Some(value)) => {
+                            stack.pop().ok_or(InterpreterError::Impossible)?;
+                            stack.push(value);
                         }
-                    }
-                    Value::Index(i) => {
-                        match stack.last_mut().ok_or(InterpreterError::EmptyStack)? {
-                            Value::Integer(ref mut j) => *j %= i,
-                            Value::Index(ref mut j) => *j %= i,
-                            Value::Constant(Constant::Integer(j)) => {
-                                stack.pop().ok_or(InterpreterError::EmptyStack)?;
-                                stack.push(Value::Index(j % i));
-                            }
-                            e => {
-                                return Err(InterpreterError::value_error(format!(
-                                    "Can't modulo Index and {}",
-                                    e
-                                )))
-                            }
-                        }
-                    }
-                    Value::Constant(Constant::Integer(i)) => {
-                        let i = *i;
-                        match stack.last_mut().ok_or(InterpreterError::EmptyStack)? {
-                            Value::Integer(ref mut j) => *j %= i,
-                            Value::Index(ref mut j) => *j %= i,
-                            Value::Constant(Constant::Integer(j)) => {
-                                stack.pop().ok_or(InterpreterError::EmptyStack)?;
-                                stack.push(Value::Integer(j % i));
-                            }
-                            e => {
-                                return Err(InterpreterError::value_error(format!(
-                                    "Can't modulo Integer and {}",
-                                    e
-                                )))
-                            }
-                        }
-                    }
-                    e => {
-                        return Err(InterpreterError::value_error(format!(
-                            "Can't use {} in a modulo",
-                            e
-                        )))
-                    }
+                        Ok(None) => (),
+                        Err(e) => return Err(e),
+                    },
+                    None => return Err(InterpreterError::EmptyStack),
                 }
             }
-        }
+        };
 
         Ok(())
     }

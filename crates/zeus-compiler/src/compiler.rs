@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use zeus_scanner::Scanner;
 use zeus_scanner::ScanningErrorType;
 use zeus_scanner::Token;
@@ -96,19 +94,33 @@ impl<'a> Compiler<'a> {
             TokenType::Minus => self.emit_op_code(OpCode::OP_SUBSTRACT),
             TokenType::Star => self.emit_op_code(OpCode::OP_MULTIPLY),
             TokenType::Slash => self.emit_op_code(OpCode::OP_DIVIDE),
-            _ => {
-                return Err(CompilerError::Unknown(
-                    "Expected an operator here".to_owned(),
-                ))
+            TokenType::EqualEqual => self.emit_op_code(OpCode::OP_EQUAL),
+            TokenType::BangEqual => self.emit_op_code(OpCode::OP_NOT_EQUAL),
+            TokenType::Greater => self.emit_op_code(OpCode::OP_GREATER),
+            TokenType::GreaterEqual => self.emit_op_code(OpCode::OP_GREATER_OR_EQUAL),
+            TokenType::Less => self.emit_op_code(OpCode::OP_LESS),
+            TokenType::LessEqual => self.emit_op_code(OpCode::OP_LESS_OR_EQUAL),
+            e => {
+                return Err(CompilerError::Unknown(format!(
+                    "Expected an operator here, got {e}"
+                )))
             }
         };
         Ok(())
     }
 
-    pub fn unary(&mut self, token_type: &TokenType) -> Result<(), CompilerError> {
+    pub fn unary(&mut self, token: &TokenType) -> Result<(), CompilerError> {
         log::debug!("Unary starting");
         self.parse_precedence(Precedence::Unary)?;
-        self.emit_op_code(OpCode::OP_NEGATE);
+        match token {
+            TokenType::Minus => self.emit_op_code(OpCode::OP_NEGATE),
+            TokenType::Not => self.emit_op_code(OpCode::OP_NOT),
+            e => {
+                return Err(CompilerError::Unknown(format!(
+                    "Expected a unary operator here, got {e}"
+                )))
+            }
+        }
         Ok(())
     }
 
@@ -128,6 +140,21 @@ impl<'a> Compiler<'a> {
                 ))
             }
         }
+
+        Ok(())
+    }
+
+    pub fn literal(&mut self, token: &TokenType) -> Result<(), CompilerError> {
+        match token {
+            TokenType::False => self.emit_op_code(OpCode::OP_FALSE),
+            TokenType::True => self.emit_op_code(OpCode::OP_TRUE),
+            TokenType::None => self.emit_op_code(OpCode::OP_NONE),
+            e => {
+                return Err(CompilerError::Unknown(format!(
+                    "Expected a literal, got {e}"
+                )))
+            }
+        };
 
         Ok(())
     }

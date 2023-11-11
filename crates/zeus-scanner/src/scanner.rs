@@ -216,6 +216,7 @@ impl<'a> Scanner<'a> {
         }
 
         match str.as_str() {
+            "not" => TokenType::Not,
             "and" => TokenType::And,
             "or" => TokenType::Or,
             "def" => TokenType::Def,

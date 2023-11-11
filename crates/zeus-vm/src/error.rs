@@ -4,17 +4,29 @@ pub enum InterpreterError {
     ConstantNotFound,
     CompileError(String),
     RuntimeError(RuntimeErrorType),
+    Impossible,
 }
 
 pub enum RuntimeErrorType {
     ValueError(String),
     KeyError(String),
+    DivideByZero(String),
 }
 
-impl InterpreterError {
-    pub fn value_error(msg: String) -> Self {
-        InterpreterError::RuntimeError(RuntimeErrorType::ValueError(msg))
-    }
+#[macro_export]
+macro_rules! value_error {
+    ($($arg:tt)*) => {{
+        let res = format!($($arg)*);
+        Err($crate::error::InterpreterError::RuntimeError($crate::error::RuntimeErrorType::ValueError(res)))
+    }}
+}
+
+#[macro_export]
+macro_rules! divide_by_zero_error {
+    ($($arg:tt)*) => {{
+        let res = format!($($arg)*);
+        Err($crate::error::InterpreterError::RuntimeError($crate::error::RuntimeErrorType::DivideByZero(res)))
+    }}
 }
 
 impl std::fmt::Display for RuntimeErrorType {
@@ -22,6 +34,7 @@ impl std::fmt::Display for RuntimeErrorType {
         match self {
             Self::ValueError(s) => write!(f, "ValueError: {s}"),
             Self::KeyError(s) => write!(f, "KeyError: {s}"),
+            Self::DivideByZero(s) => write!(f, "Divide by zero: {s}"),
         }
     }
 }
@@ -34,6 +47,7 @@ impl std::fmt::Display for InterpreterError {
             Self::RuntimeError(e) => write!(f, "Interpreter error: {e}"),
             Self::EmptyStack => write!(f, "Empty Stack"),
             Self::ConstantNotFound => write!(f, "Constant not found"),
+            Self::Impossible => write!(f, "Impossible"),
         }
     }
 }
@@ -46,6 +60,7 @@ impl std::fmt::Debug for InterpreterError {
             Self::RuntimeError(e) => write!(f, "Interpreter error: {e}"),
             Self::EmptyStack => write!(f, "Empty Stack"),
             Self::ConstantNotFound => write!(f, "Constant not found"),
+            Self::Impossible => write!(f, "Impossible"),
         }
     }
 }

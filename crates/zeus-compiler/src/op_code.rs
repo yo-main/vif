@@ -7,6 +7,16 @@ pub enum OpCode {
     OP_MULTIPLY,
     OP_DIVIDE,
     OP_MODULO,
+    OP_TRUE,
+    OP_FALSE,
+    OP_NONE,
+    OP_NOT,
+    OP_EQUAL,
+    OP_NOT_EQUAL,
+    OP_GREATER,
+    OP_LESS,
+    OP_GREATER_OR_EQUAL,
+    OP_LESS_OR_EQUAL,
 }
 
 impl std::fmt::Display for OpCode {
@@ -20,6 +30,16 @@ impl std::fmt::Display for OpCode {
             Self::OP_MULTIPLY => write!(f, "OP_MULTIPLY"),
             Self::OP_DIVIDE => write!(f, "OP_DIVIDE"),
             Self::OP_MODULO => write!(f, "OP_MODULO"),
+            Self::OP_TRUE => write!(f, "OP_TRUE"),
+            Self::OP_FALSE => write!(f, "OP_FALSE"),
+            Self::OP_NONE => write!(f, "OP_NONE"),
+            Self::OP_NOT => write!(f, "OP_NOT"),
+            Self::OP_EQUAL => write!(f, "OP_EQUAL"),
+            Self::OP_NOT_EQUAL => write!(f, "OP_NOT_EQUAL"),
+            Self::OP_GREATER => write!(f, "OP_GREATER"),
+            Self::OP_LESS => write!(f, "OP_LESS"),
+            Self::OP_GREATER_OR_EQUAL => write!(f, "OP_GREATER_OR_EQUAL"),
+            Self::OP_LESS_OR_EQUAL => write!(f, "OP_LESS_OR_EQUAL"),
         }
     }
 }
