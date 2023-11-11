@@ -56,7 +56,7 @@ impl<'a> Compiler<'a> {
     }
 
     pub fn consume(&mut self, token_type: TokenType, msg: &str) -> Result<(), CompilerError> {
-        match self.scanner.scan() {
+        match self.advance() {
             Ok(t) if t.r#type == token_type => Ok(()),
             Ok(_) => Err(CompilerError::SyntaxError(msg.to_owned())),
             Err(e) => Err(CompilerError::ScanningError(format!("{e}"))),
