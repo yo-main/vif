@@ -144,6 +144,20 @@ impl<'a> Compiler<'a> {
         Ok(())
     }
 
+    pub fn string(&mut self, token: &TokenType) -> Result<(), CompilerError> {
+        log::debug!("String starting");
+        match token {
+            TokenType::String(s) => self.emit_constant(Constant::String(s.clone())),
+            _ => {
+                return Err(CompilerError::Unknown(
+                    "Should not have been something else than number".to_owned(),
+                ))
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn literal(&mut self, token: &TokenType) -> Result<(), CompilerError> {
         match token {
             TokenType::False => self.emit_op_code(OpCode::OP_FALSE),
