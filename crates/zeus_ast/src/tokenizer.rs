@@ -6,12 +6,12 @@ use std::iter::Peekable;
 use std::str::Chars;
 
 pub struct Tokenizer<'a> {
+    has_error: bool,
+    tokens: Vec<Token>,
     source: Peekable<Chars<'a>>,
-    pub tokens: Vec<Token>,
     line: u64,
     line_start: bool,
     indent_stack: Vec<u8>,
-    pub has_error: bool,
 }
 
 impl<'a> Tokenizer<'a> {
@@ -126,7 +126,6 @@ impl<'a> Tokenizer<'a> {
             }
             _ => self.line_start = false,
         };
-        // println!("{:?}, {}", token_type, self.line_start);
 
         match token_type {
             TokenType::Comment(_) => (),
