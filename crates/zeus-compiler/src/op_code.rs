@@ -17,6 +17,8 @@ pub enum OpCode {
     OP_LESS,
     OP_GREATER_OR_EQUAL,
     OP_LESS_OR_EQUAL,
+    OP_PRINT, // temp
+    OP_POP,
 }
 
 impl std::fmt::Display for OpCode {
@@ -40,6 +42,8 @@ impl std::fmt::Display for OpCode {
             Self::OP_LESS => write!(f, "OP_LESS"),
             Self::OP_GREATER_OR_EQUAL => write!(f, "OP_GREATER_OR_EQUAL"),
             Self::OP_LESS_OR_EQUAL => write!(f, "OP_LESS_OR_EQUAL"),
+            Self::OP_PRINT => write!(f, "OP_PRINT"),
+            Self::OP_POP => write!(f, "OP_POP"),
         }
     }
 }

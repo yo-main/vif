@@ -48,7 +48,35 @@ impl<'a> Compiler<'a> {
             },
         }
     }
+
+    pub fn declaration(&mut self) -> Result<(), CompilerError> {
+        log::debug!("Starting declaration");
+        self.statement()
+    }
+
+    pub fn statement(&mut self) -> Result<(), CompilerError> {
+        log::debug!("Starting statement");
+        match self.advance()? {
+            t if t.r#type == TokenType::At => {
+                self.expression()?;
+                self.consume(TokenType::NewLine, "Expects new line after expression")?;
+                self.emit_op_code(OpCode::OP_PRINT);
+                return Ok(());
+            }
+            t if t.r#type == TokenType::NewLine => self.statement(),
+            _ => self.expression_statement(),
+        }
+    }
+
+    fn expression_statement(&mut self) -> Result<(), CompilerError> {
+        self.expression()?;
+        self.consume(TokenType::NewLine, "Expects \n after an expression")?;
+        self.emit_op_code(OpCode::OP_POP);
+        Ok(())
+    }
+
     pub fn expression(&mut self) -> Result<(), CompilerError> {
+        log::debug!("Starting expression");
         self.parse_precedence(Precedence::Assignement)?;
         Ok(())
     }

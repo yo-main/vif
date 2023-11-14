@@ -12,11 +12,10 @@ fn setup_logging() {
     let _ = fern::Dispatch::new()
         .format(|out, message, record| {
             out.finish(format_args!(
-                "{} - {} - {} {} - {}",
-                chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f"),
+                "{} - {} - {:<30} \t{}",
+                chrono::Local::now().format("%H:%M:%S%.3f"),
                 record.level(),
                 record.target(),
-                record.line().unwrap_or(0),
                 message
             ))
         })

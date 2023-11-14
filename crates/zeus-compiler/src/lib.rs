@@ -19,7 +19,8 @@ pub fn compile(content: String) -> Result<Chunk, CompilerError> {
     let mut compiler = Compiler::new(scanner);
 
     loop {
-        match compiler.expression() {
+        log::debug!("Main compiler loop");
+        match compiler.declaration() {
             Err(CompilerError::EOF) => break,
             Err(e) => log::error!("{}", e),
             Ok(_) => (),

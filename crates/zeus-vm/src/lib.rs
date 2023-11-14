@@ -1,3 +1,4 @@
+mod env;
 mod error;
 pub mod value;
 mod vm;

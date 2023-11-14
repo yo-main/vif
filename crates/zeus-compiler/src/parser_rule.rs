@@ -1,4 +1,4 @@
-use crate::compiler::{self, Compiler};
+use crate::compiler::Compiler;
 use crate::error::CompilerError;
 use crate::precedence::Precedence;
 use zeus_scanner::TokenType;
@@ -16,7 +16,6 @@ impl PrattParser for TokenType {
             Self::LeftParen => compiler.grouping(),
             Self::Minus => compiler.unary(self),
             Self::Integer(_) => compiler.number(self),
-            Self::NewLine => compiler.expression(),
             Self::False => compiler.literal(self),
             Self::True => compiler.literal(self),
             Self::None => compiler.literal(self),
@@ -49,7 +48,6 @@ impl PrattParser for TokenType {
             Self::Plus => Precedence::Term,
             Self::Slash => Precedence::Factor,
             Self::Star => Precedence::Factor,
-            Self::NewLine => Precedence::Assignement,
             Self::BangEqual => Precedence::Equality,
             Self::EqualEqual => Precedence::Equality,
             Self::Greater => Precedence::Comparison,

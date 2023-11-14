@@ -36,6 +36,8 @@ pub fn disassemble_instruction(offset: usize, op_code: &OpCode, chunk: &Chunk) {
         OpCode::OP_GREATER_OR_EQUAL => simple_instruction("OP_GREATER_OR_EQUAL", offset),
         OpCode::OP_LESS => simple_instruction("OP_LESS", offset),
         OpCode::OP_LESS_OR_EQUAL => simple_instruction("OP_LESS_OR_EQUAL", offset),
+        OpCode::OP_PRINT => simple_instruction("OP_PRINT", offset),
+        OpCode::OP_POP => simple_instruction("OP_POP", offset),
     }
 }
 

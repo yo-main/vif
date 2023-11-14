@@ -1,3 +1,4 @@
+use crate::env::Env;
 use crate::error::InterpreterError;
 use crate::value::Value;
 use crate::value_error;
@@ -19,9 +20,16 @@ impl VM {
     ) -> Result<(), InterpreterError> {
         log::trace!("op {}, stack: {:?}", op_code, stack);
         match op_code {
-            OpCode::OP_RETURN => {
-                println!("{:?}", stack.pop().ok_or(InterpreterError::EmptyStack)?);
+            OpCode::OP_PRINT => {
+                println!(
+                    "printing {}",
+                    stack.pop().ok_or(InterpreterError::Impossible)?
+                );
             }
+            OpCode::OP_POP => {
+                stack.pop().ok_or(InterpreterError::Impossible)?;
+            }
+            OpCode::OP_RETURN => {}
             OpCode::OP_CONSTANT(i) => {
                 let i = *i;
                 match constants.get(i) {
