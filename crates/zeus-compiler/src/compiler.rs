@@ -49,6 +49,26 @@ impl<'a> Compiler<'a> {
         }
     }
 
+    pub fn synchronize(&mut self) -> Result<(), CompilerError> {
+        if self.scanner.is_at_line_start() {
+            return Ok(());
+        }
+
+        loop {
+            match self.advance()? {
+                t if t.r#type == TokenType::NewLine => return Ok(()),
+                t if t.r#type == TokenType::Class => return Ok(()),
+                t if t.r#type == TokenType::Def => return Ok(()),
+                t if t.r#type == TokenType::Var => return Ok(()),
+                t if t.r#type == TokenType::For => return Ok(()),
+                t if t.r#type == TokenType::If => return Ok(()),
+                t if t.r#type == TokenType::While => return Ok(()),
+                t if t.r#type == TokenType::Return => return Ok(()),
+                _ => (),
+            }
+        }
+    }
+
     pub fn declaration(&mut self) -> Result<(), CompilerError> {
         log::debug!("Starting declaration");
         self.statement()

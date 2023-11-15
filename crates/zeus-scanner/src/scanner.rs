@@ -38,6 +38,10 @@ impl<'a> Scanner<'a> {
         err
     }
 
+    pub fn is_at_line_start(&self) -> bool {
+        self.line_start
+    }
+
     fn scan_token(&mut self) -> Result<Token, ScanningError> {
         let token_type = if self.line_start {
             self.line_start = false;

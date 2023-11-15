@@ -22,12 +22,14 @@ pub fn compile(content: String) -> Result<Chunk, CompilerError> {
         log::debug!("Main compiler loop");
         match compiler.declaration() {
             Err(CompilerError::EOF) => break,
-            Err(e) => log::error!("{}", e),
+            Err(e) => {
+                log::error!("{}", e);
+                compiler.synchronize()?;
+            }
             Ok(_) => (),
         };
     }
 
-    // compiler.consume(TokenType::EOF, "Expect end of expression")?;
     compiler.end();
 
     Ok(compiler.compiling_chunk)
