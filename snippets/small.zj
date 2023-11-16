@@ -1,5 +1,5 @@
-not (5 - 4 > 3 * 2 == not None)
-@ "coucou"
-@ "coucou"
+var coucou = "Allo"
+var test = coucou + " Quoi"
+@ test
 
 

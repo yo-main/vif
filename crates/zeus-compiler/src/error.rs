@@ -9,6 +9,12 @@ pub enum CompilerError {
 
 impl std::fmt::Display for CompilerError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Compiler error")
+        match self {
+            Self::EOF => write!(f, "EOF"),
+            Self::ConstantNotFound => write!(f, "ConstantNotFound"),
+            Self::ScanningError(e) => write!(f, "ScanningError: {e}"),
+            Self::SyntaxError(e) => write!(f, "SyntaxError: {e}"),
+            Self::Unknown(e) => write!(f, "Unknown: {e}"),
+        }
     }
 }

@@ -21,6 +21,7 @@ impl PrattParser for TokenType {
             Self::None => compiler.literal(self),
             Self::Not => compiler.unary(self),
             Self::String(_) => compiler.string(self),
+            Self::Identifier(_) => compiler.variable(self),
             _ => Ok(()),
         }
     }

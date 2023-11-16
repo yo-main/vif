@@ -74,7 +74,7 @@ impl<'a> Compiler<'a> {
         self.statement()
     }
 
-    pub fn statement(&mut self) -> Result<(), CompilerError> {
+    fn statement(&mut self) -> Result<(), CompilerError> {
         log::debug!("Starting statement");
         match self.advance()? {
             t if t.r#type == TokenType::At => {
@@ -83,25 +83,69 @@ impl<'a> Compiler<'a> {
                 self.emit_op_code(OpCode::OP_PRINT);
                 return Ok(());
             }
+            t if t.r#type == TokenType::Var => self.var_declaration(), // if we need to put it above, think about the pending var
             t if t.r#type == TokenType::NewLine => self.statement(),
             _ => self.expression_statement(),
         }
     }
 
+    fn var_declaration(&mut self) -> Result<(), CompilerError> {
+        let variable = self.parse_variable()?;
+
+        match self.advance()? {
+            t if t.r#type == TokenType::Equal => self.expression()?,
+            _ => {
+                return Err(CompilerError::SyntaxError(format!(
+                    "Expected an assignement after var declaration"
+                )))
+            }
+        };
+
+        self.consume(
+            TokenType::NewLine,
+            "Expects new line after variable declaration",
+        )?;
+
+        self.define_variable(variable);
+        Ok(())
+    }
+
+    fn parse_variable(&mut self) -> Result<usize, CompilerError> {
+        let token = self.advance()?;
+
+        match token.r#type {
+            TokenType::Identifier(s) => Ok(self.register_constant(Constant::Identifier(s))),
+            e => {
+                return Err(CompilerError::SyntaxError(format!(
+                    "Expected identifier when parsing variable, got {e}"
+                )))
+            }
+        }
+    }
+
+    fn define_variable(&mut self, variable: usize) {
+        self.emit_op_code(OpCode::OP_GLOBAL_VARIABLE(variable))
+    }
+
+    fn register_constant(&mut self, constant: Constant) -> usize {
+        self.compiling_chunk.add_constant(constant)
+    }
+
     fn expression_statement(&mut self) -> Result<(), CompilerError> {
+        log::debug!("Starting expression statement");
         self.expression()?;
-        self.consume(TokenType::NewLine, "Expects \n after an expression")?;
+        self.consume(TokenType::NewLine, "Expects \\n after an expression")?;
         self.emit_op_code(OpCode::OP_POP);
         Ok(())
     }
 
-    pub fn expression(&mut self) -> Result<(), CompilerError> {
+    fn expression(&mut self) -> Result<(), CompilerError> {
         log::debug!("Starting expression");
         self.parse_precedence(Precedence::Assignement)?;
         Ok(())
     }
 
-    pub fn consume(&mut self, token_type: TokenType, msg: &str) -> Result<(), CompilerError> {
+    fn consume(&mut self, token_type: TokenType, msg: &str) -> Result<(), CompilerError> {
         match self.advance() {
             Ok(t) if t.r#type == token_type => Ok(()),
             Ok(_) => Err(CompilerError::SyntaxError(msg.to_owned())),
@@ -131,6 +175,19 @@ impl<'a> Compiler<'a> {
 
     fn get_rule(&mut self, token_type: &TokenType) -> Precedence {
         token_type.precedence()
+    }
+
+    pub fn variable(&mut self, token_type: &TokenType) -> Result<(), CompilerError> {
+        match token_type {
+            TokenType::Identifier(s) => self.named_variable(Constant::Identifier(s.clone())),
+            _ => return Err(CompilerError::Unknown(format!("Impossible"))),
+        }
+    }
+
+    fn named_variable(&mut self, constant: Constant) -> Result<(), CompilerError> {
+        let index = self.register_constant(constant);
+        self.emit_op_code(OpCode::OP_GET_GLOBAL(index));
+        Ok(())
     }
 
     pub fn binary(&mut self, token_type: &TokenType) -> Result<(), CompilerError> {

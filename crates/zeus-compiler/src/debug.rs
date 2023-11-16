@@ -20,6 +20,10 @@ pub fn disassemble_instruction(offset: usize, op_code: &OpCode, chunk: &Chunk) {
     match op_code {
         OpCode::OP_RETURN => simple_instruction("OP_RETURN", offset),
         OpCode::OP_CONSTANT(i) => constant_instruction("OP_CONSTANT", chunk, *i, offset),
+        OpCode::OP_GLOBAL_VARIABLE(i) => {
+            constant_instruction("OP_GLOBAL_VARIABLE", chunk, *i, offset)
+        }
+        OpCode::OP_GET_GLOBAL(i) => constant_instruction("OP_GET_GLOBAL", chunk, *i, offset),
         OpCode::OP_NEGATE => simple_instruction("OP_NEGATE", offset),
         OpCode::OP_ADD => simple_instruction("OP_ADD", offset),
         OpCode::OP_SUBSTRACT => simple_instruction("OP_SUBSTRACT", offset),

@@ -11,6 +11,7 @@ pub enum RuntimeErrorType {
     ValueError(String),
     KeyError(String),
     DivideByZero(String),
+    UndeclaredVariable(String),
 }
 
 #[macro_export]
@@ -35,6 +36,7 @@ impl std::fmt::Display for RuntimeErrorType {
             Self::ValueError(s) => write!(f, "ValueError: {s}"),
             Self::KeyError(s) => write!(f, "KeyError: {s}"),
             Self::DivideByZero(s) => write!(f, "Divide by zero: {s}"),
+            Self::UndeclaredVariable(s) => write!(f, "Undeclared variable: {s}"),
         }
     }
 }

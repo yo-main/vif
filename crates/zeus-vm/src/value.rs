@@ -4,7 +4,7 @@ use crate::divide_by_zero_error;
 use crate::error::InterpreterError;
 use crate::value_error;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Value<'c> {
     Integer(i64),
     Index(i64),
@@ -16,7 +16,7 @@ pub enum Value<'c> {
     None,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum BinaryOp {
     Add,
     Substract,
@@ -512,119 +512,63 @@ impl Value<'_> {
                 Self::Float(j) => return Ok(Some(Value::Float(j + *i as f64))),
                 Self::Boolean(true) => *i += 1,
                 Self::Boolean(false) => (),
-                Self::Index(j) => *i += j,
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => *i += j,
-                    Constant::Float(j) => return Ok(Some(Value::Float(j + *i as f64))),
-                    Constant::String(_) => return value_error!("Can't add {self} and {other}"),
-                },
-                Self::String(_) => return value_error!("Can't add {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't add {self} and {other}"),
-                Self::None => return value_error!("Can't add {self} and {other}"),
-            },
-            Self::Index(ref mut i) => match other {
-                Self::Integer(j) => *i += j,
-                Self::Float(j) => return Ok(Some(Value::Float(j + *i as f64))),
-                Self::Boolean(true) => *i += 1,
-                Self::Boolean(false) => (),
-                Self::Index(j) => *i += j,
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => *i += j,
-                    Constant::Float(j) => return Ok(Some(Value::Float(j + *i as f64))),
-                    Constant::String(_) => return value_error!("Can't add {self} and {other}"),
-                },
-                Self::String(_) => return value_error!("Can't add {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't add {self} and {other}"),
-                Self::None => return value_error!("Can't add {self} and {other}"),
+                Self::Constant(Constant::Integer(j)) => *i += j,
+                Self::Constant(Constant::Float(j)) => return Ok(Some(Value::Float(j + *i as f64))),
+                _ => return value_error!("Can't add {self} and {other}"),
             },
             Self::Float(ref mut i) => match other {
                 Self::Integer(j) => *i += j as f64,
                 Self::Float(j) => *i += j,
                 Self::Boolean(true) => *i += 1.0,
                 Self::Boolean(false) => (),
-                Self::Index(j) => *i += j as f64,
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => *i += *j as f64,
-                    Constant::Float(j) => *i += j,
-                    Constant::String(_) => return value_error!("Can't add {self} and {other}"),
-                },
-                Self::String(_) => return value_error!("Can't add {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't add {self} and {other}"),
-                Self::None => return value_error!("Can't add {self} and {other}"),
+                Self::Constant(Constant::Integer(j)) => *i += *j as f64,
+                Self::Constant(Constant::Float(j)) => *i += j,
+                _ => return value_error!("Can't add {self} and {other}"),
             },
             Self::Constant(Constant::Integer(i)) => match other {
                 Self::Integer(j) => return Ok(Some(Value::Integer(i + j))),
                 Self::Float(j) => return Ok(Some(Value::Float(*i as f64 + j))),
                 Self::Boolean(true) => return Ok(Some(Value::Integer(i + 1))),
                 Self::Boolean(false) => (),
-                Self::Index(j) => return Ok(Some(Value::Integer(i + j))),
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => return Ok(Some(Value::Integer(i + j))),
-                    Constant::Float(j) => return Ok(Some(Value::Float(*i as f64 + j))),
-                    Constant::String(_) => return value_error!("Can't add {self} and {other}"),
-                },
-                Self::String(_) => return value_error!("Can't add {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't add {self} and {other}"),
-                Self::None => return value_error!("Can't add {self} and {other}"),
+                Self::Constant(Constant::Integer(j)) => return Ok(Some(Value::Integer(i + j))),
+                Self::Constant(Constant::Float(j)) => return Ok(Some(Value::Float(*i as f64 + j))),
+                _ => return value_error!("Can't add {self} and {other}"),
             },
             Self::Constant(Constant::Float(i)) => match other {
                 Self::Integer(j) => return Ok(Some(Value::Float(i + j as f64))),
                 Self::Float(j) => return Ok(Some(Value::Float(i + j))),
                 Self::Boolean(true) => return Ok(Some(Value::Float(i + 1.0))),
                 Self::Boolean(false) => (),
-                Self::Index(j) => return Ok(Some(Value::Float(i + j as f64))),
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => return Ok(Some(Value::Float(i + *j as f64))),
-                    Constant::Float(j) => return Ok(Some(Value::Float(i + j))),
-                    Constant::String(_) => return value_error!("Can't add {self} and {other}"),
-                },
-                Self::String(_) => return value_error!("Can't add {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't add {self} and {other}"),
-                Self::None => return value_error!("Can't add {self} and {other}"),
+                Self::Constant(Constant::Integer(j)) => {
+                    return Ok(Some(Value::Float(i + *j as f64)))
+                }
+                Self::Constant(Constant::Float(j)) => return Ok(Some(Value::Float(i + j))),
+                _ => return value_error!("Can't add {self} and {other}"),
             },
             Self::Constant(Constant::String(i)) => match other {
-                Self::Integer(_) => return value_error!("Can't add {self} and {other}"),
-                Self::Float(_) => return value_error!("Can't add {self} and {other}"),
-                Self::Boolean(_) => return value_error!("Can't add {self} and {other}"),
-                Self::Index(_) => return value_error!("Can't add {self} and {other}"),
-                Self::Constant(c) => match c {
-                    Constant::Integer(_) => return value_error!("Can't add {self} and {other}"),
-                    Constant::Float(_) => return value_error!("Can't add {self} and {other}"),
-                    Constant::String(j) => return Ok(Some(Value::String(format!("{i}{j}")))),
-                },
+                Self::Constant(Constant::String(j)) => {
+                    return Ok(Some(Value::String(format!("{i}{j}"))))
+                }
                 Self::String(j) => return Ok(Some(Value::String(format!("{i}{j}")))),
-                Self::BinaryOp(_) => return value_error!("Can't add {self} and {other}"),
-                Self::None => return value_error!("Can't add {self} and {other}"),
+                _ => return value_error!("Can't add {self} and {other}"),
             },
             Self::Boolean(true) => match other {
                 Self::Integer(j) => return Ok(Some(Value::Integer(1 + j))),
                 Self::Float(j) => return Ok(Some(Value::Float(1.0 + j))),
                 Self::Boolean(true) => return Ok(Some(Value::Integer(2))),
                 Self::Boolean(false) => return Ok(Some(Value::Integer(1))),
-                Self::Index(j) => return Ok(Some(Value::Integer(1 + j))),
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => return Ok(Some(Value::Integer(1 + j))),
-                    Constant::Float(j) => return Ok(Some(Value::Float(1.0 + j))),
-                    Constant::String(_) => return value_error!("Can't add {self} and {other}"),
-                },
-                Self::String(_) => return value_error!("Can't add {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't add {self} and {other}"),
-                Self::None => return value_error!("Can't add {self} and {other}"),
+                Self::Constant(Constant::Integer(j)) => return Ok(Some(Value::Integer(1 + j))),
+                Self::Constant(Constant::Float(j)) => return Ok(Some(Value::Float(1.0 + j))),
+                _ => return value_error!("Can't add {self} and {other}"),
             },
             Self::Boolean(false) => match other {
                 Self::Integer(j) => return Ok(Some(Value::Integer(j))),
                 Self::Float(j) => return Ok(Some(Value::Float(j))),
                 Self::Boolean(true) => return Ok(Some(Value::Integer(1))),
                 Self::Boolean(false) => return Ok(Some(Value::Integer(0))),
-                Self::Index(j) => return Ok(Some(Value::Integer(j))),
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => return Ok(Some(Value::Integer(*j))),
-                    Constant::Float(j) => return Ok(Some(Value::Float(*j))),
-                    Constant::String(_) => return value_error!("Can't add {self} and {other}"),
-                },
-                Self::String(_) => return value_error!("Can't add {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't add {self} and {other}"),
-                Self::None => return value_error!("Can't add {self} and {other}"),
+                Self::Constant(Constant::Integer(j)) => return Ok(Some(Value::Integer(*j))),
+                Self::Constant(Constant::Float(j)) => return Ok(Some(Value::Float(*j))),
+                _ => return value_error!("Can't add {self} and {other}"),
             },
             Self::String(i) => match other {
                 Self::Constant(Constant::String(j)) => {
@@ -634,7 +578,7 @@ impl Value<'_> {
                 _ => return value_error!("Can't add {self} and {other}"),
             },
             Self::BinaryOp(_) => return value_error!("Can't add {self} and {other}"),
-            Self::None => return value_error!("Can't add {self} and {other}"),
+            _ => return value_error!("Can't add {self} and {other}"),
         };
 
         Ok(None)
@@ -653,139 +597,58 @@ impl Value<'_> {
                 Self::Float(j) => return Ok(Some(Value::Float(*i as f64 * j))),
                 Self::Boolean(true) => *i *= 1,
                 Self::Boolean(false) => *i *= 0,
-                Self::Index(j) => *i *= j,
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => *i *= j,
-                    Constant::Float(j) => return Ok(Some(Value::Float(*i as f64 * j))),
-                    Constant::String(_) => {
-                        return value_error!("Can't multiply {self} and {other}")
-                    }
-                },
-                Self::String(_) => return value_error!("Can't multiply {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't multiply {self} and {other}"),
-                Self::None => return value_error!("Can't multiply {self} and {other}"),
-            },
-            Self::Index(ref mut i) => match other {
-                Self::Integer(j) => *i *= j,
-                Self::Float(j) => return Ok(Some(Value::Float(*i as f64 * j))),
-                Self::Boolean(true) => *i *= 1,
-                Self::Boolean(false) => *i *= 0,
-                Self::Index(j) => *i *= j,
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => *i *= j,
-                    Constant::Float(j) => return Ok(Some(Value::Float(*i as f64 * j))),
-                    Constant::String(_) => {
-                        return value_error!("Can't multiply {self} and {other}")
-                    }
-                },
-                Self::String(_) => return value_error!("Can't multiply {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't multiply {self} and {other}"),
-                Self::None => return value_error!("Can't multiply {self} and {other}"),
+                Self::Constant(Constant::Integer(j)) => *i *= j,
+                Self::Constant(Constant::Float(j)) => return Ok(Some(Value::Float(*i as f64 * j))),
+                _ => return value_error!("Can't multiply {self} and {other}"),
             },
             Self::Float(ref mut i) => match other {
                 Self::Integer(j) => *i *= j as f64,
                 Self::Float(j) => *i *= j,
                 Self::Boolean(true) => *i *= 1.0,
                 Self::Boolean(false) => *i *= 0.0,
-                Self::Index(j) => *i *= j as f64,
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => *i *= *j as f64,
-                    Constant::Float(j) => *i *= j,
-                    Constant::String(_) => {
-                        return value_error!("Can't multiply {self} and {other}")
-                    }
-                },
-                Self::String(_) => return value_error!("Can't multiply {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't multiply {self} and {other}"),
-                Self::None => return value_error!("Can't multiply {self} and {other}"),
+                Self::Constant(Constant::Integer(j)) => *i *= *j as f64,
+                Self::Constant(Constant::Float(j)) => *i *= j,
+                _ => return value_error!("Can't multiply {self} and {other}"),
             },
             Self::Constant(Constant::Integer(i)) => match other {
                 Self::Integer(j) => return Ok(Some(Value::Integer(i * j))),
                 Self::Float(j) => return Ok(Some(Value::Float(*i as f64 * j))),
                 Self::Boolean(true) => return Ok(Some(Value::Integer(i * 1))),
                 Self::Boolean(false) => return Ok(Some(Value::Integer(i * 0))),
-                Self::Index(j) => return Ok(Some(Value::Integer(i * j))),
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => return Ok(Some(Value::Integer(i * j))),
-                    Constant::Float(j) => return Ok(Some(Value::Float(*i as f64 * j))),
-                    Constant::String(_) => {
-                        return value_error!("Can't multiply {self} and {other}")
-                    }
-                },
-                Self::String(_) => return value_error!("Can't multiply {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't multiply {self} and {other}"),
-                Self::None => return value_error!("Can't multiply {self} and {other}"),
+                Self::Constant(Constant::Integer(j)) => return Ok(Some(Value::Integer(i * j))),
+                Self::Constant(Constant::Float(j)) => return Ok(Some(Value::Float(*i as f64 * j))),
+                _ => return value_error!("Can't multiply {self} and {other}"),
             },
             Self::Constant(Constant::Float(i)) => match other {
                 Self::Integer(j) => return Ok(Some(Value::Float(i * j as f64))),
                 Self::Float(j) => return Ok(Some(Value::Float(i * j))),
                 Self::Boolean(true) => return Ok(Some(Value::Float(i * 1.0))),
                 Self::Boolean(false) => return Ok(Some(Value::Float(i * 0.0))),
-                Self::Index(j) => return Ok(Some(Value::Float(i * j as f64))),
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => return Ok(Some(Value::Float(i * *j as f64))),
-                    Constant::Float(j) => return Ok(Some(Value::Float(i * j))),
-                    Constant::String(_) => {
-                        return value_error!("Can't multiply {self} and {other}")
-                    }
-                },
-                Self::String(_) => return value_error!("Can't multiply {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't multiply {self} and {other}"),
-                Self::None => return value_error!("Can't multiply {self} and {other}"),
-            },
-            Self::Constant(Constant::String(i)) => match other {
-                Self::Integer(_) => return value_error!("Can't multiply {self} and {other}"),
-                Self::Float(_) => return value_error!("Can't multiply {self} and {other}"),
-                Self::Boolean(_) => return value_error!("Can't multiply {self} and {other}"),
-                Self::Index(_) => return value_error!("Can't multiply {self} and {other}"),
-                Self::Constant(c) => match c {
-                    Constant::Integer(_) => {
-                        return value_error!("Can't multiply {self} and {other}")
-                    }
-                    Constant::Float(_) => return value_error!("Can't multiply {self} and {other}"),
-                    Constant::String(j) => return Ok(Some(Value::String(format!("{i}{j}")))),
-                },
-                Self::String(j) => return Ok(Some(Value::String(format!("{i}{j}")))),
-                Self::BinaryOp(_) => return value_error!("Can't multiply {self} and {other}"),
-                Self::None => return value_error!("Can't multiply {self} and {other}"),
+                Self::Constant(Constant::Integer(j)) => {
+                    return Ok(Some(Value::Float(i * *j as f64)))
+                }
+                Self::Constant(Constant::Float(j)) => return Ok(Some(Value::Float(i * j))),
+                _ => return value_error!("Can't multiply {self} and {other}"),
             },
             Self::Boolean(true) => match other {
                 Self::Integer(j) => return Ok(Some(Value::Integer(1 * j))),
                 Self::Float(j) => return Ok(Some(Value::Float(1.0 * j))),
                 Self::Boolean(true) => return Ok(Some(Value::Integer(1 * 1))),
                 Self::Boolean(false) => return Ok(Some(Value::Integer(1 * 0))),
-                Self::Index(j) => return Ok(Some(Value::Integer(1 * j))),
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => return Ok(Some(Value::Integer(1 * j))),
-                    Constant::Float(j) => return Ok(Some(Value::Float(1.0 * j))),
-                    Constant::String(_) => {
-                        return value_error!("Can't multiply {self} and {other}")
-                    }
-                },
-                Self::String(_) => return value_error!("Can't multiply {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't multiply {self} and {other}"),
-                Self::None => return value_error!("Can't multiply {self} and {other}"),
+                Self::Constant(Constant::Integer(j)) => return Ok(Some(Value::Integer(1 * j))),
+                Self::Constant(Constant::Float(j)) => return Ok(Some(Value::Float(1.0 * j))),
+                _ => return value_error!("Can't multiply {self} and {other}"),
             },
             Self::Boolean(false) => match other {
                 Self::Integer(j) => return Ok(Some(Value::Integer(0 * j))),
                 Self::Float(j) => return Ok(Some(Value::Float(0.0 * j))),
                 Self::Boolean(true) => return Ok(Some(Value::Integer(0 * 1))),
                 Self::Boolean(false) => return Ok(Some(Value::Integer(0 * 0))),
-                Self::Index(j) => return Ok(Some(Value::Integer(0 * j))),
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => return Ok(Some(Value::Integer(0 * *j))),
-                    Constant::Float(j) => return Ok(Some(Value::Float(0.0 * *j))),
-                    Constant::String(_) => {
-                        return value_error!("Can't multiply {self} and {other}")
-                    }
-                },
-                Self::String(_) => return value_error!("Can't multiply {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't multiply {self} and {other}"),
-                Self::None => return value_error!("Can't multiply {self} and {other}"),
+                Self::Constant(Constant::Integer(j)) => return Ok(Some(Value::Integer(0 * *j))),
+                Self::Constant(Constant::Float(j)) => return Ok(Some(Value::Float(0.0 * *j))),
+                _ => return value_error!("Can't multiply {self} and {other}"),
             },
-            Self::String(_) => return value_error!("Can't multiply {self} and {other}"),
-            Self::BinaryOp(_) => return value_error!("Can't multiply {self} and {other}"),
-            Self::None => return value_error!("Can't multiply {self} and {other}"),
+            _ => return value_error!("Can't multiply {self} and {other}"),
         };
 
         Ok(None)
@@ -804,141 +667,58 @@ impl Value<'_> {
                 Self::Float(j) => return Ok(Some(Value::Float(*i as f64 - j))),
                 Self::Boolean(true) => *i -= 1,
                 Self::Boolean(false) => *i -= 0,
-                Self::Index(j) => *i -= j,
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => *i -= j,
-                    Constant::Float(j) => return Ok(Some(Value::Float(*i as f64 - j))),
-                    Constant::String(_) => {
-                        return value_error!("Can't substract {self} and {other}")
-                    }
-                },
-                Self::String(_) => return value_error!("Can't substract {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't substract {self} and {other}"),
-                Self::None => return value_error!("Can't substract {self} and {other}"),
-            },
-            Self::Index(ref mut i) => match other {
-                Self::Integer(j) => *i -= j,
-                Self::Float(j) => return Ok(Some(Value::Float(*i as f64 - j))),
-                Self::Boolean(true) => *i -= 1,
-                Self::Boolean(false) => *i -= 0,
-                Self::Index(j) => *i -= j,
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => *i -= j,
-                    Constant::Float(j) => return Ok(Some(Value::Float(*i as f64 - j))),
-                    Constant::String(_) => {
-                        return value_error!("Can't substract {self} and {other}")
-                    }
-                },
-                Self::String(_) => return value_error!("Can't substract {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't substract {self} and {other}"),
-                Self::None => return value_error!("Can't substract {self} and {other}"),
+                Self::Constant(Constant::Integer(j)) => *i -= j,
+                Self::Constant(Constant::Float(j)) => return Ok(Some(Value::Float(*i as f64 - j))),
+                _ => return value_error!("Can't substract {self} and {other}"),
             },
             Self::Float(ref mut i) => match other {
                 Self::Integer(j) => *i -= j as f64,
                 Self::Float(j) => *i -= j,
                 Self::Boolean(true) => *i -= 1.0,
                 Self::Boolean(false) => *i -= 0.0,
-                Self::Index(j) => *i -= j as f64,
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => *i -= *j as f64,
-                    Constant::Float(j) => *i -= j,
-                    Constant::String(_) => {
-                        return value_error!("Can't substract {self} and {other}")
-                    }
-                },
-                Self::String(_) => return value_error!("Can't substract {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't substract {self} and {other}"),
-                Self::None => return value_error!("Can't substract {self} and {other}"),
+                Self::Constant(Constant::Integer(j)) => *i -= *j as f64,
+                Self::Constant(Constant::Float(j)) => *i -= j,
+                _ => return value_error!("Can't substract {self} and {other}"),
             },
             Self::Constant(Constant::Integer(i)) => match other {
                 Self::Integer(j) => return Ok(Some(Value::Integer(i - j))),
                 Self::Float(j) => return Ok(Some(Value::Float(*i as f64 - j))),
                 Self::Boolean(true) => return Ok(Some(Value::Integer(i - 1))),
                 Self::Boolean(false) => return Ok(Some(Value::Integer(i - 0))),
-                Self::Index(j) => return Ok(Some(Value::Integer(i - j))),
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => return Ok(Some(Value::Integer(i - j))),
-                    Constant::Float(j) => return Ok(Some(Value::Float(*i as f64 - j))),
-                    Constant::String(_) => {
-                        return value_error!("Can't substract {self} and {other}")
-                    }
-                },
-                Self::String(_) => return value_error!("Can't substract {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't substract {self} and {other}"),
-                Self::None => return value_error!("Can't substract {self} and {other}"),
+                Self::Constant(Constant::Integer(j)) => return Ok(Some(Value::Integer(i - j))),
+                Self::Constant(Constant::Float(j)) => return Ok(Some(Value::Float(*i as f64 - j))),
+                _ => return value_error!("Can't substract {self} and {other}"),
             },
             Self::Constant(Constant::Float(i)) => match other {
                 Self::Integer(j) => return Ok(Some(Value::Float(i - j as f64))),
                 Self::Float(j) => return Ok(Some(Value::Float(i - j))),
                 Self::Boolean(true) => return Ok(Some(Value::Float(i - 1.0))),
                 Self::Boolean(false) => return Ok(Some(Value::Float(i - 0.0))),
-                Self::Index(j) => return Ok(Some(Value::Float(i - j as f64))),
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => return Ok(Some(Value::Float(i - *j as f64))),
-                    Constant::Float(j) => return Ok(Some(Value::Float(i - j))),
-                    Constant::String(_) => {
-                        return value_error!("Can't substract {self} and {other}")
-                    }
-                },
-                Self::String(_) => return value_error!("Can't substract {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't substract {self} and {other}"),
-                Self::None => return value_error!("Can't substract {self} and {other}"),
-            },
-            Self::Constant(Constant::String(i)) => match other {
-                Self::Integer(_) => return value_error!("Can't substract {self} and {other}"),
-                Self::Float(_) => return value_error!("Can't substract {self} and {other}"),
-                Self::Boolean(_) => return value_error!("Can't substract {self} and {other}"),
-                Self::Index(_) => return value_error!("Can't substract {self} and {other}"),
-                Self::Constant(c) => match c {
-                    Constant::Integer(_) => {
-                        return value_error!("Can't substract {self} and {other}")
-                    }
-                    Constant::Float(_) => {
-                        return value_error!("Can't substract {self} and {other}")
-                    }
-                    Constant::String(j) => return Ok(Some(Value::String(format!("{i}{j}")))),
-                },
-                Self::String(j) => return Ok(Some(Value::String(format!("{i}{j}")))),
-                Self::BinaryOp(_) => return value_error!("Can't substract {self} and {other}"),
-                Self::None => return value_error!("Can't substract {self} and {other}"),
+                Self::Constant(Constant::Integer(j)) => {
+                    return Ok(Some(Value::Float(i - *j as f64)))
+                }
+                Self::Constant(Constant::Float(j)) => return Ok(Some(Value::Float(i - j))),
+                _ => return value_error!("Can't substract {self} and {other}"),
             },
             Self::Boolean(true) => match other {
                 Self::Integer(j) => return Ok(Some(Value::Integer(1 - j))),
                 Self::Float(j) => return Ok(Some(Value::Float(1.0 - j))),
                 Self::Boolean(true) => return Ok(Some(Value::Integer(1 - 1))),
                 Self::Boolean(false) => return Ok(Some(Value::Integer(1 - 0))),
-                Self::Index(j) => return Ok(Some(Value::Integer(1 - j))),
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => return Ok(Some(Value::Integer(1 - j))),
-                    Constant::Float(j) => return Ok(Some(Value::Float(1.0 - j))),
-                    Constant::String(_) => {
-                        return value_error!("Can't substract {self} and {other}")
-                    }
-                },
-                Self::String(_) => return value_error!("Can't substract {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't substract {self} and {other}"),
-                Self::None => return value_error!("Can't substract {self} and {other}"),
+                Self::Constant(Constant::Integer(j)) => return Ok(Some(Value::Integer(1 - j))),
+                Self::Constant(Constant::Float(j)) => return Ok(Some(Value::Float(1.0 - j))),
+                _ => return value_error!("Can't substract {self} and {other}"),
             },
             Self::Boolean(false) => match other {
                 Self::Integer(j) => return Ok(Some(Value::Integer(0 - j))),
                 Self::Float(j) => return Ok(Some(Value::Float(0.0 - j))),
                 Self::Boolean(true) => return Ok(Some(Value::Integer(0 - 1))),
                 Self::Boolean(false) => return Ok(Some(Value::Integer(0 - 0))),
-                Self::Index(j) => return Ok(Some(Value::Integer(0 - j))),
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => return Ok(Some(Value::Integer(0 - *j))),
-                    Constant::Float(j) => return Ok(Some(Value::Float(0.0 - *j))),
-                    Constant::String(_) => {
-                        return value_error!("Can't substract {self} and {other}")
-                    }
-                },
-                Self::String(_) => return value_error!("Can't substract {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't substract {self} and {other}"),
-                Self::None => return value_error!("Can't substract {self} and {other}"),
+                Self::Constant(Constant::Integer(j)) => return Ok(Some(Value::Integer(0 - *j))),
+                Self::Constant(Constant::Float(j)) => return Ok(Some(Value::Float(0.0 - *j))),
+                _ => return value_error!("Can't substract {self} and {other}"),
             },
-            Self::String(i) => return value_error!("Can't substract {self} and {other}"),
-            Self::BinaryOp(_) => return value_error!("Can't substract {self} and {other}"),
-            Self::None => return value_error!("Can't substract {self} and {other}"),
+            _ => return value_error!("Can't substract {self} and {other}"),
         };
 
         Ok(None)
@@ -954,123 +734,58 @@ impl Value<'_> {
                 Self::Float(j) => return Ok(Some(Value::Float(*i as f64 / j))),
                 Self::Boolean(true) => *i /= 1,
                 Self::Boolean(false) => return divide_by_zero_error!("Can't divide {i} by 0"),
-                Self::Index(j) => *i /= j,
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => *i /= j,
-                    Constant::Float(j) => return Ok(Some(Value::Float(*i as f64 / j))),
-                    Constant::String(_) => return value_error!("Can't divide {self} and {other}"),
-                },
-                Self::String(_) => return value_error!("Can't divide {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't divide {self} and {other}"),
-                Self::None => return value_error!("Can't divide {self} and {other}"),
-            },
-            Self::Index(ref mut i) => match other {
-                Self::Integer(j) => *i /= j,
-                Self::Float(j) => return Ok(Some(Value::Float(*i as f64 / j))),
-                Self::Boolean(true) => *i /= 1,
-                Self::Boolean(false) => return divide_by_zero_error!("Can't divide {i} by 0"),
-                Self::Index(j) => *i /= j,
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => *i /= j,
-                    Constant::Float(j) => return Ok(Some(Value::Float(*i as f64 / j))),
-                    Constant::String(_) => return value_error!("Can't divide {self} and {other}"),
-                },
-                Self::String(_) => return value_error!("Can't divide {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't divide {self} and {other}"),
-                Self::None => return value_error!("Can't divide {self} and {other}"),
+                Self::Constant(Constant::Integer(j)) => *i /= j,
+                Self::Constant(Constant::Float(j)) => return Ok(Some(Value::Float(*i as f64 / j))),
+                _ => return value_error!("Can't divide {self} and {other}"),
             },
             Self::Float(ref mut i) => match other {
                 Self::Integer(j) => *i /= j as f64,
                 Self::Float(j) => *i /= j,
                 Self::Boolean(true) => *i /= 1.0,
                 Self::Boolean(false) => return divide_by_zero_error!("Can't divide {i} by 0"),
-                Self::Index(j) => *i /= j as f64,
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => *i /= *j as f64,
-                    Constant::Float(j) => *i /= j,
-                    Constant::String(_) => return value_error!("Can't divide {self} and {other}"),
-                },
-                Self::String(_) => return value_error!("Can't divide {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't divide {self} and {other}"),
-                Self::None => return value_error!("Can't divide {self} and {other}"),
+                Self::Constant(Constant::Integer(j)) => *i /= *j as f64,
+                Self::Constant(Constant::Float(j)) => *i /= j,
+                _ => return value_error!("Can't divide {self} and {other}"),
             },
             Self::Constant(Constant::Integer(i)) => match other {
                 Self::Integer(j) => return Ok(Some(Value::Integer(i / j))),
                 Self::Float(j) => return Ok(Some(Value::Float(*i as f64 / j))),
                 Self::Boolean(true) => return Ok(Some(Value::Integer(i / 1))),
                 Self::Boolean(false) => return divide_by_zero_error!("Can't divide {i} by 0"),
-                Self::Index(j) => return Ok(Some(Value::Integer(i / j))),
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => return Ok(Some(Value::Integer(i / j))),
-                    Constant::Float(j) => return Ok(Some(Value::Float(*i as f64 / j))),
-                    Constant::String(_) => return value_error!("Can't divide {self} and {other}"),
-                },
-                Self::String(_) => return value_error!("Can't divide {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't divide {self} and {other}"),
-                Self::None => return value_error!("Can't divide {self} and {other}"),
+                Self::Constant(Constant::Integer(j)) => return Ok(Some(Value::Integer(i / j))),
+                Self::Constant(Constant::Float(j)) => return Ok(Some(Value::Float(*i as f64 / j))),
+                _ => return value_error!("Can't divide {self} and {other}"),
             },
             Self::Constant(Constant::Float(i)) => match other {
                 Self::Integer(j) => return Ok(Some(Value::Float(i / j as f64))),
                 Self::Float(j) => return Ok(Some(Value::Float(i / j))),
                 Self::Boolean(true) => return Ok(Some(Value::Float(i / 1.0))),
-                Self::Boolean(false) => return divide_by_zero_error!("Can't divide {i} by 0"),
-                Self::Index(j) => return Ok(Some(Value::Float(i / j as f64))),
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => return Ok(Some(Value::Float(i / *j as f64))),
-                    Constant::Float(j) => return Ok(Some(Value::Float(i / j))),
-                    Constant::String(_) => return value_error!("Can't divide {self} and {other}"),
-                },
-                Self::String(_) => return value_error!("Can't divide {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't divide {self} and {other}"),
-                Self::None => return value_error!("Can't divide {self} and {other}"),
-            },
-            Self::Constant(Constant::String(i)) => match other {
-                Self::Integer(_) => return value_error!("Can't divide {self} and {other}"),
-                Self::Float(_) => return value_error!("Can't divide {self} and {other}"),
-                Self::Boolean(_) => return value_error!("Can't divide {self} and {other}"),
-                Self::Index(_) => return value_error!("Can't divide {self} and {other}"),
-                Self::Constant(c) => match c {
-                    Constant::Integer(_) => return value_error!("Can't divide {self} and {other}"),
-                    Constant::Float(_) => return value_error!("Can't divide {self} and {other}"),
-                    Constant::String(j) => return Ok(Some(Value::String(format!("{i}{j}")))),
-                },
-                Self::String(j) => return Ok(Some(Value::String(format!("{i}{j}")))),
-                Self::BinaryOp(_) => return value_error!("Can't divide {self} and {other}"),
-                Self::None => return value_error!("Can't divide {self} and {other}"),
+                Self::Boolean(false) => return Ok(Some(Value::Float(i / 0.0))),
+                Self::Constant(Constant::Integer(j)) => {
+                    return Ok(Some(Value::Float(i / *j as f64)))
+                }
+                Self::Constant(Constant::Float(j)) => return Ok(Some(Value::Float(i / j))),
+                _ => return value_error!("Can't divide {self} and {other}"),
             },
             Self::Boolean(true) => match other {
                 Self::Integer(j) => return Ok(Some(Value::Integer(1 / j))),
                 Self::Float(j) => return Ok(Some(Value::Float(1.0 / j))),
                 Self::Boolean(true) => return Ok(Some(Value::Integer(1 / 1))),
-                Self::Boolean(false) => return divide_by_zero_error!("Can't divide 1 by 0"),
-                Self::Index(j) => return Ok(Some(Value::Integer(1 / j))),
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => return Ok(Some(Value::Integer(1 / j))),
-                    Constant::Float(j) => return Ok(Some(Value::Float(1.0 / j))),
-                    Constant::String(_) => return value_error!("Can't divide {self} and {other}"),
-                },
-                Self::String(_) => return value_error!("Can't divide {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't divide {self} and {other}"),
-                Self::None => return value_error!("Can't divide {self} and {other}"),
+                Self::Boolean(false) => return divide_by_zero_error!("Can't divide 1 by Zero"),
+                Self::Constant(Constant::Integer(j)) => return Ok(Some(Value::Integer(1 / j))),
+                Self::Constant(Constant::Float(j)) => return Ok(Some(Value::Float(1.0 / j))),
+                _ => return value_error!("Can't divide {self} and {other}"),
             },
             Self::Boolean(false) => match other {
                 Self::Integer(j) => return Ok(Some(Value::Integer(0 / j))),
                 Self::Float(j) => return Ok(Some(Value::Float(0.0 / j))),
                 Self::Boolean(true) => return Ok(Some(Value::Integer(0 / 1))),
                 Self::Boolean(false) => return divide_by_zero_error!("Can't divide 0 by 0"),
-                Self::Index(j) => return Ok(Some(Value::Integer(0 / j))),
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => return Ok(Some(Value::Integer(0 / *j))),
-                    Constant::Float(j) => return Ok(Some(Value::Float(0.0 / *j))),
-                    Constant::String(_) => return value_error!("Can't divide {self} and {other}"),
-                },
-                Self::String(_) => return value_error!("Can't divide {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't divide {self} and {other}"),
-                Self::None => return value_error!("Can't divide {self} and {other}"),
+                Self::Constant(Constant::Integer(j)) => return Ok(Some(Value::Integer(0 / *j))),
+                Self::Constant(Constant::Float(j)) => return Ok(Some(Value::Float(0.0 / *j))),
+                _ => return value_error!("Can't divide {self} and {other}"),
             },
-            Self::String(_) => return value_error!("Can't divide {self} and {other}"),
-            Self::BinaryOp(_) => return value_error!("Can't divide {self} and {other}"),
-            Self::None => return value_error!("Can't divide {self} and {other}"),
+            _ => return value_error!("Can't divide {self} and {other}"),
         };
 
         Ok(None)
@@ -1085,124 +800,59 @@ impl Value<'_> {
                 Self::Integer(j) => *i %= j,
                 Self::Float(j) => return Ok(Some(Value::Float(*i as f64 % j))),
                 Self::Boolean(true) => *i %= 1,
-                Self::Boolean(false) => return divide_by_zero_error!("Can't divide {i} by 0"),
-                Self::Index(j) => *i %= j,
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => *i %= j,
-                    Constant::Float(j) => return Ok(Some(Value::Float(*i as f64 % j))),
-                    Constant::String(_) => return value_error!("Can't modulo {self} and {other}"),
-                },
-                Self::String(_) => return value_error!("Can't modulo {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't modulo {self} and {other}"),
-                Self::None => return value_error!("Can't modulo {self} and {other}"),
-            },
-            Self::Index(ref mut i) => match other {
-                Self::Integer(j) => *i %= j,
-                Self::Float(j) => return Ok(Some(Value::Float(*i as f64 % j))),
-                Self::Boolean(true) => *i %= 1,
-                Self::Boolean(false) => return divide_by_zero_error!("Can't divide {i} by 0"),
-                Self::Index(j) => *i %= j,
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => *i %= j,
-                    Constant::Float(j) => return Ok(Some(Value::Float(*i as f64 % j))),
-                    Constant::String(_) => return value_error!("Can't modulo {self} and {other}"),
-                },
-                Self::String(_) => return value_error!("Can't modulo {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't modulo {self} and {other}"),
-                Self::None => return value_error!("Can't modulo {self} and {other}"),
+                Self::Boolean(false) => return divide_by_zero_error!("Can't modulo {i} by 0"),
+                Self::Constant(Constant::Integer(j)) => *i %= j,
+                Self::Constant(Constant::Float(j)) => return Ok(Some(Value::Float(*i as f64 % j))),
+                _ => return value_error!("Can't modulo {self} and {other}"),
             },
             Self::Float(ref mut i) => match other {
                 Self::Integer(j) => *i %= j as f64,
                 Self::Float(j) => *i %= j,
                 Self::Boolean(true) => *i %= 1.0,
                 Self::Boolean(false) => return divide_by_zero_error!("Can't divide {i} by 0"),
-                Self::Index(j) => *i %= j as f64,
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => *i %= *j as f64,
-                    Constant::Float(j) => *i %= j,
-                    Constant::String(_) => return value_error!("Can't modulo {self} and {other}"),
-                },
-                Self::String(_) => return value_error!("Can't modulo {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't modulo {self} and {other}"),
-                Self::None => return value_error!("Can't modulo {self} and {other}"),
+                Self::Constant(Constant::Integer(j)) => *i %= *j as f64,
+                Self::Constant(Constant::Float(j)) => *i %= j,
+                _ => return value_error!("Can't modulo {self} and {other}"),
             },
             Self::Constant(Constant::Integer(i)) => match other {
                 Self::Integer(j) => return Ok(Some(Value::Integer(i % j))),
                 Self::Float(j) => return Ok(Some(Value::Float(*i as f64 % j))),
                 Self::Boolean(true) => return Ok(Some(Value::Integer(i % 1))),
                 Self::Boolean(false) => return divide_by_zero_error!("Can't divide {i} by 0"),
-                Self::Index(j) => return Ok(Some(Value::Integer(i % j))),
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => return Ok(Some(Value::Integer(i % j))),
-                    Constant::Float(j) => return Ok(Some(Value::Float(*i as f64 % j))),
-                    Constant::String(_) => return value_error!("Can't modulo {self} and {other}"),
-                },
-                Self::String(_) => return value_error!("Can't modulo {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't modulo {self} and {other}"),
-                Self::None => return value_error!("Can't modulo {self} and {other}"),
+                Self::Constant(Constant::Integer(j)) => return Ok(Some(Value::Integer(i % j))),
+                Self::Constant(Constant::Float(j)) => return Ok(Some(Value::Float(*i as f64 % j))),
+                _ => return value_error!("Can't modulo {self} and {other}"),
             },
             Self::Constant(Constant::Float(i)) => match other {
                 Self::Integer(j) => return Ok(Some(Value::Float(i % j as f64))),
                 Self::Float(j) => return Ok(Some(Value::Float(i % j))),
                 Self::Boolean(true) => return Ok(Some(Value::Float(i % 1.0))),
                 Self::Boolean(false) => return Ok(Some(Value::Float(i % 0.0))),
-                Self::Index(j) => return Ok(Some(Value::Float(i % j as f64))),
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => return Ok(Some(Value::Float(i % *j as f64))),
-                    Constant::Float(j) => return Ok(Some(Value::Float(i % j))),
-                    Constant::String(_) => return value_error!("Can't modulo {self} and {other}"),
-                },
-                Self::String(_) => return value_error!("Can't modulo {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't modulo {self} and {other}"),
-                Self::None => return value_error!("Can't modulo {self} and {other}"),
-            },
-            Self::Constant(Constant::String(i)) => match other {
-                Self::Integer(_) => return value_error!("Can't modulo {self} and {other}"),
-                Self::Float(_) => return value_error!("Can't modulo {self} and {other}"),
-                Self::Boolean(_) => return value_error!("Can't modulo {self} and {other}"),
-                Self::Index(_) => return value_error!("Can't modulo {self} and {other}"),
-                Self::Constant(c) => match c {
-                    Constant::Integer(_) => return value_error!("Can't modulo {self} and {other}"),
-                    Constant::Float(_) => return value_error!("Can't modulo {self} and {other}"),
-                    Constant::String(j) => return Ok(Some(Value::String(format!("{i}{j}")))),
-                },
-                Self::String(j) => return Ok(Some(Value::String(format!("{i}{j}")))),
-                Self::BinaryOp(_) => return value_error!("Can't modulo {self} and {other}"),
-                Self::None => return value_error!("Can't modulo {self} and {other}"),
+                Self::Constant(Constant::Integer(j)) => {
+                    return Ok(Some(Value::Float(i % *j as f64)))
+                }
+                Self::Constant(Constant::Float(j)) => return Ok(Some(Value::Float(i % j))),
+                _ => return value_error!("Can't modulo {self} and {other}"),
             },
             Self::Boolean(true) => match other {
                 Self::Integer(j) => return Ok(Some(Value::Integer(1 % j))),
                 Self::Float(j) => return Ok(Some(Value::Float(1.0 % j))),
                 Self::Boolean(true) => return Ok(Some(Value::Integer(1 % 1))),
                 Self::Boolean(false) => return divide_by_zero_error!("Can't divide 1 by Zero"),
-                Self::Index(j) => return Ok(Some(Value::Integer(1 % j))),
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => return Ok(Some(Value::Integer(1 % j))),
-                    Constant::Float(j) => return Ok(Some(Value::Float(1.0 % j))),
-                    Constant::String(_) => return value_error!("Can't modulo {self} and {other}"),
-                },
-                Self::String(_) => return value_error!("Can't modulo {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't modulo {self} and {other}"),
-                Self::None => return value_error!("Can't modulo {self} and {other}"),
+                Self::Constant(Constant::Integer(j)) => return Ok(Some(Value::Integer(1 % j))),
+                Self::Constant(Constant::Float(j)) => return Ok(Some(Value::Float(1.0 % j))),
+                _ => return value_error!("Can't modulo {self} and {other}"),
             },
             Self::Boolean(false) => match other {
                 Self::Integer(j) => return Ok(Some(Value::Integer(0 % j))),
                 Self::Float(j) => return Ok(Some(Value::Float(0.0 % j))),
                 Self::Boolean(true) => return Ok(Some(Value::Integer(0 % 1))),
                 Self::Boolean(false) => return divide_by_zero_error!("Can't divide 0 by 0"),
-                Self::Index(j) => return Ok(Some(Value::Integer(0 % j))),
-                Self::Constant(c) => match c {
-                    Constant::Integer(j) => return Ok(Some(Value::Integer(0 % *j))),
-                    Constant::Float(j) => return Ok(Some(Value::Float(0.0 % *j))),
-                    Constant::String(_) => return value_error!("Can't modulo {self} and {other}"),
-                },
-                Self::String(_) => return value_error!("Can't modulo {self} and {other}"),
-                Self::BinaryOp(_) => return value_error!("Can't modulo {self} and {other}"),
-                Self::None => return value_error!("Can't modulo {self} and {other}"),
+                Self::Constant(Constant::Integer(j)) => return Ok(Some(Value::Integer(0 % *j))),
+                Self::Constant(Constant::Float(j)) => return Ok(Some(Value::Float(0.0 % *j))),
+                _ => return value_error!("Can't modulo {self} and {other}"),
             },
-            Self::String(_) => return value_error!("Can't modulo {self} and {other}"),
-            Self::BinaryOp(_) => return value_error!("Can't modulo {self} and {other}"),
-            Self::None => return value_error!("Can't modulo {self} and {other}"),
+            _ => return value_error!("Can't modulo {self} and {other}"),
         };
 
         Ok(None)

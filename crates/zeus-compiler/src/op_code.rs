@@ -1,6 +1,8 @@
 pub enum OpCode {
     OP_RETURN,
     OP_CONSTANT(usize),
+    OP_GLOBAL_VARIABLE(usize),
+    OP_GET_GLOBAL(usize),
     OP_NEGATE,
     OP_ADD,
     OP_SUBSTRACT,
@@ -26,6 +28,8 @@ impl std::fmt::Display for OpCode {
         match self {
             Self::OP_RETURN => write!(f, "OP_RETURN"),
             Self::OP_CONSTANT(c) => write!(f, "OP_CONSTANT({c})"),
+            Self::OP_GLOBAL_VARIABLE(c) => write!(f, "OP_GLOBAL_VARIABLE({c})"),
+            Self::OP_GET_GLOBAL(c) => write!(f, "OP_GET_GLOBAL({c})"),
             Self::OP_NEGATE => write!(f, "OP_NEGATE"),
             Self::OP_ADD => write!(f, "OP_ADD"),
             Self::OP_SUBSTRACT => write!(f, "OP_SUBSTRACT"),

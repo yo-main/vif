@@ -1,5 +1,8 @@
+use std::collections::HashMap;
+
 use crate::env::Env;
 use crate::error::InterpreterError;
+use crate::error::RuntimeErrorType;
 use crate::value::Value;
 use crate::value_error;
 use zeus_compiler::Constant;
@@ -12,10 +15,11 @@ impl VM {
         VM {}
     }
 
-    pub fn interpret<'a, 'b>(
+    pub fn interpret<'a, 'b, 'c>(
         &self,
         op_code: &OpCode,
         stack: &'a mut Vec<Value<'b>>,
+        variables: &'c mut HashMap<String, Value<'b>>,
         constants: &'b Vec<Constant>,
     ) -> Result<(), InterpreterError> {
         log::trace!("op {}, stack: {:?}", op_code, stack);
@@ -30,6 +34,34 @@ impl VM {
                 stack.pop().ok_or(InterpreterError::Impossible)?;
             }
             OpCode::OP_RETURN => {}
+            OpCode::OP_GLOBAL_VARIABLE(i) => {
+                let var_name = match constants.get(*i) {
+                    Some(Constant::Identifier(s)) => s,
+                    _ => return Err(InterpreterError::Impossible),
+                };
+
+                variables.insert(
+                    var_name.clone(),
+                    stack.pop().ok_or(InterpreterError::Impossible)?,
+                );
+            }
+            OpCode::OP_GET_GLOBAL(i) => {
+                let var_name = match constants.get(*i) {
+                    Some(Constant::Identifier(s)) => s,
+                    _ => return Err(InterpreterError::Impossible),
+                };
+
+                match variables.get(var_name) {
+                    Some(value) => stack.push(value.clone()),
+                    _ => {
+                        return Err(InterpreterError::RuntimeError(
+                            RuntimeErrorType::UndeclaredVariable(format!(
+                                "Undeclared variable: {var_name}"
+                            )),
+                        ))
+                    }
+                }
+            }
             OpCode::OP_CONSTANT(i) => {
                 let i = *i;
                 match constants.get(i) {
@@ -61,6 +93,9 @@ impl VM {
                                 Constant::Integer(i) => Value::Boolean(*i == 0),
                                 Constant::Float(f) => Value::Boolean(*f == 0.0),
                                 Constant::String(s) => Value::Boolean(s.is_empty()),
+                                Constant::Identifier(f) => {
+                                    return value_error!("Can't negate a variable name")
+                                }
                             },
                             _ => return Err(InterpreterError::Impossible), // impossible
                         };
@@ -84,6 +119,9 @@ impl VM {
                             Value::Constant(c) => match c {
                                 Constant::Integer(i) => Value::Integer(i * -1),
                                 Constant::Float(f) => Value::Float(f * -1.0),
+                                Constant::Identifier(f) => {
+                                    return value_error!("Can't negate a variable name")
+                                }
                                 Constant::String(_) => {
                                     return value_error!("Can't negate a string")
                                 }

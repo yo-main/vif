@@ -3,6 +3,7 @@ pub enum Constant {
     Integer(i64),
     Float(f64),
     String(String),
+    Identifier(String),
 }
 
 impl std::fmt::Display for Constant {
@@ -11,6 +12,7 @@ impl std::fmt::Display for Constant {
             Self::Integer(i) => write!(f, "{}", i),
             Self::Float(i) => write!(f, "{}", i),
             Self::String(i) => write!(f, "{}", i),
+            Self::Identifier(i) => write!(f, "{}", i),
         }
     }
 }
