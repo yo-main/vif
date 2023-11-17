@@ -85,7 +85,10 @@ impl<'a> Compiler<'a> {
             }
             t if t.r#type == TokenType::Var => self.var_declaration(), // if we need to put it above, think about the pending var
             t if t.r#type == TokenType::NewLine => self.statement(),
-            _ => self.expression_statement(),
+            t => {
+                self.pending = Some(t);
+                self.expression_statement()
+            }
         }
     }
 
@@ -148,17 +151,33 @@ impl<'a> Compiler<'a> {
     fn consume(&mut self, token_type: TokenType, msg: &str) -> Result<(), CompilerError> {
         match self.advance() {
             Ok(t) if t.r#type == token_type => Ok(()),
-            Ok(_) => Err(CompilerError::SyntaxError(msg.to_owned())),
+            Ok(t) => Err(CompilerError::SyntaxError(format!(
+                "{}, got {}",
+                msg.to_owned(),
+                t
+            ))),
             Err(e) => Err(CompilerError::ScanningError(format!("{e}"))),
         }
     }
 
-    fn parse_precedence(&mut self, precedence: Precedence) -> Result<(), CompilerError> {
-        let token = self.advance()?;
-        token.r#type.prefix(self)?;
-        log::debug!("parse precedence in with {}", precedence);
+    fn match_token(&mut self, token_type: TokenType) -> Result<bool, CompilerError> {
+        Ok(match self.advance()? {
+            t if t.r#type == token_type => true,
+            t => {
+                self.pending = Some(t);
+                false
+            }
+        })
+    }
 
+    fn parse_precedence(&mut self, precedence: Precedence) -> Result<(), CompilerError> {
         let precedence = precedence as u8;
+
+        let token = self.advance()?;
+        let can_assign = precedence <= Precedence::Assignement as u8;
+
+        token.r#type.prefix(self, can_assign)?;
+        log::debug!("parse precedence in with {}", precedence);
 
         loop {
             let token = self.advance()?;
@@ -168,6 +187,12 @@ impl<'a> Compiler<'a> {
             }
             token.r#type.infix(self)?;
         }
+        if can_assign && self.match_token(TokenType::Equal)? {
+            return Err(CompilerError::SyntaxError(format!(
+                "Invalid assignment target"
+            )));
+        }
+
         log::debug!("parse precedence out with {}", token.r#type.precedence());
 
         Ok(())
@@ -177,16 +202,33 @@ impl<'a> Compiler<'a> {
         token_type.precedence()
     }
 
-    pub fn variable(&mut self, token_type: &TokenType) -> Result<(), CompilerError> {
+    pub fn variable(
+        &mut self,
+        token_type: &TokenType,
+        can_assign: bool,
+    ) -> Result<(), CompilerError> {
         match token_type {
-            TokenType::Identifier(s) => self.named_variable(Constant::Identifier(s.clone())),
+            TokenType::Identifier(s) => {
+                self.named_variable(Constant::Identifier(s.clone()), can_assign)
+            }
             _ => return Err(CompilerError::Unknown(format!("Impossible"))),
         }
     }
 
-    fn named_variable(&mut self, constant: Constant) -> Result<(), CompilerError> {
+    fn named_variable(
+        &mut self,
+        constant: Constant,
+        can_assign: bool,
+    ) -> Result<(), CompilerError> {
         let index = self.register_constant(constant);
-        self.emit_op_code(OpCode::OP_GET_GLOBAL(index));
+
+        if can_assign && self.match_token(TokenType::Equal)? {
+            self.expression()?;
+            self.emit_op_code(OpCode::OP_SET_GLOBAL(index));
+        } else {
+            self.emit_op_code(OpCode::OP_GET_GLOBAL(index));
+        }
+
         Ok(())
     }
 

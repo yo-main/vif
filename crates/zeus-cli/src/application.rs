@@ -4,7 +4,6 @@ use std::fs;
 use std::io;
 use std::io::Write;
 use std::path::PathBuf;
-// use zeus_vm::vm::VM;
 use zeus_vm::interpret;
 
 pub struct Zeus {}
@@ -15,17 +14,10 @@ impl Zeus {
     }
 
     fn run(&mut self, content: String) -> Result<(), ZeusError> {
-        interpret(content);
-
-        // let mut tokenizer = Tokenizer::new(content.as_str());
-        // tokenizer.scan_tokens();
-        // let mut parser = Parser::new(tokenizer.tokens);
-        // let is_ok = parser.parse();
-        // if is_ok {
-        //     self.interpreter.interpret(parser.statements);
-        // } else {
-        //     println!("errors: {:?}", parser.errors);
-        // }
+        match interpret(content) {
+            Ok(_) => log::info!("Interpreter says Bye"),
+            Err(e) => log::error!("Intepreter error: {e}"),
+        }
 
         Ok(())
     }

@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use crate::env::Env;
 use crate::error::InterpreterError;
 use crate::error::RuntimeErrorType;
 use crate::value::Value;
@@ -60,6 +59,28 @@ impl VM {
                             )),
                         ))
                     }
+                }
+            }
+            OpCode::OP_SET_GLOBAL(i) => {
+                let var_name = match constants.get(*i) {
+                    Some(Constant::Identifier(s)) => s,
+                    _ => return Err(InterpreterError::Impossible),
+                };
+
+                match variables.insert(
+                    var_name.clone(),
+                    stack.last().cloned().ok_or(InterpreterError::Impossible)?,
+                    // here we clone because the assignement might be part of a larger expression
+                    // the value must stay on the stack
+                ) {
+                    None => {
+                        return Err(InterpreterError::RuntimeError(
+                            RuntimeErrorType::UndeclaredVariable(format!(
+                                "Can't assign to undeclared variable: {var_name}"
+                            )),
+                        ))
+                    }
+                    _ => (),
                 }
             }
             OpCode::OP_CONSTANT(i) => {

@@ -1,5 +1,5 @@
-var coucou = "Allo"
-var test = coucou + " Quoi"
-@ test
-
-
+var hello = "Hello"
+var world = "World"
+@ hello + " " + world
+hello = "Bye"
+@ hello + " " + world

@@ -5,13 +5,13 @@ use zeus_scanner::TokenType;
 
 pub trait PrattParser {
     fn infix(&self, compiler: &mut Compiler) -> Result<(), CompilerError>;
-    fn prefix(&self, compiler: &mut Compiler) -> Result<(), CompilerError>;
+    fn prefix(&self, compiler: &mut Compiler, can_assign: bool) -> Result<(), CompilerError>;
     fn precedence(&self) -> Precedence;
 }
 
 impl PrattParser for TokenType {
-    fn prefix(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
-        println!("Prefix: {}", self);
+    fn prefix(&self, compiler: &mut Compiler, can_assign: bool) -> Result<(), CompilerError> {
+        log::debug!("Prefix: {}", self);
         match self {
             Self::LeftParen => compiler.grouping(),
             Self::Minus => compiler.unary(self),
@@ -21,13 +21,13 @@ impl PrattParser for TokenType {
             Self::None => compiler.literal(self),
             Self::Not => compiler.unary(self),
             Self::String(_) => compiler.string(self),
-            Self::Identifier(_) => compiler.variable(self),
+            Self::Identifier(_) => compiler.variable(self, can_assign),
             _ => Ok(()),
         }
     }
 
     fn infix(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
-        println!("Infix: {}", self);
+        log::debug!("Infix: {}", self);
         match self {
             Self::Minus => compiler.binary(self),
             Self::Plus => compiler.binary(self),
