@@ -25,6 +25,7 @@ pub enum OpCode {
     OP_PRINT, // temp
     OP_POP,
     OP_JUMP_IF_FALSE(usize),
+    OP_JUMP(usize),
 }
 
 impl std::fmt::Display for OpCode {
@@ -56,6 +57,7 @@ impl std::fmt::Display for OpCode {
             Self::OP_PRINT => write!(f, "OP_PRINT"),
             Self::OP_POP => write!(f, "OP_POP"),
             Self::OP_JUMP_IF_FALSE(i) => write!(f, "OP_JUMP_IF_FALSE {i}"),
+            Self::OP_JUMP(i) => write!(f, "OP_JUMP {i}"),
         }
     }
 }

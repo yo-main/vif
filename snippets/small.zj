@@ -1,8 +1,6 @@
-var a = 1
-	1 + 2
-	@ a
-	var ab = 100
-	@ ab
-		@ "coucou"
-		var ab = 200
-		@ ab + a
+if 0 + 1 - 1:
+	@ 1
+else:
+	@ 100
+@ 2
+@ 3

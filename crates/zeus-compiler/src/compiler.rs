@@ -107,9 +107,19 @@ impl<'a> Compiler<'a> {
         self.consume(TokenType::DoubleDot, "Expects : after if statement")?;
         self.consume(TokenType::NewLine, "Expects \\n after if statement")?;
 
-        let jump = self.emit_jump(OpCode::OP_JUMP_IF_FALSE(self.compiling_chunk.code.len()));
+        let then_jump = self.emit_jump(OpCode::OP_JUMP_IF_FALSE(self.compiling_chunk.code.len()));
+        self.emit_op_code(OpCode::OP_POP);
         self.statement()?;
-        self.patch_jump(jump);
+
+        self.patch_jump(then_jump);
+        // the below code is supposed to remove implicit else clause but I think I don't have that
+        // self.emit_op_code(OpCode::OP_POP);
+
+        if self.match_token(TokenType::Else)? {
+            let else_jump = self.emit_jump(OpCode::OP_JUMP(self.compiling_chunk.code.len()));
+            self.statement()?;
+            self.patch_jump(else_jump);
+        }
 
         Ok(())
     }
@@ -123,6 +133,7 @@ impl<'a> Compiler<'a> {
         let curr = self.compiling_chunk.code.len();
         match self.compiling_chunk.code.get_mut(offset) {
             Some(OpCode::OP_JUMP_IF_FALSE(ref mut i)) => *i = curr - *i - 1,
+            Some(OpCode::OP_JUMP(ref mut i)) => *i = curr - *i - 1,
             _ => (),
         }
     }

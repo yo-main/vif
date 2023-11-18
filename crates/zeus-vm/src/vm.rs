@@ -62,6 +62,7 @@ impl<'o> VM<'o> {
                     stack.pop().ok_or(InterpreterError::Impossible)?,
                 );
             }
+            OpCode::OP_JUMP(i) => self.ip.advance_by(*i).unwrap(),
             OpCode::OP_JUMP_IF_FALSE(i) => {
                 let value = stack.last().ok_or(InterpreterError::EmptyStack)?;
 
