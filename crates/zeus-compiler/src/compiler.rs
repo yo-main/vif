@@ -111,12 +111,14 @@ impl<'a> Compiler<'a> {
         self.emit_op_code(OpCode::OP_POP);
         self.statement()?;
 
+        let else_jump = self.emit_jump(OpCode::OP_JUMP(self.compiling_chunk.code.len()));
         self.patch_jump(then_jump);
-        // the below code is supposed to remove implicit else clause but I think I don't have that
-        // self.emit_op_code(OpCode::OP_POP);
+        self.emit_op_code(OpCode::OP_POP);
 
         if self.match_token(TokenType::Else)? {
-            let else_jump = self.emit_jump(OpCode::OP_JUMP(self.compiling_chunk.code.len()));
+            self.consume(TokenType::DoubleDot, "Expects : after else statement")?;
+            self.consume(TokenType::NewLine, "Expects \\n after else statement")?;
+
             self.statement()?;
             self.patch_jump(else_jump);
         }
