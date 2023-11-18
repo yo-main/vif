@@ -298,6 +298,26 @@ impl<'a> Compiler<'a> {
         token_type.precedence()
     }
 
+    pub fn and(&mut self) -> Result<(), CompilerError> {
+        let end_jump = self.emit_jump(OpCode::OP_JUMP_IF_FALSE(self.compiling_chunk.code.len()));
+        self.emit_op_code(OpCode::OP_POP);
+        self.parse_precedence(Precedence::And)?;
+        self.patch_jump(end_jump);
+        Ok(())
+    }
+
+    pub fn or(&mut self) -> Result<(), CompilerError> {
+        let else_jump = self.emit_jump(OpCode::OP_JUMP_IF_FALSE(self.compiling_chunk.code.len()));
+        let end_jump = self.emit_jump(OpCode::OP_JUMP(self.compiling_chunk.code.len()));
+
+        self.patch_jump(else_jump);
+        self.emit_op_code(OpCode::OP_POP);
+
+        self.parse_precedence(Precedence::Or)?;
+        self.patch_jump(end_jump);
+        Ok(())
+    }
+
     pub fn variable(
         &mut self,
         token_type: &TokenType,

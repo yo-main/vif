@@ -39,6 +39,8 @@ impl PrattParser for TokenType {
             Self::GreaterEqual => compiler.binary(self),
             Self::Less => compiler.binary(self),
             Self::LessEqual => compiler.binary(self),
+            Self::And => compiler.and(),
+            Self::Or => compiler.or(),
             _ => Ok(()),
         }
     }
@@ -55,6 +57,8 @@ impl PrattParser for TokenType {
             Self::GreaterEqual => Precedence::Comparison,
             Self::Less => Precedence::Comparison,
             Self::LessEqual => Precedence::Comparison,
+            Self::And => Precedence::And,
+            Self::Or => Precedence::Or,
             _ => Precedence::None,
         }
     }
