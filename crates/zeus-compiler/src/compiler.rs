@@ -77,7 +77,7 @@ impl<'a> Compiler<'a> {
         self.statement()
     }
 
-    fn statement(&mut self) -> Result<(), CompilerError> {
+    pub fn statement(&mut self) -> Result<(), CompilerError> {
         log::debug!("Starting statement");
         match self.advance()? {
             t if t.r#type == TokenType::At => {
@@ -144,6 +144,7 @@ impl<'a> Compiler<'a> {
         loop {
             match self.advance()? {
                 t if t.r#type == TokenType::Dedent => break,
+                t if t.r#type == TokenType::NewLine => (),
                 t => {
                     self.pending = Some(t);
                     self.declaration()?;
