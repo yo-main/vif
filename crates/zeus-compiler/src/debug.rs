@@ -45,11 +45,16 @@ pub fn disassemble_instruction(offset: usize, op_code: &OpCode, chunk: &Chunk) {
         OpCode::OP_LESS_OR_EQUAL => simple_instruction("OP_LESS_OR_EQUAL", offset),
         OpCode::OP_PRINT => simple_instruction("OP_PRINT", offset),
         OpCode::OP_POP => simple_instruction("OP_POP", offset),
+        OpCode::OP_JUMP_IF_FALSE(i) => jump_instruction("OP_JUMP_IF_FALSE", i, offset),
     }
 }
 
 fn simple_instruction(name: &str, offset: usize) {
     println!("{}", name);
+}
+
+fn jump_instruction(name: &str, jump: &usize, offset: usize) {
+    println!("{} {}", name, jump);
 }
 
 fn constant_instruction(name: &str, chunk: &Chunk, index: usize, offset: usize) {

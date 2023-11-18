@@ -7,15 +7,33 @@ use crate::value_error;
 use zeus_compiler::OpCode;
 use zeus_compiler::Variable;
 
-pub struct VM {}
+pub struct VM<'o> {
+    ip: std::slice::Iter<'o, OpCode>,
+}
 
-impl VM {
-    pub fn new() -> Self {
-        VM {}
+impl<'o> VM<'o> {
+    pub fn new(ip: std::slice::Iter<'o, OpCode>) -> Self {
+        VM { ip }
+    }
+
+    pub fn interpret_loop<'a, 'b, 'c>(
+        &mut self,
+        stack: &'a mut Vec<Value<'b>>,
+        variables: &'c mut HashMap<String, Value<'b>>,
+        constants: &'b Vec<Variable>,
+    ) -> Result<(), InterpreterError> {
+        loop {
+            match self.ip.next() {
+                None => break,
+                Some(byte) => self.interpret(byte, stack, variables, constants)?,
+            }
+        }
+
+        Ok(())
     }
 
     pub fn interpret<'a, 'b, 'c>(
-        &self,
+        &mut self,
         op_code: &OpCode,
         stack: &'a mut Vec<Value<'b>>,
         variables: &'c mut HashMap<String, Value<'b>>,
@@ -44,7 +62,21 @@ impl VM {
                     stack.pop().ok_or(InterpreterError::Impossible)?,
                 );
             }
-            // WTF is that
+            OpCode::OP_JUMP_IF_FALSE(i) => {
+                let value = stack.last().ok_or(InterpreterError::EmptyStack)?;
+
+                match value {
+                    Value::Boolean(false) => self.ip.advance_by(*i).unwrap(),
+                    Value::Integer(0) => self.ip.advance_by(*i).unwrap(),
+                    Value::Float(0.0) => self.ip.advance_by(*i).unwrap(),
+                    Value::Constant(Variable::Integer(0)) => self.ip.advance_by(*i).unwrap(),
+                    Value::Constant(Variable::Float(0.0)) => self.ip.advance_by(*i).unwrap(),
+                    Value::String(s) if s.is_empty() => self.ip.advance_by(*i).unwrap(),
+                    Value::None => self.ip.advance_by(*i).unwrap(),
+                    _ => (),
+                }
+            }
+            // WTF is that ?? It's working though but wow. I'll need to spend more time studying how
             OpCode::OP_GET_LOCAL(i) => stack.push(stack.get(*i).unwrap().clone()),
             OpCode::OP_SET_LOCAL(i) => stack[*i] = stack.last().unwrap().clone(),
             OpCode::OP_GET_GLOBAL(i) => {

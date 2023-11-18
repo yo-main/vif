@@ -1,3 +1,5 @@
+#![feature(iter_advance_by)]
+
 mod env;
 mod error;
 pub mod value;
@@ -9,8 +11,6 @@ use error::InterpreterError;
 use zeus_compiler::compile;
 
 pub fn interpret(content: String) -> Result<(), InterpreterError> {
-    let vm = vm::VM::new();
-
     let chunk = match compile(content) {
         Ok(c) => c,
         Err(e) => return Err(InterpreterError::CompileError(format!("{}", e))),
@@ -19,9 +19,8 @@ pub fn interpret(content: String) -> Result<(), InterpreterError> {
     let mut stack = Vec::new();
     let mut variables = HashMap::new();
 
-    for byte in chunk.iter() {
-        vm.interpret(byte, &mut stack, &mut variables, &chunk.constants)?;
-    }
+    let mut vm = vm::VM::new(chunk.iter());
+    vm.interpret_loop(&mut stack, &mut variables, &chunk.constants)?;
 
     Ok(())
 }

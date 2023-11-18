@@ -17,8 +17,8 @@ impl Chunk {
         }
     }
 
-    pub fn write_chunk(&mut self, chunk: OpCode, line: u64) {
-        self.code.push(chunk);
+    pub fn write_chunk(&mut self, op_code: OpCode, line: u64) {
+        self.code.push(op_code);
         self.lines.push(line);
     }
 

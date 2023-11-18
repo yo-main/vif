@@ -86,6 +86,7 @@ impl<'a> Compiler<'a> {
                 self.emit_op_code(OpCode::OP_PRINT);
                 return Ok(());
             }
+            t if t.r#type == TokenType::If => self.if_statement(),
             t if t.r#type == TokenType::Var => self.var_declaration(), // if we need to put it above, think about the pending var
             t if t.r#type == TokenType::NewLine => self.statement(),
             t if t.r#type == TokenType::Indent => {
@@ -98,6 +99,31 @@ impl<'a> Compiler<'a> {
                 self.pending = Some(t);
                 self.expression_statement()
             }
+        }
+    }
+
+    fn if_statement(&mut self) -> Result<(), CompilerError> {
+        self.expression()?;
+        self.consume(TokenType::DoubleDot, "Expects : after if statement")?;
+        self.consume(TokenType::NewLine, "Expects \\n after if statement")?;
+
+        let jump = self.emit_jump(OpCode::OP_JUMP_IF_FALSE(self.compiling_chunk.code.len()));
+        self.statement()?;
+        self.patch_jump(jump);
+
+        Ok(())
+    }
+
+    fn emit_jump(&mut self, op_code: OpCode) -> usize {
+        self.emit_op_code(op_code);
+        self.compiling_chunk.code.len() - 1
+    }
+
+    fn patch_jump(&mut self, offset: usize) {
+        let curr = self.compiling_chunk.code.len();
+        match self.compiling_chunk.code.get_mut(offset) {
+            Some(OpCode::OP_JUMP_IF_FALSE(ref mut i)) => *i = curr - *i - 1,
+            _ => (),
         }
     }
 
