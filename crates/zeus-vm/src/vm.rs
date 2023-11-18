@@ -4,8 +4,8 @@ use crate::error::InterpreterError;
 use crate::error::RuntimeErrorType;
 use crate::value::Value;
 use crate::value_error;
-use zeus_compiler::Constant;
 use zeus_compiler::OpCode;
+use zeus_compiler::Variable;
 
 pub struct VM {}
 
@@ -19,9 +19,9 @@ impl VM {
         op_code: &OpCode,
         stack: &'a mut Vec<Value<'b>>,
         variables: &'c mut HashMap<String, Value<'b>>,
-        constants: &'b Vec<Constant>,
+        constants: &'b Vec<Variable>,
     ) -> Result<(), InterpreterError> {
-        log::trace!("op {}, stack: {:?}", op_code, stack);
+        log::debug!("op {}, stack: {:?}", op_code, stack);
         match op_code {
             OpCode::OP_PRINT => {
                 println!(
@@ -35,7 +35,7 @@ impl VM {
             OpCode::OP_RETURN => {}
             OpCode::OP_GLOBAL_VARIABLE(i) => {
                 let var_name = match constants.get(*i) {
-                    Some(Constant::Identifier(s)) => s,
+                    Some(Variable::Identifier(s)) => s,
                     _ => return Err(InterpreterError::Impossible),
                 };
 
@@ -44,9 +44,12 @@ impl VM {
                     stack.pop().ok_or(InterpreterError::Impossible)?,
                 );
             }
+            // WTF is that
+            OpCode::OP_GET_LOCAL(i) => stack.push(stack.get(*i).unwrap().clone()),
+            OpCode::OP_SET_LOCAL(i) => stack[*i] = stack.last().unwrap().clone(),
             OpCode::OP_GET_GLOBAL(i) => {
                 let var_name = match constants.get(*i) {
-                    Some(Constant::Identifier(s)) => s,
+                    Some(Variable::Identifier(s)) => s,
                     _ => return Err(InterpreterError::Impossible),
                 };
 
@@ -63,7 +66,7 @@ impl VM {
             }
             OpCode::OP_SET_GLOBAL(i) => {
                 let var_name = match constants.get(*i) {
-                    Some(Constant::Identifier(s)) => s,
+                    Some(Variable::Identifier(s)) => s,
                     _ => return Err(InterpreterError::Impossible),
                 };
 
@@ -111,10 +114,10 @@ impl VM {
                         let v = stack.pop().ok_or(InterpreterError::EmptyStack)?;
                         let new_value = match v {
                             Value::Constant(c) => match c {
-                                Constant::Integer(i) => Value::Boolean(*i == 0),
-                                Constant::Float(f) => Value::Boolean(*f == 0.0),
-                                Constant::String(s) => Value::Boolean(s.is_empty()),
-                                Constant::Identifier(f) => {
+                                Variable::Integer(i) => Value::Boolean(*i == 0),
+                                Variable::Float(f) => Value::Boolean(*f == 0.0),
+                                Variable::String(s) => Value::Boolean(s.is_empty()),
+                                Variable::Identifier(f) => {
                                     return value_error!("Can't negate a variable name")
                                 }
                             },
@@ -138,12 +141,12 @@ impl VM {
                         let v = stack.pop().ok_or(InterpreterError::EmptyStack)?;
                         let new_value = match v {
                             Value::Constant(c) => match c {
-                                Constant::Integer(i) => Value::Integer(i * -1),
-                                Constant::Float(f) => Value::Float(f * -1.0),
-                                Constant::Identifier(f) => {
+                                Variable::Integer(i) => Value::Integer(i * -1),
+                                Variable::Float(f) => Value::Float(f * -1.0),
+                                Variable::Identifier(f) => {
                                     return value_error!("Can't negate a variable name")
                                 }
-                                Constant::String(_) => {
+                                Variable::String(_) => {
                                     return value_error!("Can't negate a string")
                                 }
                             },

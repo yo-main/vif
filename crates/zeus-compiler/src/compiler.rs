@@ -5,15 +5,18 @@ use zeus_scanner::TokenType;
 
 use crate::debug::disassemble_chunk;
 use crate::error::CompilerError;
+use crate::local::Local;
 use crate::parser_rule::PrattParser;
 use crate::precedence::Precedence;
 use crate::Chunk;
-use crate::Constant;
 use crate::OpCode;
+use crate::Variable;
 
 pub struct Compiler<'a> {
     scanner: Scanner<'a>,
     pending: Option<Token>,
+    locals: Vec<Local>,
+    scope_depth: usize,
     pub compiling_chunk: Chunk,
 }
 
@@ -25,6 +28,8 @@ impl<'a> Compiler<'a> {
         Compiler {
             scanner,
             pending: None,
+            locals: Vec::new(),
+            scope_depth: 0,
             compiling_chunk: Chunk::new(),
         }
     }
@@ -41,15 +46,13 @@ impl<'a> Compiler<'a> {
             },
             Err(e) => match e.r#type {
                 ScanningErrorType::EOF => Err(CompilerError::EOF),
-                _ => {
-                    log::error!("{}", e.msg);
-                    Err(CompilerError::ScanningError(format!("{e}")))
-                }
+                _ => Err(CompilerError::ScanningError(format!("{e}"))),
             },
         }
     }
 
     pub fn synchronize(&mut self) -> Result<(), CompilerError> {
+        log::debug!("Resynchronizing compiler");
         if self.scanner.is_at_line_start() {
             return Ok(());
         }
@@ -85,11 +88,45 @@ impl<'a> Compiler<'a> {
             }
             t if t.r#type == TokenType::Var => self.var_declaration(), // if we need to put it above, think about the pending var
             t if t.r#type == TokenType::NewLine => self.statement(),
+            t if t.r#type == TokenType::Indent => {
+                self.begin_scope();
+                self.block()?;
+                self.end_scope();
+                return Ok(());
+            }
             t => {
                 self.pending = Some(t);
                 self.expression_statement()
             }
         }
+    }
+
+    fn block(&mut self) -> Result<(), CompilerError> {
+        loop {
+            match self.advance()? {
+                t if t.r#type == TokenType::Dedent => break,
+                t => {
+                    self.pending = Some(t);
+                    self.declaration()?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn begin_scope(&mut self) {
+        self.scope_depth += 1
+    }
+
+    fn end_scope(&mut self) {
+        while let Some(variable) = self.locals.last() {
+            if variable.depth.unwrap_or(usize::MAX) >= self.scope_depth {
+                self.locals.pop().unwrap();
+                self.emit_op_code(OpCode::OP_POP);
+            }
+        }
+        self.scope_depth -= 1
     }
 
     fn var_declaration(&mut self) -> Result<(), CompilerError> {
@@ -116,22 +153,44 @@ impl<'a> Compiler<'a> {
     fn parse_variable(&mut self) -> Result<usize, CompilerError> {
         let token = self.advance()?;
 
-        match token.r#type {
-            TokenType::Identifier(s) => Ok(self.register_constant(Constant::Identifier(s))),
+        let variable = match token.r#type {
+            TokenType::Identifier(s) => Variable::Identifier(s),
             e => {
                 return Err(CompilerError::SyntaxError(format!(
                     "Expected identifier when parsing variable, got {e}"
                 )))
             }
+        };
+
+        match self.scope_depth {
+            0 => Ok(self.register_constant(variable)),
+            _ => {
+                self.declare_variable(variable);
+                return Ok(0);
+            }
         }
     }
 
+    fn declare_variable(&mut self, variable: Variable) {
+        self.add_local(variable);
+    }
+
+    fn add_local(&mut self, variable: Variable) {
+        self.locals.push(Local::new(variable, None))
+    }
+
     fn define_variable(&mut self, variable: usize) {
+        if self.scope_depth > 0 {
+            if let Some(var) = self.locals.last_mut() {
+                var.depth = Some(self.scope_depth);
+            }
+            return;
+        }
         self.emit_op_code(OpCode::OP_GLOBAL_VARIABLE(variable))
     }
 
-    fn register_constant(&mut self, constant: Constant) -> usize {
-        self.compiling_chunk.add_constant(constant)
+    fn register_constant(&mut self, variable: Variable) -> usize {
+        self.compiling_chunk.add_constant(variable)
     }
 
     fn expression_statement(&mut self) -> Result<(), CompilerError> {
@@ -209,7 +268,7 @@ impl<'a> Compiler<'a> {
     ) -> Result<(), CompilerError> {
         match token_type {
             TokenType::Identifier(s) => {
-                self.named_variable(Constant::Identifier(s.clone()), can_assign)
+                self.named_variable(Variable::Identifier(s.clone()), can_assign)
             }
             _ => return Err(CompilerError::Unknown(format!("Impossible"))),
         }
@@ -217,19 +276,57 @@ impl<'a> Compiler<'a> {
 
     fn named_variable(
         &mut self,
-        constant: Constant,
+        variable: Variable,
         can_assign: bool,
     ) -> Result<(), CompilerError> {
-        let index = self.register_constant(constant);
+        let is_set = can_assign && self.match_token(TokenType::Equal)?;
 
-        if can_assign && self.match_token(TokenType::Equal)? {
-            self.expression()?;
-            self.emit_op_code(OpCode::OP_SET_GLOBAL(index));
-        } else {
-            self.emit_op_code(OpCode::OP_GET_GLOBAL(index));
-        }
+        let op_code = match self.resolve_local(&variable)? {
+            Some(index) => match is_set {
+                true => {
+                    self.expression()?;
+                    OpCode::OP_SET_LOCAL(index)
+                }
+                false => OpCode::OP_GET_LOCAL(index),
+            },
+            None => {
+                let index = self.register_constant(variable);
+                match is_set {
+                    true => {
+                        self.expression()?;
+                        OpCode::OP_SET_GLOBAL(index)
+                    }
+                    false => OpCode::OP_GET_GLOBAL(index),
+                }
+            }
+        };
+
+        self.emit_op_code(op_code);
 
         Ok(())
+    }
+
+    fn resolve_local(&mut self, variable: &Variable) -> Result<Option<usize>, CompilerError> {
+        let var_name = match variable {
+            Variable::Identifier(s) => s,
+            _ => return Ok(None), // TODO: I beg you to change that
+        };
+
+        for (i, local) in self.locals.iter().rev().enumerate() {
+            match &local.variable {
+                Variable::Identifier(s) if s == var_name => match local.depth {
+                    None => {
+                        return Err(CompilerError::Unknown(format!(
+                            "Can't read local variable in its own initializer"
+                        )))
+                    }
+                    Some(_) => return Ok(Some(self.locals.len() - i - 1)),
+                },
+                _ => (),
+            }
+        }
+
+        return Ok(None);
     }
 
     pub fn binary(&mut self, token_type: &TokenType) -> Result<(), CompilerError> {
@@ -280,7 +377,7 @@ impl<'a> Compiler<'a> {
     pub fn number(&mut self, number: &TokenType) -> Result<(), CompilerError> {
         log::debug!("Number starting");
         match number {
-            TokenType::Integer(i) => self.emit_constant(Constant::Integer(*i)),
+            TokenType::Integer(i) => self.emit_constant(Variable::Integer(*i)),
             _ => {
                 return Err(CompilerError::Unknown(
                     "Should not have been something else than number".to_owned(),
@@ -294,7 +391,7 @@ impl<'a> Compiler<'a> {
     pub fn string(&mut self, token: &TokenType) -> Result<(), CompilerError> {
         log::debug!("String starting");
         match token {
-            TokenType::String(s) => self.emit_constant(Constant::String(s.clone())),
+            TokenType::String(s) => self.emit_constant(Variable::String(s.clone())),
             _ => {
                 return Err(CompilerError::Unknown(
                     "Should not have been something else than number".to_owned(),
@@ -325,8 +422,8 @@ impl<'a> Compiler<'a> {
         disassemble_chunk(&self.compiling_chunk, "code");
     }
 
-    fn emit_constant(&mut self, constant: Constant) {
-        let index = self.compiling_chunk.add_constant(constant);
+    fn emit_constant(&mut self, variable: Variable) {
+        let index = self.compiling_chunk.add_constant(variable);
         self.emit_op_code(OpCode::OP_CONSTANT(index))
     }
 

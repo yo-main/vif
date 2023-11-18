@@ -1,5 +1,6 @@
-var hello = "Hello"
-var world = "World"
-@ hello + " " + world
-hello = "Bye"
-@ hello + " " + world
+var a = 1
+	1 + 2
+	@ a
+	var ab = 2
+	@ ab
+		@ ab + a

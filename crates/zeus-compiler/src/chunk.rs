@@ -1,10 +1,10 @@
-use crate::constant::Constant;
 use crate::op_code::OpCode;
 use crate::CompilerError;
+use crate::Variable;
 
 pub struct Chunk {
     pub code: Vec<OpCode>,
-    pub constants: Vec<Constant>,
+    pub constants: Vec<Variable>,
     pub lines: Vec<u64>,
 }
 
@@ -23,12 +23,12 @@ impl Chunk {
     }
 
     // Register a constant. The constant is stored in a Vec and the function returns it index
-    pub fn add_constant(&mut self, constant: Constant) -> usize {
+    pub fn add_constant(&mut self, constant: Variable) -> usize {
         self.constants.push(constant);
         self.constants.len() - 1
     }
 
-    pub fn get_constant(&self, index: usize) -> Result<&Constant, CompilerError> {
+    pub fn get_constant(&self, index: usize) -> Result<&Variable, CompilerError> {
         self.constants
             .get(index)
             .ok_or(CompilerError::ConstantNotFound)
