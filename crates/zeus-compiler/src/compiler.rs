@@ -17,6 +17,7 @@ pub struct Compiler<'a> {
     pending: Option<Token>,
     locals: Vec<Local>,
     scope_depth: usize,
+    loop_details: Vec<(usize, usize)>,
     pub compiling_chunk: Chunk,
 }
 
@@ -30,6 +31,7 @@ impl<'a> Compiler<'a> {
             pending: None,
             locals: Vec::new(),
             scope_depth: 0,
+            loop_details: Vec::new(),
             compiling_chunk: Chunk::new(),
         }
     }
@@ -92,9 +94,9 @@ impl<'a> Compiler<'a> {
             t if t.r#type == TokenType::While => self.while_statement(),
             t if t.r#type == TokenType::Indent => {
                 self.begin_scope();
-                self.block()?;
+                let res = self.block();
                 self.end_scope();
-                return Ok(());
+                return res;
             }
             t => {
                 self.pending = Some(t);
@@ -135,13 +137,40 @@ impl<'a> Compiler<'a> {
         self.consume(TokenType::NewLine, "Expects \\n after else statement")?;
 
         let exit_jump = self.emit_jump(OpCode::JumpIfFalse(self.compiling_chunk.code.len()));
+        self.loop_details.push((loop_start, exit_jump));
         self.emit_op_code(OpCode::Pop);
         self.statement()?;
+        self.loop_details.pop().unwrap();
         self.emit_op_code(OpCode::Goto(loop_start));
 
         self.patch_jump(exit_jump);
         self.emit_op_code(OpCode::Pop);
 
+        Ok(())
+    }
+
+    pub fn break_loop(&mut self) -> Result<(), CompilerError> {
+        self.emit_op_code(OpCode::False); // fake a false condition
+        match self.loop_details.last() {
+            Some(detail) => self.emit_op_code(OpCode::Goto(detail.1)),
+            None => {
+                return Err(CompilerError::SyntaxError(format!(
+                    "Unexpected break statement"
+                )))
+            }
+        }
+        Ok(())
+    }
+
+    pub fn continue_loop(&mut self) -> Result<(), CompilerError> {
+        match self.loop_details.last() {
+            Some(detail) => self.emit_op_code(OpCode::Goto(detail.0)),
+            None => {
+                return Err(CompilerError::SyntaxError(format!(
+                    "Unexpected continue statement"
+                )))
+            }
+        }
         Ok(())
     }
 

@@ -59,7 +59,7 @@ impl std::fmt::Display for OpCode {
             Self::Pop => write!(f, "OP_POP"),
             Self::JumpIfFalse(i) => write!(f, "OP_JUMP_IF_FALSE {i}"),
             Self::Jump(i) => write!(f, "OP_JUMP {i}"),
-            Self::Goto(i) => write!(f, "OP_LOOP {i}"),
+            Self::Goto(i) => write!(f, "OP_GOTO {i}"),
         }
     }
 }

@@ -16,7 +16,7 @@ impl<'a> Scanner<'a> {
     pub fn new(source: &'a str) -> Self {
         Self {
             source: source.chars().peekable(),
-            line: 1,
+            line: 0,
             line_start: true,
             indent_stack: vec![0],
         }
@@ -44,6 +44,7 @@ impl<'a> Scanner<'a> {
 
     fn scan_token(&mut self) -> Result<Token, ScanningError> {
         let token_type = if self.line_start {
+            self.line += 1;
             self.line_start = false;
             self.parse_indentation()?
         } else {
@@ -115,7 +116,6 @@ impl<'a> Scanner<'a> {
         match token_type {
             TokenType::NewLine => {
                 self.line_start = true;
-                self.line += 1;
             }
             _ => self.line_start = false,
         };
