@@ -4,7 +4,7 @@ use crate::op_code::OpCode;
 pub fn disassemble_chunk(chunk: &Chunk, name: &str) {
     println!("== {} ==", name);
     chunk
-        .iter()
+        .iter(0)
         .enumerate()
         .for_each(|(i, c)| disassemble_instruction(i, c, chunk))
 }
@@ -47,6 +47,7 @@ pub fn disassemble_instruction(offset: usize, op_code: &OpCode, chunk: &Chunk) {
         OpCode::OP_POP => simple_instruction("OP_POP", offset),
         OpCode::OP_JUMP_IF_FALSE(i) => jump_instruction("OP_JUMP_IF_FALSE", i, offset),
         OpCode::OP_JUMP(i) => jump_instruction("OP_JUMP", i, offset),
+        OpCode::OP_LOOP(i) => jump_instruction("OP_LOOP", i, offset),
     }
 }
 

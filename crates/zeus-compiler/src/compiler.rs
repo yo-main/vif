@@ -89,6 +89,7 @@ impl<'a> Compiler<'a> {
             t if t.r#type == TokenType::If => self.if_statement(),
             t if t.r#type == TokenType::Var => self.var_declaration(), // if we need to put it above, think about the pending var
             t if t.r#type == TokenType::NewLine => self.statement(),
+            t if t.r#type == TokenType::While => self.while_statement(),
             t if t.r#type == TokenType::Indent => {
                 self.begin_scope();
                 self.block()?;
@@ -122,6 +123,24 @@ impl<'a> Compiler<'a> {
             self.statement()?;
             self.patch_jump(else_jump);
         }
+
+        Ok(())
+    }
+
+    fn while_statement(&mut self) -> Result<(), CompilerError> {
+        let loop_start = self.compiling_chunk.code.len();
+
+        self.expression()?;
+        self.consume(TokenType::DoubleDot, "Expects : after else statement")?;
+        self.consume(TokenType::NewLine, "Expects \\n after else statement")?;
+
+        let exit_jump = self.emit_jump(OpCode::OP_JUMP_IF_FALSE(self.compiling_chunk.code.len()));
+        self.emit_op_code(OpCode::OP_POP);
+        self.statement()?;
+        self.emit_op_code(OpCode::OP_LOOP(loop_start));
+
+        self.patch_jump(exit_jump);
+        self.emit_op_code(OpCode::OP_POP);
 
         Ok(())
     }

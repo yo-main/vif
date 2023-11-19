@@ -4,16 +4,28 @@ use crate::error::InterpreterError;
 use crate::error::RuntimeErrorType;
 use crate::value::Value;
 use crate::value_error;
+use zeus_compiler::Chunk;
+use zeus_compiler::CompilerError;
 use zeus_compiler::OpCode;
 use zeus_compiler::Variable;
 
-pub struct VM<'o> {
-    ip: std::slice::Iter<'o, OpCode>,
+pub struct VM<'chunk, 'iter>
+where
+    'chunk: 'iter,
+{
+    chunk: &'chunk Chunk,
+    ip: std::slice::Iter<'iter, OpCode>,
 }
 
-impl<'o> VM<'o> {
-    pub fn new(ip: std::slice::Iter<'o, OpCode>) -> Self {
-        VM { ip }
+impl<'chunk, 'iter> VM<'chunk, 'iter>
+where
+    'chunk: 'iter,
+{
+    pub fn new(chunk: &'chunk Chunk) -> Self {
+        VM {
+            chunk,
+            ip: chunk.iter(0),
+        }
     }
 
     pub fn interpret_loop<'a, 'b, 'c>(
@@ -62,6 +74,7 @@ impl<'o> VM<'o> {
                     stack.pop().ok_or(InterpreterError::Impossible)?,
                 );
             }
+            OpCode::OP_LOOP(i) => self.ip = self.chunk.iter(*i),
             OpCode::OP_JUMP(i) => self.ip.advance_by(*i).unwrap(),
             OpCode::OP_JUMP_IF_FALSE(i) => {
                 let value = stack.last().ok_or(InterpreterError::EmptyStack)?;

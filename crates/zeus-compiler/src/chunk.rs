@@ -42,8 +42,8 @@ impl Chunk {
         self.code.clear();
     }
 
-    pub fn iter(&self) -> std::slice::Iter<OpCode> {
-        self.code.iter()
+    pub fn iter(&self, index: usize) -> std::slice::Iter<OpCode> {
+        self.code[index..].iter()
     }
 
     pub fn iter_mut<'a>(&'a mut self) -> std::slice::IterMut<OpCode> {

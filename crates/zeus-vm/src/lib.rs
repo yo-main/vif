@@ -19,7 +19,7 @@ pub fn interpret(content: String) -> Result<(), InterpreterError> {
     let mut stack = Vec::new();
     let mut variables = HashMap::new();
 
-    let mut vm = vm::VM::new(chunk.iter());
+    let mut vm = vm::VM::new(&chunk);
     vm.interpret_loop(&mut stack, &mut variables, &chunk.constants)?;
 
     Ok(())
