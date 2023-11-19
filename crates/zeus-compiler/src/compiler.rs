@@ -83,7 +83,7 @@ impl<'a> Compiler<'a> {
             t if t.r#type == TokenType::At => {
                 self.expression()?;
                 self.consume(TokenType::NewLine, "Expects new line after expression")?;
-                self.emit_op_code(OpCode::OP_PRINT);
+                self.emit_op_code(OpCode::Print);
                 return Ok(());
             }
             t if t.r#type == TokenType::If => self.if_statement(),
@@ -108,13 +108,13 @@ impl<'a> Compiler<'a> {
         self.consume(TokenType::DoubleDot, "Expects : after if statement")?;
         self.consume(TokenType::NewLine, "Expects \\n after if statement")?;
 
-        let then_jump = self.emit_jump(OpCode::OP_JUMP_IF_FALSE(self.compiling_chunk.code.len()));
-        self.emit_op_code(OpCode::OP_POP);
+        let then_jump = self.emit_jump(OpCode::JumpIfFalse(self.compiling_chunk.code.len()));
+        self.emit_op_code(OpCode::Pop);
         self.statement()?;
 
-        let else_jump = self.emit_jump(OpCode::OP_JUMP(self.compiling_chunk.code.len()));
+        let else_jump = self.emit_jump(OpCode::Jump(self.compiling_chunk.code.len()));
         self.patch_jump(then_jump);
-        self.emit_op_code(OpCode::OP_POP);
+        self.emit_op_code(OpCode::Pop);
 
         if self.match_token(TokenType::Else)? {
             self.consume(TokenType::DoubleDot, "Expects : after else statement")?;
@@ -134,13 +134,13 @@ impl<'a> Compiler<'a> {
         self.consume(TokenType::DoubleDot, "Expects : after else statement")?;
         self.consume(TokenType::NewLine, "Expects \\n after else statement")?;
 
-        let exit_jump = self.emit_jump(OpCode::OP_JUMP_IF_FALSE(self.compiling_chunk.code.len()));
-        self.emit_op_code(OpCode::OP_POP);
+        let exit_jump = self.emit_jump(OpCode::JumpIfFalse(self.compiling_chunk.code.len()));
+        self.emit_op_code(OpCode::Pop);
         self.statement()?;
-        self.emit_op_code(OpCode::OP_LOOP(loop_start));
+        self.emit_op_code(OpCode::Goto(loop_start));
 
         self.patch_jump(exit_jump);
-        self.emit_op_code(OpCode::OP_POP);
+        self.emit_op_code(OpCode::Pop);
 
         Ok(())
     }
@@ -153,8 +153,8 @@ impl<'a> Compiler<'a> {
     fn patch_jump(&mut self, offset: usize) {
         let curr = self.compiling_chunk.code.len();
         match self.compiling_chunk.code.get_mut(offset) {
-            Some(OpCode::OP_JUMP_IF_FALSE(ref mut i)) => *i = curr - *i - 1,
-            Some(OpCode::OP_JUMP(ref mut i)) => *i = curr - *i - 1,
+            Some(OpCode::JumpIfFalse(ref mut i)) => *i = curr - *i - 1,
+            Some(OpCode::Jump(ref mut i)) => *i = curr - *i - 1,
             _ => (),
         }
     }
@@ -182,7 +182,7 @@ impl<'a> Compiler<'a> {
         while let Some(variable) = self.locals.last() {
             if variable.depth.unwrap_or(usize::MAX) >= self.scope_depth {
                 self.locals.pop().unwrap();
-                self.emit_op_code(OpCode::OP_POP);
+                self.emit_op_code(OpCode::Pop);
             }
         }
         self.scope_depth -= 1
@@ -245,7 +245,7 @@ impl<'a> Compiler<'a> {
             }
             return;
         }
-        self.emit_op_code(OpCode::OP_GLOBAL_VARIABLE(variable))
+        self.emit_op_code(OpCode::GlobalVariable(variable))
     }
 
     fn register_constant(&mut self, variable: Variable) -> usize {
@@ -256,7 +256,7 @@ impl<'a> Compiler<'a> {
         log::debug!("Starting expression statement");
         self.expression()?;
         self.consume(TokenType::NewLine, "Expects \\n after an expression")?;
-        self.emit_op_code(OpCode::OP_POP);
+        self.emit_op_code(OpCode::Pop);
         Ok(())
     }
 
@@ -321,19 +321,19 @@ impl<'a> Compiler<'a> {
     }
 
     pub fn and(&mut self) -> Result<(), CompilerError> {
-        let end_jump = self.emit_jump(OpCode::OP_JUMP_IF_FALSE(self.compiling_chunk.code.len()));
-        self.emit_op_code(OpCode::OP_POP);
+        let end_jump = self.emit_jump(OpCode::JumpIfFalse(self.compiling_chunk.code.len()));
+        self.emit_op_code(OpCode::Pop);
         self.parse_precedence(Precedence::And)?;
         self.patch_jump(end_jump);
         Ok(())
     }
 
     pub fn or(&mut self) -> Result<(), CompilerError> {
-        let else_jump = self.emit_jump(OpCode::OP_JUMP_IF_FALSE(self.compiling_chunk.code.len()));
-        let end_jump = self.emit_jump(OpCode::OP_JUMP(self.compiling_chunk.code.len()));
+        let else_jump = self.emit_jump(OpCode::JumpIfFalse(self.compiling_chunk.code.len()));
+        let end_jump = self.emit_jump(OpCode::Jump(self.compiling_chunk.code.len()));
 
         self.patch_jump(else_jump);
-        self.emit_op_code(OpCode::OP_POP);
+        self.emit_op_code(OpCode::Pop);
 
         self.parse_precedence(Precedence::Or)?;
         self.patch_jump(end_jump);
@@ -364,18 +364,18 @@ impl<'a> Compiler<'a> {
             Some(index) => match is_set {
                 true => {
                     self.expression()?;
-                    OpCode::OP_SET_LOCAL(index)
+                    OpCode::SetLocal(index)
                 }
-                false => OpCode::OP_GET_LOCAL(index),
+                false => OpCode::GetLocal(index),
             },
             None => {
                 let index = self.register_constant(variable);
                 match is_set {
                     true => {
                         self.expression()?;
-                        OpCode::OP_SET_GLOBAL(index)
+                        OpCode::SetGlobal(index)
                     }
-                    false => OpCode::OP_GET_GLOBAL(index),
+                    false => OpCode::GetGlobal(index),
                 }
             }
         };
@@ -413,16 +413,16 @@ impl<'a> Compiler<'a> {
         self.parse_precedence(rule)?;
 
         match token_type {
-            TokenType::Plus => self.emit_op_code(OpCode::OP_ADD),
-            TokenType::Minus => self.emit_op_code(OpCode::OP_SUBSTRACT),
-            TokenType::Star => self.emit_op_code(OpCode::OP_MULTIPLY),
-            TokenType::Slash => self.emit_op_code(OpCode::OP_DIVIDE),
-            TokenType::EqualEqual => self.emit_op_code(OpCode::OP_EQUAL),
-            TokenType::BangEqual => self.emit_op_code(OpCode::OP_NOT_EQUAL),
-            TokenType::Greater => self.emit_op_code(OpCode::OP_GREATER),
-            TokenType::GreaterEqual => self.emit_op_code(OpCode::OP_GREATER_OR_EQUAL),
-            TokenType::Less => self.emit_op_code(OpCode::OP_LESS),
-            TokenType::LessEqual => self.emit_op_code(OpCode::OP_LESS_OR_EQUAL),
+            TokenType::Plus => self.emit_op_code(OpCode::Add),
+            TokenType::Minus => self.emit_op_code(OpCode::Substract),
+            TokenType::Star => self.emit_op_code(OpCode::Multiply),
+            TokenType::Slash => self.emit_op_code(OpCode::Divide),
+            TokenType::EqualEqual => self.emit_op_code(OpCode::Equal),
+            TokenType::BangEqual => self.emit_op_code(OpCode::NotEqual),
+            TokenType::Greater => self.emit_op_code(OpCode::Greater),
+            TokenType::GreaterEqual => self.emit_op_code(OpCode::GreaterOrEqual),
+            TokenType::Less => self.emit_op_code(OpCode::Less),
+            TokenType::LessEqual => self.emit_op_code(OpCode::LessOrEqual),
             e => {
                 return Err(CompilerError::Unknown(format!(
                     "Expected an operator here, got {e}"
@@ -436,8 +436,8 @@ impl<'a> Compiler<'a> {
         log::debug!("Unary starting");
         self.parse_precedence(Precedence::Unary)?;
         match token {
-            TokenType::Minus => self.emit_op_code(OpCode::OP_NEGATE),
-            TokenType::Not => self.emit_op_code(OpCode::OP_NOT),
+            TokenType::Minus => self.emit_op_code(OpCode::Negate),
+            TokenType::Not => self.emit_op_code(OpCode::Not),
             e => {
                 return Err(CompilerError::Unknown(format!(
                     "Expected a unary operator here, got {e}"
@@ -483,9 +483,9 @@ impl<'a> Compiler<'a> {
 
     pub fn literal(&mut self, token: &TokenType) -> Result<(), CompilerError> {
         match token {
-            TokenType::False => self.emit_op_code(OpCode::OP_FALSE),
-            TokenType::True => self.emit_op_code(OpCode::OP_TRUE),
-            TokenType::None => self.emit_op_code(OpCode::OP_NONE),
+            TokenType::False => self.emit_op_code(OpCode::False),
+            TokenType::True => self.emit_op_code(OpCode::True),
+            TokenType::None => self.emit_op_code(OpCode::None),
             e => {
                 return Err(CompilerError::Unknown(format!(
                     "Expected a literal, got {e}"
@@ -497,13 +497,13 @@ impl<'a> Compiler<'a> {
     }
 
     pub fn end(&mut self) {
-        self.emit_op_code(OpCode::OP_RETURN);
+        self.emit_op_code(OpCode::Return);
         disassemble_chunk(&self.compiling_chunk, "code");
     }
 
     fn emit_constant(&mut self, variable: Variable) {
         let index = self.compiling_chunk.add_constant(variable);
-        self.emit_op_code(OpCode::OP_CONSTANT(index))
+        self.emit_op_code(OpCode::Constant(index))
     }
 
     fn emit_op_code(&mut self, op_code: OpCode) {

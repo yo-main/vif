@@ -16,8 +16,16 @@ impl ZeusError {
     }
 }
 
+impl std::fmt::Display for ZeusErrorType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::FileNotFound => write!(f, "{}", "FileNotFound"),
+        }
+    }
+}
+
 impl std::fmt::Display for ZeusError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.msg)
+        write!(f, "[{}]: {}", self.r#type, self.msg)
     }
 }

@@ -44,7 +44,7 @@ impl Zeus {
             match io::stdin().read_line(&mut line) {
                 Ok(0) => break,
                 Ok(_) => match self.run(line) {
-                    Err(error) => print!("Failed to parse command"),
+                    Err(error) => print!("Failed to parse command: {error}"),
                     _ => (),
                 },
                 Err(_) => break,

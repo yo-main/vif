@@ -1,6 +1,5 @@
 #![feature(iter_advance_by)]
 
-mod env;
 mod error;
 pub mod value;
 mod vm;

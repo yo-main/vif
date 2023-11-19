@@ -18,44 +18,42 @@ pub fn disassemble_instruction(offset: usize, op_code: &OpCode, chunk: &Chunk) {
     }
 
     match op_code {
-        OpCode::OP_RETURN => simple_instruction("OP_RETURN", offset),
-        OpCode::OP_CONSTANT(i) => constant_instruction("OP_CONSTANT", chunk, *i, offset),
-        OpCode::OP_GLOBAL_VARIABLE(i) => {
-            constant_instruction("OP_GLOBAL_VARIABLE", chunk, *i, offset)
-        }
-        OpCode::OP_GET_GLOBAL(i) => constant_instruction("OP_GET_GLOBAL", chunk, *i, offset),
-        OpCode::OP_SET_GLOBAL(i) => constant_instruction("OP_SET_GLOBAL", chunk, *i, offset),
-        OpCode::OP_GET_LOCAL(i) => constant_instruction("OP_GET_LOCAL", chunk, *i, offset),
-        OpCode::OP_SET_LOCAL(i) => constant_instruction("OP_SET_LOCAL", chunk, *i, offset),
-        OpCode::OP_NEGATE => simple_instruction("OP_NEGATE", offset),
-        OpCode::OP_ADD => simple_instruction("OP_ADD", offset),
-        OpCode::OP_SUBSTRACT => simple_instruction("OP_SUBSTRACT", offset),
-        OpCode::OP_MULTIPLY => simple_instruction("OP_MULTIPLY", offset),
-        OpCode::OP_DIVIDE => simple_instruction("OP_DIVIDE", offset),
-        OpCode::OP_MODULO => simple_instruction("OP_MODULO", offset),
-        OpCode::OP_TRUE => simple_instruction("OP_TRUE", offset),
-        OpCode::OP_FALSE => simple_instruction("OP_FALSE", offset),
-        OpCode::OP_NONE => simple_instruction("OP_NONE", offset),
-        OpCode::OP_NOT => simple_instruction("OP_NOT", offset),
-        OpCode::OP_EQUAL => simple_instruction("OP_EQUAL", offset),
-        OpCode::OP_NOT_EQUAL => simple_instruction("OP_NOT_EQUAL", offset),
-        OpCode::OP_GREATER => simple_instruction("OP_GREATER", offset),
-        OpCode::OP_GREATER_OR_EQUAL => simple_instruction("OP_GREATER_OR_EQUAL", offset),
-        OpCode::OP_LESS => simple_instruction("OP_LESS", offset),
-        OpCode::OP_LESS_OR_EQUAL => simple_instruction("OP_LESS_OR_EQUAL", offset),
-        OpCode::OP_PRINT => simple_instruction("OP_PRINT", offset),
-        OpCode::OP_POP => simple_instruction("OP_POP", offset),
-        OpCode::OP_JUMP_IF_FALSE(i) => jump_instruction("OP_JUMP_IF_FALSE", i, offset),
-        OpCode::OP_JUMP(i) => jump_instruction("OP_JUMP", i, offset),
-        OpCode::OP_LOOP(i) => jump_instruction("OP_LOOP", i, offset),
+        OpCode::Return => simple_instruction("OP_RETURN", offset),
+        OpCode::Constant(i) => constant_instruction("OP_CONSTANT", chunk, *i, offset),
+        OpCode::GlobalVariable(i) => constant_instruction("OP_GLOBAL_VARIABLE", chunk, *i, offset),
+        OpCode::GetGlobal(i) => constant_instruction("OP_GET_GLOBAL", chunk, *i, offset),
+        OpCode::SetGlobal(i) => constant_instruction("OP_SET_GLOBAL", chunk, *i, offset),
+        OpCode::GetLocal(i) => constant_instruction("OP_GET_LOCAL", chunk, *i, offset),
+        OpCode::SetLocal(i) => constant_instruction("OP_SET_LOCAL", chunk, *i, offset),
+        OpCode::Negate => simple_instruction("OP_NEGATE", offset),
+        OpCode::Add => simple_instruction("OP_ADD", offset),
+        OpCode::Substract => simple_instruction("OP_SUBSTRACT", offset),
+        OpCode::Multiply => simple_instruction("OP_MULTIPLY", offset),
+        OpCode::Divide => simple_instruction("OP_DIVIDE", offset),
+        OpCode::Modulo => simple_instruction("OP_MODULO", offset),
+        OpCode::True => simple_instruction("OP_TRUE", offset),
+        OpCode::False => simple_instruction("OP_FALSE", offset),
+        OpCode::None => simple_instruction("OP_NONE", offset),
+        OpCode::Not => simple_instruction("OP_NOT", offset),
+        OpCode::Equal => simple_instruction("OP_EQUAL", offset),
+        OpCode::NotEqual => simple_instruction("OP_NOT_EQUAL", offset),
+        OpCode::Greater => simple_instruction("OP_GREATER", offset),
+        OpCode::GreaterOrEqual => simple_instruction("OP_GREATER_OR_EQUAL", offset),
+        OpCode::Less => simple_instruction("OP_LESS", offset),
+        OpCode::LessOrEqual => simple_instruction("OP_LESS_OR_EQUAL", offset),
+        OpCode::Print => simple_instruction("OP_PRINT", offset),
+        OpCode::Pop => simple_instruction("OP_POP", offset),
+        OpCode::JumpIfFalse(i) => jump_instruction("OP_JUMP_IF_FALSE", i, offset),
+        OpCode::Jump(i) => jump_instruction("OP_JUMP", i, offset),
+        OpCode::Goto(i) => jump_instruction("OP_LOOP", i, offset),
     }
 }
 
-fn simple_instruction(name: &str, offset: usize) {
+fn simple_instruction(name: &str, _offset: usize) {
     println!("{}", name);
 }
 
-fn jump_instruction(name: &str, jump: &usize, offset: usize) {
+fn jump_instruction(name: &str, jump: &usize, _offset: usize) {
     println!("{} {}", name, jump);
 }
 

@@ -5,7 +5,6 @@ use crate::error::RuntimeErrorType;
 use crate::value::Value;
 use crate::value_error;
 use zeus_compiler::Chunk;
-use zeus_compiler::CompilerError;
 use zeus_compiler::OpCode;
 use zeus_compiler::Variable;
 
@@ -51,17 +50,17 @@ where
     pub fn interpret(&mut self, op_code: &OpCode) -> Result<(), InterpreterError> {
         log::debug!("op {}, stack: {:?}", op_code, self.stack);
         match op_code {
-            OpCode::OP_PRINT => {
+            OpCode::Print => {
                 println!(
                     "printing {}",
                     self.stack.pop().ok_or(InterpreterError::Impossible)?
                 );
             }
-            OpCode::OP_POP => {
+            OpCode::Pop => {
                 self.stack.pop().ok_or(InterpreterError::Impossible)?;
             }
-            OpCode::OP_RETURN => {}
-            OpCode::OP_GLOBAL_VARIABLE(i) => {
+            OpCode::Return => {}
+            OpCode::GlobalVariable(i) => {
                 let var_name = match self.chunk.get_constant(*i) {
                     Ok(Variable::Identifier(s)) => s,
                     _ => return Err(InterpreterError::Impossible),
@@ -72,26 +71,28 @@ where
                     self.stack.pop().ok_or(InterpreterError::Impossible)?,
                 );
             }
-            OpCode::OP_LOOP(i) => self.ip = self.chunk.iter(*i),
-            OpCode::OP_JUMP(i) => self.ip.advance_by(*i).unwrap(),
-            OpCode::OP_JUMP_IF_FALSE(i) => {
+            OpCode::Goto(i) => self.ip = self.chunk.iter(*i),
+            OpCode::Jump(i) => self.ip.advance_by(*i).unwrap(),
+            OpCode::JumpIfFalse(i) => {
                 let value = self.stack.last().ok_or(InterpreterError::EmptyStack)?;
 
                 match value {
                     Value::Boolean(false) => self.ip.advance_by(*i).unwrap(),
                     Value::Integer(0) => self.ip.advance_by(*i).unwrap(),
-                    Value::Float(0.0) => self.ip.advance_by(*i).unwrap(),
+                    Value::Float(v) if v == &0.0 => self.ip.advance_by(*i).unwrap(),
                     Value::Constant(Variable::Integer(0)) => self.ip.advance_by(*i).unwrap(),
-                    Value::Constant(Variable::Float(0.0)) => self.ip.advance_by(*i).unwrap(),
+                    Value::Constant(Variable::Float(v)) if v == &0.0 => {
+                        self.ip.advance_by(*i).unwrap()
+                    }
                     Value::String(s) if s.is_empty() => self.ip.advance_by(*i).unwrap(),
                     Value::None => self.ip.advance_by(*i).unwrap(),
                     _ => (),
                 }
             }
             // WTF is that ?? It's working though but wow. I'll need to spend more time studying how
-            OpCode::OP_GET_LOCAL(i) => self.stack.push(self.stack.get(*i).unwrap().clone()),
-            OpCode::OP_SET_LOCAL(i) => self.stack[*i] = self.stack.last().unwrap().clone(),
-            OpCode::OP_GET_GLOBAL(i) => {
+            OpCode::GetLocal(i) => self.stack.push(self.stack.get(*i).unwrap().clone()),
+            OpCode::SetLocal(i) => self.stack[*i] = self.stack.last().unwrap().clone(),
+            OpCode::GetGlobal(i) => {
                 let var_name = match self.chunk.get_constant(*i) {
                     Ok(Variable::Identifier(s)) => s,
                     _ => return Err(InterpreterError::Impossible),
@@ -108,7 +109,7 @@ where
                     }
                 }
             }
-            OpCode::OP_SET_GLOBAL(i) => {
+            OpCode::SetGlobal(i) => {
                 let var_name = match self.chunk.get_constant(*i) {
                     Ok(Variable::Identifier(s)) => s,
                     _ => return Err(InterpreterError::Impossible),
@@ -133,14 +134,14 @@ where
                     _ => (),
                 }
             }
-            OpCode::OP_CONSTANT(i) => {
+            OpCode::Constant(i) => {
                 let i = *i;
                 match self.chunk.get_constant(i) {
                     Ok(ref c) => self.stack.push(Value::Constant(c)),
                     _ => return Err(InterpreterError::ConstantNotFound),
                 };
             }
-            OpCode::OP_NOT => {
+            OpCode::Not => {
                 let value = self.stack.last_mut().ok_or(InterpreterError::EmptyStack)?;
                 match value {
                     Value::Integer(_) => {
@@ -183,7 +184,7 @@ where
                     Value::BinaryOp(_) => return value_error!("Can't negate {value}"),
                 };
             }
-            OpCode::OP_NEGATE => {
+            OpCode::Negate => {
                 let value = self.stack.last_mut().ok_or(InterpreterError::EmptyStack)?;
                 match value {
                     Value::Integer(ref mut i) => *i *= -1,
@@ -197,7 +198,7 @@ where
                                 Variable::Integer(i) => Value::Integer(i * -1),
                                 Variable::Float(f) => Value::Float(f * -1.0),
                                 Variable::Identifier(f) => {
-                                    return value_error!("Can't negate a variable name")
+                                    return value_error!("Can't negate a variable name {f}")
                                 }
                                 Variable::String(_) => {
                                     return value_error!("Can't negate a string")
@@ -213,40 +214,40 @@ where
                     Value::None => return value_error!("Can't negate {value}"),
                 };
             }
-            OpCode::OP_TRUE => self.stack.push(Value::Boolean(true)),
-            OpCode::OP_FALSE => self.stack.push(Value::Boolean(false)),
-            OpCode::OP_NONE => self.stack.push(Value::None),
-            OpCode::OP_EQUAL => {
+            OpCode::True => self.stack.push(Value::Boolean(true)),
+            OpCode::False => self.stack.push(Value::Boolean(false)),
+            OpCode::None => self.stack.push(Value::None),
+            OpCode::Equal => {
                 let a = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 let b = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 self.stack.push(Value::Boolean(a.eq(&b)))
             }
-            OpCode::OP_NOT_EQUAL => {
+            OpCode::NotEqual => {
                 let a = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 let b = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 self.stack.push(Value::Boolean(a.neq(&b)))
             }
-            OpCode::OP_GREATER => {
+            OpCode::Greater => {
                 let a = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 let b = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 self.stack.push(Value::Boolean(b.gt(&a)?))
             }
-            OpCode::OP_GREATER_OR_EQUAL => {
+            OpCode::GreaterOrEqual => {
                 let a = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 let b = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 self.stack.push(Value::Boolean(b.gte(&a)?))
             }
-            OpCode::OP_LESS => {
+            OpCode::Less => {
                 let a = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 let b = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 self.stack.push(Value::Boolean(b.lt(&a)?))
             }
-            OpCode::OP_LESS_OR_EQUAL => {
+            OpCode::LessOrEqual => {
                 let a = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 let b = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 self.stack.push(Value::Boolean(b.lte(&a)?))
             }
-            OpCode::OP_ADD => {
+            OpCode::Add => {
                 let other = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 match self.stack.last_mut() {
                     Some(ptr) => match ptr.add(other) {
@@ -260,7 +261,7 @@ where
                     None => return Err(InterpreterError::EmptyStack),
                 }
             }
-            OpCode::OP_SUBSTRACT => {
+            OpCode::Substract => {
                 let other = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 match self.stack.last_mut() {
                     Some(ptr) => match ptr.substract(other) {
@@ -274,7 +275,7 @@ where
                     None => return Err(InterpreterError::EmptyStack),
                 }
             }
-            OpCode::OP_MULTIPLY => {
+            OpCode::Multiply => {
                 let other = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 match self.stack.last_mut() {
                     Some(ptr) => match ptr.multiply(other) {
@@ -288,7 +289,7 @@ where
                     None => return Err(InterpreterError::EmptyStack),
                 }
             }
-            OpCode::OP_DIVIDE => {
+            OpCode::Divide => {
                 let other = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 match self.stack.last_mut() {
                     Some(ptr) => match ptr.divide(other) {
@@ -302,7 +303,7 @@ where
                     None => return Err(InterpreterError::EmptyStack),
                 }
             }
-            OpCode::OP_MODULO => {
+            OpCode::Modulo => {
                 let other = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 match self.stack.last_mut() {
                     Some(ptr) => match ptr.modulo(other) {
