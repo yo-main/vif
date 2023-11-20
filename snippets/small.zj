@@ -1,5 +1,16 @@
 var i = 0
 while i < 5:
-	@ i
-	break
+	if i == 1:
+		@ "no"
+	elif i == 0:
+		@ "yes"
+	elif i == 3:
+		@ "yesss"
+	elif i == 3:
+		@ "yessssss"
+	else:
+		@ "badaboom"
+
 	i = i + 1
+
+1== 1

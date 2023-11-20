@@ -118,15 +118,24 @@ impl<'a> Compiler<'a> {
         self.patch_jump(then_jump);
         self.emit_op_code(OpCode::Pop);
 
-        if self.match_token(TokenType::Else)? {
-            self.consume(TokenType::DoubleDot, "Expects : after else statement")?;
-            self.consume(TokenType::NewLine, "Expects \\n after else statement")?;
+        let res = match self.advance() {
+            Ok(t) if t.r#type == TokenType::Else => {
+                self.consume(TokenType::DoubleDot, "Expects : after else statement")?;
+                self.consume(TokenType::NewLine, "Expects \\n after else statement")?;
 
-            self.statement()?;
-            self.patch_jump(else_jump);
-        }
+                self.statement()
+            }
+            Ok(t) if t.r#type == TokenType::ElIf => self.if_statement(),
+            Ok(t) => {
+                self.pending = Some(t);
+                Ok(())
+            }
+            Err(e) => Err(e),
+        };
 
-        Ok(())
+        self.patch_jump(else_jump);
+
+        res
     }
 
     fn while_statement(&mut self) -> Result<(), CompilerError> {
@@ -139,14 +148,14 @@ impl<'a> Compiler<'a> {
         let exit_jump = self.emit_jump(OpCode::JumpIfFalse(self.compiling_chunk.code.len()));
         self.loop_details.push((loop_start, exit_jump));
         self.emit_op_code(OpCode::Pop);
-        self.statement()?;
+        let res = self.statement();
         self.loop_details.pop().unwrap();
         self.emit_op_code(OpCode::Goto(loop_start));
 
         self.patch_jump(exit_jump);
         self.emit_op_code(OpCode::Pop);
 
-        Ok(())
+        res
     }
 
     pub fn break_loop(&mut self) -> Result<(), CompilerError> {
@@ -352,9 +361,9 @@ impl<'a> Compiler<'a> {
     pub fn and(&mut self) -> Result<(), CompilerError> {
         let end_jump = self.emit_jump(OpCode::JumpIfFalse(self.compiling_chunk.code.len()));
         self.emit_op_code(OpCode::Pop);
-        self.parse_precedence(Precedence::And)?;
+        let res = self.parse_precedence(Precedence::And);
         self.patch_jump(end_jump);
-        Ok(())
+        res
     }
 
     pub fn or(&mut self) -> Result<(), CompilerError> {
@@ -364,9 +373,9 @@ impl<'a> Compiler<'a> {
         self.patch_jump(else_jump);
         self.emit_op_code(OpCode::Pop);
 
-        self.parse_precedence(Precedence::Or)?;
+        let res = self.parse_precedence(Precedence::Or);
         self.patch_jump(end_jump);
-        Ok(())
+        res
     }
 
     pub fn variable(
