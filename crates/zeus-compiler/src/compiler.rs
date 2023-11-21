@@ -5,6 +5,7 @@ use zeus_scanner::TokenType;
 
 use crate::debug::disassemble_chunk;
 use crate::error::CompilerError;
+use crate::function::Function;
 use crate::local::Local;
 use crate::parser_rule::PrattParser;
 use crate::precedence::Precedence;
@@ -18,7 +19,7 @@ pub struct Compiler<'a> {
     locals: Vec<Local>,
     scope_depth: usize,
     loop_details: Vec<(usize, usize)>,
-    pub compiling_chunk: Chunk,
+    function: Function,
 }
 
 // TODO: this mixes both parsing and translation into bytecode at the same time
@@ -32,7 +33,7 @@ impl<'a> Compiler<'a> {
             locals: Vec::new(),
             scope_depth: 0,
             loop_details: Vec::new(),
-            compiling_chunk: Chunk::new(),
+            function: Function::new(0, String::from("<main>")),
         }
     }
 
@@ -110,11 +111,11 @@ impl<'a> Compiler<'a> {
         self.consume(TokenType::DoubleDot, "Expects : after if statement")?;
         self.consume(TokenType::NewLine, "Expects \\n after if statement")?;
 
-        let then_jump = self.emit_jump(OpCode::JumpIfFalse(self.compiling_chunk.code.len()));
+        let then_jump = self.emit_jump(OpCode::JumpIfFalse(self.function.chunk.code.len()));
         self.emit_op_code(OpCode::Pop);
         self.statement()?;
 
-        let else_jump = self.emit_jump(OpCode::Jump(self.compiling_chunk.code.len()));
+        let else_jump = self.emit_jump(OpCode::Jump(self.function.chunk.code.len()));
         self.patch_jump(then_jump);
         self.emit_op_code(OpCode::Pop);
 
@@ -139,13 +140,13 @@ impl<'a> Compiler<'a> {
     }
 
     fn while_statement(&mut self) -> Result<(), CompilerError> {
-        let loop_start = self.compiling_chunk.code.len();
+        let loop_start = self.function.chunk.code.len();
 
         self.expression()?;
         self.consume(TokenType::DoubleDot, "Expects : after else statement")?;
         self.consume(TokenType::NewLine, "Expects \\n after else statement")?;
 
-        let exit_jump = self.emit_jump(OpCode::JumpIfFalse(self.compiling_chunk.code.len()));
+        let exit_jump = self.emit_jump(OpCode::JumpIfFalse(self.function.chunk.code.len()));
         self.loop_details.push((loop_start, exit_jump));
         self.emit_op_code(OpCode::Pop);
         let res = self.statement();
@@ -185,12 +186,12 @@ impl<'a> Compiler<'a> {
 
     fn emit_jump(&mut self, op_code: OpCode) -> usize {
         self.emit_op_code(op_code);
-        self.compiling_chunk.code.len() - 1
+        self.function.chunk.code.len() - 1
     }
 
     fn patch_jump(&mut self, offset: usize) {
-        let curr = self.compiling_chunk.code.len();
-        match self.compiling_chunk.code.get_mut(offset) {
+        let curr = self.function.chunk.code.len();
+        match self.function.chunk.code.get_mut(offset) {
             Some(OpCode::JumpIfFalse(ref mut i)) => *i = curr - *i - 1,
             Some(OpCode::Jump(ref mut i)) => *i = curr - *i - 1,
             _ => (),
@@ -287,7 +288,7 @@ impl<'a> Compiler<'a> {
     }
 
     fn register_constant(&mut self, variable: Variable) -> usize {
-        self.compiling_chunk.add_constant(variable)
+        self.function.chunk.add_constant(variable)
     }
 
     fn expression_statement(&mut self) -> Result<(), CompilerError> {
@@ -359,7 +360,7 @@ impl<'a> Compiler<'a> {
     }
 
     pub fn and(&mut self) -> Result<(), CompilerError> {
-        let end_jump = self.emit_jump(OpCode::JumpIfFalse(self.compiling_chunk.code.len()));
+        let end_jump = self.emit_jump(OpCode::JumpIfFalse(self.function.chunk.code.len()));
         self.emit_op_code(OpCode::Pop);
         let res = self.parse_precedence(Precedence::And);
         self.patch_jump(end_jump);
@@ -367,8 +368,8 @@ impl<'a> Compiler<'a> {
     }
 
     pub fn or(&mut self) -> Result<(), CompilerError> {
-        let else_jump = self.emit_jump(OpCode::JumpIfFalse(self.compiling_chunk.code.len()));
-        let end_jump = self.emit_jump(OpCode::Jump(self.compiling_chunk.code.len()));
+        let else_jump = self.emit_jump(OpCode::JumpIfFalse(self.function.chunk.code.len()));
+        let end_jump = self.emit_jump(OpCode::Jump(self.function.chunk.code.len()));
 
         self.patch_jump(else_jump);
         self.emit_op_code(OpCode::Pop);
@@ -534,18 +535,20 @@ impl<'a> Compiler<'a> {
         Ok(())
     }
 
-    pub fn end(&mut self) {
+    pub fn end(mut self) -> Function {
         self.emit_op_code(OpCode::Return);
-        disassemble_chunk(&self.compiling_chunk, "code");
+        disassemble_chunk(&self.function.chunk, self.function.name.as_str());
+        self.function
     }
 
     fn emit_constant(&mut self, variable: Variable) {
-        let index = self.compiling_chunk.add_constant(variable);
+        let index = self.function.chunk.add_constant(variable);
         self.emit_op_code(OpCode::Constant(index))
     }
 
     fn emit_op_code(&mut self, op_code: OpCode) {
-        self.compiling_chunk
+        self.function
+            .chunk
             .write_chunk(op_code, self.scanner.get_line())
     }
 }

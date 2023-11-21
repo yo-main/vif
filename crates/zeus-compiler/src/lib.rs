@@ -2,6 +2,7 @@ mod chunk;
 mod compiler;
 mod debug;
 mod error;
+mod function;
 mod local;
 mod op_code;
 mod parser_rule;
@@ -13,9 +14,10 @@ pub use crate::error::CompilerError;
 pub use crate::op_code::OpCode;
 pub use crate::variable::Variable;
 use compiler::Compiler;
+use function::Function;
 use zeus_scanner::Scanner;
 
-pub fn compile(content: String) -> Result<Chunk, CompilerError> {
+pub fn compile(content: String) -> Result<Function, CompilerError> {
     let scanner = Scanner::new(content.as_str());
     let mut compiler = Compiler::new(scanner);
 
@@ -35,7 +37,5 @@ pub fn compile(content: String) -> Result<Chunk, CompilerError> {
         };
     }
 
-    compiler.end();
-
-    Ok(compiler.compiling_chunk)
+    Ok(compiler.end())
 }
