@@ -1,44 +1,49 @@
 use std::collections::HashMap;
 
+use crate::callframe::CallFrame;
 use crate::error::InterpreterError;
 use crate::error::RuntimeErrorType;
 use crate::value::Value;
 use crate::value_error;
 use zeus_compiler::Chunk;
+use zeus_compiler::CompilerError;
+use zeus_compiler::Function;
 use zeus_compiler::OpCode;
 use zeus_compiler::Variable;
 
-pub struct VM<'chunk, 'iter, 'stack, 'value, 'variables>
+pub struct VM<'function, 'stack, 'value, 'variables>
 where
-    'chunk: 'iter,
-    'chunk: 'value,
+    'function: 'stack,
+    'function: 'value,
 {
-    chunk: &'chunk Chunk,
-    ip: std::slice::Iter<'iter, OpCode>,
+    function: &'function Function,
     stack: &'stack mut Vec<Value<'value>>,
     variables: &'variables mut HashMap<String, Value<'value>>,
+    call_frames: Vec<CallFrame<'stack, 'function, 'value>>,
 }
 
-impl<'chunk, 'iter, 'stack, 'value, 'variables> VM<'chunk, 'iter, 'stack, 'value, 'variables>
+impl<'function, 'stack, 'value, 'variables> VM<'function, 'stack, 'value, 'variables>
 where
-    'chunk: 'iter,
+    'function: 'stack,
+    'function: 'value,
 {
     pub fn new(
-        chunk: &'chunk Chunk,
+        function: &'function Function,
         stack: &'stack mut Vec<Value<'value>>,
         variables: &'variables mut HashMap<String, Value<'value>>,
     ) -> Self {
         VM {
-            chunk,
+            function,
             stack,
             variables,
-            ip: chunk.iter(0),
+            call_frames: Vec::new(),
         }
     }
 
     pub fn interpret_loop(&mut self) -> Result<(), InterpreterError> {
         loop {
-            match self.ip.next() {
+            let frame = self.call_frames.last_mut().unwrap();
+            match frame.ip.next() {
                 None => break,
                 Some(byte) => self.interpret(byte)?,
             }
@@ -49,6 +54,7 @@ where
 
     pub fn interpret(&mut self, op_code: &OpCode) -> Result<(), InterpreterError> {
         log::debug!("op {}, stack: {:?}", op_code, self.stack);
+
         match op_code {
             OpCode::Print => {
                 println!(
@@ -61,7 +67,7 @@ where
             }
             OpCode::Return => {}
             OpCode::GlobalVariable(i) => {
-                let var_name = match self.chunk.get_constant(*i) {
+                let var_name = match self.function.chunk.get_constant(*i) {
                     Ok(Variable::Identifier(s)) => s,
                     _ => return Err(InterpreterError::Impossible),
                 };
@@ -71,29 +77,47 @@ where
                     self.stack.pop().ok_or(InterpreterError::Impossible)?,
                 );
             }
-            OpCode::Goto(i) => self.ip = self.chunk.iter(*i),
-            OpCode::Jump(i) => self.ip.advance_by(*i).unwrap(),
+            OpCode::Goto(i) => self.call_frames.last_mut().unwrap().reset_ip(*i),
+            OpCode::Jump(i) => self
+                .call_frames
+                .last_mut()
+                .unwrap()
+                .ip
+                .advance_by(*i)
+                .unwrap(),
             OpCode::JumpIfFalse(i) => {
-                let value = self.stack.last().ok_or(InterpreterError::EmptyStack)?;
+                let frame = self.call_frames.last_mut().unwrap();
+                let value = frame.stack.last().ok_or(InterpreterError::EmptyStack)?;
 
                 match value {
-                    Value::Boolean(false) => self.ip.advance_by(*i).unwrap(),
-                    Value::Integer(0) => self.ip.advance_by(*i).unwrap(),
-                    Value::Float(v) if v == &0.0 => self.ip.advance_by(*i).unwrap(),
-                    Value::Constant(Variable::Integer(0)) => self.ip.advance_by(*i).unwrap(),
+                    Value::Boolean(false) => frame.ip.advance_by(*i).unwrap(),
+                    Value::Integer(0) => frame.ip.advance_by(*i).unwrap(),
+                    Value::Float(v) if v == &0.0 => frame.ip.advance_by(*i).unwrap(),
+                    Value::Constant(Variable::Integer(0)) => frame.ip.advance_by(*i).unwrap(),
                     Value::Constant(Variable::Float(v)) if v == &0.0 => {
-                        self.ip.advance_by(*i).unwrap()
+                        frame.ip.advance_by(*i).unwrap()
                     }
-                    Value::String(s) if s.is_empty() => self.ip.advance_by(*i).unwrap(),
-                    Value::None => self.ip.advance_by(*i).unwrap(),
+                    Value::String(s) if s.is_empty() => frame.ip.advance_by(*i).unwrap(),
+                    Value::None => frame.ip.advance_by(*i).unwrap(),
                     _ => (),
                 }
             }
             // WTF is that ?? It's working though but wow. I'll need to spend more time studying how
-            OpCode::GetLocal(i) => self.stack.push(self.stack.get(*i).unwrap().clone()),
-            OpCode::SetLocal(i) => self.stack[*i] = self.stack.last().unwrap().clone(),
+            OpCode::GetLocal(i) => self.stack.push(
+                self.call_frames
+                    .last()
+                    .unwrap()
+                    .stack
+                    .get(*i)
+                    .unwrap()
+                    .clone(),
+            ),
+            OpCode::SetLocal(i) => {
+                let frame = self.call_frames.last_mut().unwrap();
+                frame.stack[*i] = frame.stack.last().unwrap().clone();
+            }
             OpCode::GetGlobal(i) => {
-                let var_name = match self.chunk.get_constant(*i) {
+                let var_name = match self.function.chunk.get_constant(*i) {
                     Ok(Variable::Identifier(s)) => s,
                     _ => return Err(InterpreterError::Impossible),
                 };
@@ -110,7 +134,7 @@ where
                 }
             }
             OpCode::SetGlobal(i) => {
-                let var_name = match self.chunk.get_constant(*i) {
+                let var_name = match self.function.chunk.get_constant(*i) {
                     Ok(Variable::Identifier(s)) => s,
                     _ => return Err(InterpreterError::Impossible),
                 };
@@ -136,7 +160,7 @@ where
             }
             OpCode::Constant(i) => {
                 let i = *i;
-                match self.chunk.get_constant(i) {
+                match self.function.chunk.get_constant(i) {
                     Ok(ref c) => self.stack.push(Value::Constant(c)),
                     _ => return Err(InterpreterError::ConstantNotFound),
                 };
