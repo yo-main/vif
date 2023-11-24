@@ -19,7 +19,7 @@ where
     function: &'function Function,
     stack: &'stack mut Vec<Value<'value>>,
     variables: &'variables mut HashMap<String, Value<'value>>,
-    call_frames: Vec<CallFrame<'stack, 'function, 'value>>,
+    call_frames: Vec<CallFrame<'stack, 'function>>,
 }
 
 impl<'function, 'stack, 'value, 'variables> VM<'function, 'stack, 'value, 'variables>
@@ -32,11 +32,12 @@ where
         stack: &'stack mut Vec<Value<'value>>,
         variables: &'variables mut HashMap<String, Value<'value>>,
     ) -> Self {
+        let call_frames = vec![CallFrame::new(function, 0)];
         VM {
             function,
             stack,
             variables,
-            call_frames: Vec::new(),
+            call_frames,
         }
     }
 
@@ -87,7 +88,7 @@ where
                 .unwrap(),
             OpCode::JumpIfFalse(i) => {
                 let frame = self.call_frames.last_mut().unwrap();
-                let value = frame.stack.last().ok_or(InterpreterError::EmptyStack)?;
+                let value = self.stack.last().ok_or(InterpreterError::EmptyStack)?;
 
                 match value {
                     Value::Boolean(false) => frame.ip.advance_by(*i).unwrap(),
@@ -103,19 +104,8 @@ where
                 }
             }
             // WTF is that ?? It's working though but wow. I'll need to spend more time studying how
-            OpCode::GetLocal(i) => self.stack.push(
-                self.call_frames
-                    .last()
-                    .unwrap()
-                    .stack
-                    .get(*i)
-                    .unwrap()
-                    .clone(),
-            ),
-            OpCode::SetLocal(i) => {
-                let frame = self.call_frames.last_mut().unwrap();
-                frame.stack[*i] = frame.stack.last().unwrap().clone();
-            }
+            OpCode::GetLocal(i) => self.stack.push(self.stack.get(*i).unwrap().clone()),
+            OpCode::SetLocal(i) => self.stack[*i] = self.stack.last().unwrap().clone(),
             OpCode::GetGlobal(i) => {
                 let var_name = match self.function.chunk.get_constant(*i) {
                     Ok(Variable::Identifier(s)) => s,
