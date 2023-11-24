@@ -1,9 +1,11 @@
+use crate::local::Local;
 use crate::Chunk;
 
 pub struct Function {
     pub arity: u8,
     pub chunk: Chunk,
     pub name: String,
+    pub locals: Vec<Local>,
 }
 
 impl Function {
@@ -12,7 +14,12 @@ impl Function {
             arity,
             name,
             chunk: Chunk::new(),
+            locals: Vec::new(),
         }
+    }
+
+    pub fn len(&self) -> usize {
+        self.chunk.code.len()
     }
 }
 

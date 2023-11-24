@@ -7,34 +7,213 @@ use crate::debug::disassemble_chunk;
 use crate::error::CompilerError;
 use crate::function::Function;
 use crate::local::Local;
+use crate::op_code;
 use crate::parser_rule::PrattParser;
 use crate::precedence::Precedence;
 use crate::Chunk;
 use crate::OpCode;
 use crate::Variable;
 
-pub struct Compiler<'scanner, 'a> {
+pub trait Registry {
+    fn emit_op_code(&mut self, op_code: OpCode, line: u64);
+    fn emit_constant(&mut self, variable: Variable, line: u64);
+    fn emit_jump(&mut self, op_code: OpCode, line: u64) -> usize;
+    fn patch_jump(&mut self, offset: usize);
+    fn len(&self) -> usize;
+    fn chunk(&self) -> &Chunk;
+    fn name(&self) -> &str;
+    fn inc_arity(&mut self);
+    fn end_scope(&mut self, scope_depth: usize, line: u64);
+    fn add_variable(&mut self, variable: Variable) -> usize;
+    fn initialize_variable(&mut self, scope_depth: usize);
+    fn resolve_local(&mut self, variable: &Variable) -> Result<Option<usize>, CompilerError>;
+}
+
+impl Registry for Function {
+    fn resolve_local(&mut self, variable: &Variable) -> Result<Option<usize>, CompilerError> {
+        let var_name = match variable {
+            Variable::Identifier(s) => s,
+            _ => return Ok(None), // TODO: I beg you to change that
+        };
+
+        for (i, local) in self.locals.iter().rev().enumerate() {
+            match &local.variable {
+                Variable::Identifier(s) if s == var_name => match local.depth {
+                    None => {
+                        return Err(CompilerError::Unknown(format!(
+                            "Can't read local variable in its own initializer"
+                        )))
+                    }
+                    Some(_) => return Ok(Some(self.locals.len() - i - 1)),
+                },
+                _ => (),
+            }
+        }
+
+        return Ok(None);
+    }
+
+    fn initialize_variable(&mut self, scope_depth: usize) {
+        if scope_depth > 0 {
+            if let Some(var) = self.locals.last_mut() {
+                var.depth = Some(scope_depth);
+            }
+        }
+    }
+    fn add_variable(&mut self, variable: Variable) -> usize {
+        self.locals.push(Local::new(variable, None));
+        0
+    }
+
+    fn end_scope(&mut self, scope_depth: usize, line: u64) {
+        while let Some(variable) = self.locals.last() {
+            if variable.depth.unwrap_or(usize::MAX) >= scope_depth {
+                self.locals.pop().unwrap();
+                self.emit_op_code(OpCode::Pop, line);
+            }
+        }
+    }
+    fn inc_arity(&mut self) {
+        self.arity += 1
+    }
+    fn name(&self) -> &str {
+        self.name.as_str()
+    }
+
+    fn chunk(&self) -> &Chunk {
+        &self.chunk
+    }
+
+    fn len(&self) -> usize {
+        self.len()
+    }
+
+    fn emit_op_code(&mut self, op_code: OpCode, line: u64) {
+        self.chunk.write_chunk(op_code, line)
+    }
+
+    fn emit_constant(&mut self, variable: Variable, line: u64) {
+        let index = self.chunk.add_constant(variable);
+        self.emit_op_code(OpCode::Constant(index), line)
+    }
+
+    fn emit_jump(&mut self, op_code: OpCode, line: u64) -> usize {
+        self.emit_op_code(op_code, line);
+        self.chunk.code.len() - 1
+    }
+
+    fn patch_jump(&mut self, offset: usize) {
+        let curr = self.chunk.code.len();
+        match self.chunk.code.get_mut(offset) {
+            Some(OpCode::JumpIfFalse(ref mut i)) => *i = curr - *i - 1,
+            Some(OpCode::Jump(ref mut i)) => *i = curr - *i - 1,
+            _ => (),
+        }
+    }
+}
+
+pub struct Application {
+    pub chunk: Chunk,
+    pub globals: Vec<Local>,
+}
+
+impl Application {
+    fn len(&self) -> usize {
+        self.chunk.code.len()
+    }
+}
+
+impl Registry for Application {
+    fn resolve_local(&mut self, variable: &Variable) -> Result<Option<usize>, CompilerError> {
+        Err(CompilerError::Unknown(format!(
+            "Can't resolve locals in application"
+        )))
+    }
+
+    fn initialize_variable(&mut self, scope_depth: usize) {}
+
+    fn add_variable(&mut self, variable: Variable) -> usize {
+        self.globals.push(Local::new(variable, None));
+        self.globals.len() - 1
+    }
+
+    fn end_scope(&mut self, scope_depth: usize, line: u64) {}
+
+    fn inc_arity(&mut self) {}
+
+    fn name(&self) -> &str {
+        "MainApplication"
+    }
+
+    fn chunk(&self) -> &Chunk {
+        &self.chunk
+    }
+
+    fn len(&self) -> usize {
+        self.len()
+    }
+
+    fn emit_op_code(&mut self, op_code: OpCode, line: u64) {
+        self.chunk.write_chunk(op_code, line)
+    }
+
+    fn emit_constant(&mut self, variable: Variable, line: u64) {
+        let index = self.chunk.add_constant(variable);
+        self.emit_op_code(OpCode::Constant(index), line)
+    }
+
+    fn emit_jump(&mut self, op_code: OpCode, line: u64) -> usize {
+        self.emit_op_code(op_code, line);
+        self.chunk.code.len() - 1
+    }
+
+    fn patch_jump(&mut self, offset: usize) {
+        let curr = self.chunk.code.len();
+        match self.chunk.code.get_mut(offset) {
+            Some(OpCode::JumpIfFalse(ref mut i)) => *i = curr - *i - 1,
+            Some(OpCode::Jump(ref mut i)) => *i = curr - *i - 1,
+            _ => (),
+        }
+    }
+}
+
+pub struct Compiler<'scanner, 'a, R>
+where
+    R: Registry,
+{
     scanner: &'scanner mut Scanner<'a>,
     pending: Option<Token>,
-    locals: Vec<Local>,
     scope_depth: usize,
     loop_details: Vec<(usize, usize)>,
-    function: Function,
+    registry: R,
 }
 
 // TODO: this mixes both parsing and translation into bytecode at the same time
 // we should be able to split those 2 steps in distinct part: parsing AST, translation
 // potentially we could add more steps in between (like optimization)
-impl<'scanner, 'a> Compiler<'scanner, 'a> {
-    pub fn new(scanner: &'scanner mut Scanner<'a>, function_name: String) -> Self {
+impl<'scanner, 'a, R> Compiler<'scanner, 'a, R>
+where
+    R: Registry,
+{
+    pub fn new(scanner: &'scanner mut Scanner<'a>, registry: R) -> Self {
         Compiler {
             scanner,
-            function: Function::new(0, function_name),
+            registry,
             pending: None,
-            locals: Vec::new(),
             scope_depth: 0,
             loop_details: Vec::new(),
         }
+    }
+
+    fn emit_op_code(&mut self, op_code: OpCode) {
+        self.registry.emit_op_code(op_code, self.scanner.get_line())
+    }
+    fn emit_jump(&mut self, op_code: OpCode) -> usize {
+        self.registry.emit_jump(op_code, self.scanner.get_line())
+    }
+    fn emit_constant(&mut self, variable: Variable) {
+        self.registry
+            .emit_constant(variable, self.scanner.get_line())
     }
 
     pub fn advance(&mut self) -> Result<Token, CompilerError> {
@@ -117,12 +296,12 @@ impl<'scanner, 'a> Compiler<'scanner, 'a> {
         self.consume(TokenType::DoubleDot, "Expects : after if statement")?;
         self.consume(TokenType::NewLine, "Expects \\n after if statement")?;
 
-        let then_jump = self.emit_jump(OpCode::JumpIfFalse(self.function.chunk.code.len()));
+        let then_jump = self.emit_jump(OpCode::JumpIfFalse(self.registry.len()));
         self.emit_op_code(OpCode::Pop);
         self.statement()?;
 
-        let else_jump = self.emit_jump(OpCode::Jump(self.function.chunk.code.len()));
-        self.patch_jump(then_jump);
+        let else_jump = self.emit_jump(OpCode::Jump(self.registry.len()));
+        self.registry.patch_jump(then_jump);
         self.emit_op_code(OpCode::Pop);
 
         let res = match self.advance() {
@@ -140,26 +319,26 @@ impl<'scanner, 'a> Compiler<'scanner, 'a> {
             Err(e) => Err(e),
         };
 
-        self.patch_jump(else_jump);
+        self.registry.patch_jump(else_jump);
 
         res
     }
 
     fn while_statement(&mut self) -> Result<(), CompilerError> {
-        let loop_start = self.function.chunk.code.len();
+        let loop_start = self.registry.len();
 
         self.expression()?;
         self.consume(TokenType::DoubleDot, "Expects : after else statement")?;
         self.consume(TokenType::NewLine, "Expects \\n after else statement")?;
 
-        let exit_jump = self.emit_jump(OpCode::JumpIfFalse(self.function.chunk.code.len()));
+        let exit_jump = self.emit_jump(OpCode::JumpIfFalse(self.registry.len()));
         self.loop_details.push((loop_start, exit_jump));
         self.emit_op_code(OpCode::Pop);
         let res = self.statement();
         self.loop_details.pop().unwrap();
         self.emit_op_code(OpCode::Goto(loop_start));
 
-        self.patch_jump(exit_jump);
+        self.registry.patch_jump(exit_jump);
         self.emit_op_code(OpCode::Pop);
 
         res
@@ -190,20 +369,6 @@ impl<'scanner, 'a> Compiler<'scanner, 'a> {
         Ok(())
     }
 
-    fn emit_jump(&mut self, op_code: OpCode) -> usize {
-        self.emit_op_code(op_code);
-        self.function.chunk.code.len() - 1
-    }
-
-    fn patch_jump(&mut self, offset: usize) {
-        let curr = self.function.chunk.code.len();
-        match self.function.chunk.code.get_mut(offset) {
-            Some(OpCode::JumpIfFalse(ref mut i)) => *i = curr - *i - 1,
-            Some(OpCode::Jump(ref mut i)) => *i = curr - *i - 1,
-            _ => (),
-        }
-    }
-
     fn function_declaration(&mut self) -> Result<(), CompilerError> {
         let var = self.parse_variable()?;
         self.function_statement()?;
@@ -212,14 +377,14 @@ impl<'scanner, 'a> Compiler<'scanner, 'a> {
     }
 
     fn function_statement(&mut self) -> Result<(), CompilerError> {
-        let mut compiler = Compiler::new(self.scanner, "function".to_owned());
+        let mut compiler = Compiler::new(self.scanner, Function::new(0, "function".to_owned()));
 
         compiler.begin_scope();
         compiler.consume(TokenType::LeftParen, "Expects ( after function name")?;
         match compiler.advance()? {
             mut t if t.r#type == TokenType::Comma => {
                 while t.r#type == TokenType::Comma {
-                    compiler.function.arity += 1;
+                    compiler.registry.inc_arity();
                     let variable = compiler.parse_variable()?;
                     compiler.define_variable(variable);
                     t = compiler.advance()?;
@@ -260,12 +425,8 @@ impl<'scanner, 'a> Compiler<'scanner, 'a> {
     }
 
     fn end_scope(&mut self) {
-        while let Some(variable) = self.locals.last() {
-            if variable.depth.unwrap_or(usize::MAX) >= self.scope_depth {
-                self.locals.pop().unwrap();
-                self.emit_op_code(OpCode::Pop);
-            }
-        }
+        self.registry
+            .end_scope(self.scope_depth, self.scanner.get_line());
         self.scope_depth -= 1
     }
 
@@ -301,37 +462,19 @@ impl<'scanner, 'a> Compiler<'scanner, 'a> {
                 )))
             }
         };
-
-        match self.scope_depth {
-            0 => Ok(self.register_constant(variable)),
-            _ => {
-                self.declare_variable(variable);
-                return Ok(0);
-            }
-        }
-    }
-
-    fn declare_variable(&mut self, variable: Variable) {
-        self.add_local(variable);
-    }
-
-    fn add_local(&mut self, variable: Variable) {
-        self.locals.push(Local::new(variable, None))
+        Ok(self.register_variable(variable))
     }
 
     fn define_variable(&mut self, variable: usize) {
-        // initialize the local variable
         if self.scope_depth > 0 {
-            if let Some(var) = self.locals.last_mut() {
-                var.depth = Some(self.scope_depth);
-            }
-            return;
+            self.registry.initialize_variable(self.scope_depth);
+        } else {
+            self.emit_op_code(OpCode::GlobalVariable(variable))
         }
-        self.emit_op_code(OpCode::GlobalVariable(variable))
     }
 
-    fn register_constant(&mut self, variable: Variable) -> usize {
-        self.function.chunk.add_constant(variable)
+    fn register_variable(&mut self, variable: Variable) -> usize {
+        self.registry.add_variable(variable)
     }
 
     fn expression_statement(&mut self) -> Result<(), CompilerError> {
@@ -403,22 +546,22 @@ impl<'scanner, 'a> Compiler<'scanner, 'a> {
     }
 
     pub fn and(&mut self) -> Result<(), CompilerError> {
-        let end_jump = self.emit_jump(OpCode::JumpIfFalse(self.function.chunk.code.len()));
+        let end_jump = self.emit_jump(OpCode::JumpIfFalse(self.registry.len()));
         self.emit_op_code(OpCode::Pop);
         let res = self.parse_precedence(Precedence::And);
-        self.patch_jump(end_jump);
+        self.registry.patch_jump(end_jump);
         res
     }
 
     pub fn or(&mut self) -> Result<(), CompilerError> {
-        let else_jump = self.emit_jump(OpCode::JumpIfFalse(self.function.chunk.code.len()));
-        let end_jump = self.emit_jump(OpCode::Jump(self.function.chunk.code.len()));
+        let else_jump = self.emit_jump(OpCode::JumpIfFalse(self.registry.len()));
+        let end_jump = self.emit_jump(OpCode::Jump(self.registry.len()));
 
-        self.patch_jump(else_jump);
+        self.registry.patch_jump(else_jump);
         self.emit_op_code(OpCode::Pop);
 
         let res = self.parse_precedence(Precedence::Or);
-        self.patch_jump(end_jump);
+        self.registry.patch_jump(end_jump);
         res
     }
 
@@ -451,7 +594,7 @@ impl<'scanner, 'a> Compiler<'scanner, 'a> {
                 false => OpCode::GetLocal(index),
             },
             None => {
-                let index = self.register_constant(variable);
+                let index = self.register_variable(variable);
                 match is_set {
                     true => {
                         self.expression()?;
@@ -468,26 +611,7 @@ impl<'scanner, 'a> Compiler<'scanner, 'a> {
     }
 
     fn resolve_local(&mut self, variable: &Variable) -> Result<Option<usize>, CompilerError> {
-        let var_name = match variable {
-            Variable::Identifier(s) => s,
-            _ => return Ok(None), // TODO: I beg you to change that
-        };
-
-        for (i, local) in self.locals.iter().rev().enumerate() {
-            match &local.variable {
-                Variable::Identifier(s) if s == var_name => match local.depth {
-                    None => {
-                        return Err(CompilerError::Unknown(format!(
-                            "Can't read local variable in its own initializer"
-                        )))
-                    }
-                    Some(_) => return Ok(Some(self.locals.len() - i - 1)),
-                },
-                _ => (),
-            }
-        }
-
-        return Ok(None);
+        self.registry.resolve_local(variable)
     }
 
     pub fn binary(&mut self, token_type: &TokenType) -> Result<(), CompilerError> {
@@ -578,20 +702,9 @@ impl<'scanner, 'a> Compiler<'scanner, 'a> {
         Ok(())
     }
 
-    pub fn end(mut self) -> Function {
+    pub fn end(mut self) -> R {
         self.emit_op_code(OpCode::Return);
-        disassemble_chunk(&self.function.chunk, self.function.name.as_str());
-        self.function
-    }
-
-    fn emit_constant(&mut self, variable: Variable) {
-        let index = self.function.chunk.add_constant(variable);
-        self.emit_op_code(OpCode::Constant(index))
-    }
-
-    fn emit_op_code(&mut self, op_code: OpCode) {
-        self.function
-            .chunk
-            .write_chunk(op_code, self.scanner.get_line())
+        disassemble_chunk(&self.registry.chunk(), self.registry.name());
+        self.registry
     }
 }
