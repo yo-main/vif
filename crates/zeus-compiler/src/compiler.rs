@@ -216,7 +216,22 @@ impl<'scanner, 'a> Compiler<'scanner, 'a> {
 
         compiler.begin_scope();
         compiler.consume(TokenType::LeftParen, "Expects ( after function name")?;
-        compiler.consume(TokenType::RightParen, "Expects ) after function name")?;
+        match compiler.advance()? {
+            mut t if t.r#type == TokenType::Comma => {
+                while t.r#type == TokenType::Comma {
+                    compiler.function.arity += 1;
+                    let variable = compiler.parse_variable()?;
+                    compiler.define_variable(variable);
+                    t = compiler.advance()?;
+                }
+            }
+            t if t.r#type == TokenType::RightParen => (),
+            t => {
+                return Err(CompilerError::SyntaxError(format!(
+                    "Unexpected char in function declaration: {t}"
+                )))
+            }
+        }
         compiler.consume(TokenType::DoubleDot, "Expects : after function declaration")?;
         compiler.block()?;
         let function = compiler.end();
