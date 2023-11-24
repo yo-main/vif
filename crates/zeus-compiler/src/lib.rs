@@ -18,8 +18,8 @@ pub use function::Function;
 use zeus_scanner::Scanner;
 
 pub fn compile(content: String) -> Result<Function, CompilerError> {
-    let scanner = Scanner::new(content.as_str());
-    let mut compiler = Compiler::new(scanner);
+    let mut scanner = Scanner::new(content.as_str());
+    let mut compiler = Compiler::new(&mut scanner, "<main>".to_owned());
     let mut errors = Vec::new();
 
     loop {

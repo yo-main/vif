@@ -188,6 +188,9 @@ where
                                 Variable::Identifier(f) => {
                                     return value_error!("Can't negate a variable name: {f}")
                                 }
+                                Variable::Function(f) => {
+                                    return value_error!("Can't negate a function name: {f}")
+                                }
                             },
                             _ => return Err(InterpreterError::Impossible), // impossible
                         };
@@ -216,6 +219,9 @@ where
                                 }
                                 Variable::String(_) => {
                                     return value_error!("Can't negate a string")
+                                }
+                                Variable::Function(f) => {
+                                    return value_error!("Can't negate a function name: {f}")
                                 }
                             },
                             _ => return Err(InterpreterError::Impossible),

@@ -13,8 +13,8 @@ use crate::Chunk;
 use crate::OpCode;
 use crate::Variable;
 
-pub struct Compiler<'a> {
-    scanner: Scanner<'a>,
+pub struct Compiler<'scanner, 'a> {
+    scanner: &'scanner mut Scanner<'a>,
     pending: Option<Token>,
     locals: Vec<Local>,
     scope_depth: usize,
@@ -25,15 +25,15 @@ pub struct Compiler<'a> {
 // TODO: this mixes both parsing and translation into bytecode at the same time
 // we should be able to split those 2 steps in distinct part: parsing AST, translation
 // potentially we could add more steps in between (like optimization)
-impl<'a> Compiler<'a> {
-    pub fn new(scanner: Scanner<'a>) -> Self {
+impl<'scanner, 'a> Compiler<'scanner, 'a> {
+    pub fn new(scanner: &'scanner mut Scanner<'a>, function_name: String) -> Self {
         Compiler {
             scanner,
+            function: Function::new(0, function_name),
             pending: None,
             locals: Vec::new(),
             scope_depth: 0,
             loop_details: Vec::new(),
-            function: Function::new(0, String::from("<main>")),
         }
     }
 
@@ -77,7 +77,14 @@ impl<'a> Compiler<'a> {
 
     pub fn declaration(&mut self) -> Result<(), CompilerError> {
         log::debug!("Starting declaration");
-        self.statement()
+        match self.advance()? {
+            t if t.r#type == TokenType::Def => self.function_declaration(),
+            t if t.r#type == TokenType::Var => self.var_declaration(),
+            t => {
+                self.pending = Some(t);
+                self.statement()
+            }
+        }
     }
 
     pub fn statement(&mut self) -> Result<(), CompilerError> {
@@ -90,7 +97,6 @@ impl<'a> Compiler<'a> {
                 return Ok(());
             }
             t if t.r#type == TokenType::If => self.if_statement(),
-            t if t.r#type == TokenType::Var => self.var_declaration(), // if we need to put it above, think about the pending var
             t if t.r#type == TokenType::NewLine => self.statement(),
             t if t.r#type == TokenType::While => self.while_statement(),
             t if t.r#type == TokenType::Indent => {
@@ -198,6 +204,27 @@ impl<'a> Compiler<'a> {
         }
     }
 
+    fn function_declaration(&mut self) -> Result<(), CompilerError> {
+        let var = self.parse_variable()?;
+        self.function_statement()?;
+        self.define_variable(var);
+        Ok(())
+    }
+
+    fn function_statement(&mut self) -> Result<(), CompilerError> {
+        let mut compiler = Compiler::new(self.scanner, "function".to_owned());
+
+        compiler.begin_scope();
+        compiler.consume(TokenType::LeftParen, "Expects ( after function name")?;
+        compiler.consume(TokenType::RightParen, "Expects ) after function name")?;
+        compiler.consume(TokenType::DoubleDot, "Expects : after function declaration")?;
+        compiler.block()?;
+        let function = compiler.end();
+        self.emit_constant(Variable::Function(function));
+
+        Ok(())
+    }
+
     fn block(&mut self) -> Result<(), CompilerError> {
         loop {
             match self.advance()? {
@@ -278,6 +305,7 @@ impl<'a> Compiler<'a> {
     }
 
     fn define_variable(&mut self, variable: usize) {
+        // initialize the local variable
         if self.scope_depth > 0 {
             if let Some(var) = self.locals.last_mut() {
                 var.depth = Some(self.scope_depth);
