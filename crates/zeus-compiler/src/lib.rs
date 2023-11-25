@@ -11,15 +11,16 @@ mod variable;
 
 pub use crate::chunk::Chunk;
 pub use crate::error::CompilerError;
+pub use crate::function::Function;
 pub use crate::op_code::OpCode;
 pub use crate::variable::Variable;
+pub use compiler::Application;
 use compiler::Compiler;
-pub use function::Function;
 use zeus_scanner::Scanner;
 
-pub fn compile(content: String) -> Result<Function, CompilerError> {
+pub fn compile(content: String) -> Result<Application, CompilerError> {
     let mut scanner = Scanner::new(content.as_str());
-    let mut compiler = Compiler::new(&mut scanner, Function::new(0, "<main>".to_owned()));
+    let mut compiler = Compiler::new(&mut scanner, Application::new());
     let mut errors = Vec::new();
 
     loop {

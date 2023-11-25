@@ -1,40 +1,43 @@
 use std::collections::HashMap;
 
 use crate::callframe::CallFrame;
+use crate::callframe::CodeIterator;
 use crate::error::InterpreterError;
 use crate::error::RuntimeErrorType;
 use crate::value::Value;
 use crate::value_error;
+use zeus_compiler::Application;
 use zeus_compiler::Chunk;
 use zeus_compiler::CompilerError;
-use zeus_compiler::Function;
 use zeus_compiler::OpCode;
 use zeus_compiler::Variable;
 
-pub struct VM<'function, 'stack, 'value, 'variables>
+pub struct VM<'function, 'stack, 'value, 'variables, R>
 where
     'function: 'stack,
     'function: 'value,
+    R: CodeIterator,
 {
-    function: &'function Function,
+    application: &'function Application,
     stack: &'stack mut Vec<Value<'value>>,
     variables: &'variables mut HashMap<String, Value<'value>>,
-    call_frames: Vec<CallFrame<'stack, 'function>>,
+    call_frames: Vec<CallFrame<'stack, 'function, R>>,
 }
 
-impl<'function, 'stack, 'value, 'variables> VM<'function, 'stack, 'value, 'variables>
+impl<'function, 'stack, 'value, 'variables, R> VM<'function, 'stack, 'value, 'variables, R>
 where
     'function: 'stack,
     'function: 'value,
+    R: CodeIterator,
 {
     pub fn new(
-        function: &'function Function,
+        application: &'function Application,
         stack: &'stack mut Vec<Value<'value>>,
         variables: &'variables mut HashMap<String, Value<'value>>,
     ) -> Self {
-        let call_frames = vec![CallFrame::new(function, 0)];
+        let call_frames = vec![];
         VM {
-            function,
+            application,
             stack,
             variables,
             call_frames,
@@ -68,7 +71,7 @@ where
             }
             OpCode::Return => {}
             OpCode::GlobalVariable(i) => {
-                let var_name = match self.function.chunk.get_constant(*i) {
+                let var_name = match self.application.chunk.get_constant(*i) {
                     Ok(Variable::Identifier(s)) => s,
                     _ => return Err(InterpreterError::Impossible),
                 };
@@ -107,7 +110,7 @@ where
             OpCode::GetLocal(i) => self.stack.push(self.stack.get(*i).unwrap().clone()),
             OpCode::SetLocal(i) => self.stack[*i] = self.stack.last().unwrap().clone(),
             OpCode::GetGlobal(i) => {
-                let var_name = match self.function.chunk.get_constant(*i) {
+                let var_name = match self.application.chunk.get_constant(*i) {
                     Ok(Variable::Identifier(s)) => s,
                     _ => return Err(InterpreterError::Impossible),
                 };
@@ -124,7 +127,7 @@ where
                 }
             }
             OpCode::SetGlobal(i) => {
-                let var_name = match self.function.chunk.get_constant(*i) {
+                let var_name = match self.application.chunk.get_constant(*i) {
                     Ok(Variable::Identifier(s)) => s,
                     _ => return Err(InterpreterError::Impossible),
                 };
@@ -150,7 +153,7 @@ where
             }
             OpCode::Constant(i) => {
                 let i = *i;
-                match self.function.chunk.get_constant(i) {
+                match self.application.chunk.get_constant(i) {
                     Ok(ref c) => self.stack.push(Value::Constant(c)),
                     _ => return Err(InterpreterError::ConstantNotFound),
                 };

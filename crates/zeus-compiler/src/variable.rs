@@ -1,4 +1,4 @@
-use crate::Function;
+use crate::function::Function;
 
 #[derive(Debug)]
 pub enum Variable {

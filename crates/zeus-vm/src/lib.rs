@@ -7,8 +7,10 @@ mod vm;
 
 use std::collections::HashMap;
 
+use crate::callframe::CodeIterator;
+use crate::vm::VM;
 use error::InterpreterError;
-use zeus_compiler::compile;
+use zeus_compiler::{compile, Application};
 
 pub fn interpret(content: String) -> Result<(), InterpreterError> {
     let mut stack = Vec::new();
@@ -19,7 +21,7 @@ pub fn interpret(content: String) -> Result<(), InterpreterError> {
         Err(e) => return Err(InterpreterError::CompileError(format!("{}", e))),
     };
 
-    let mut vm = vm::VM::new(&function, &mut stack, &mut variables);
+    let mut vm: VM<Application> = vm::VM::new(&function, &mut stack, &mut variables);
 
     vm.interpret_loop()?;
 

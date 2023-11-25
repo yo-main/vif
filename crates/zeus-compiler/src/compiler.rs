@@ -118,6 +118,12 @@ pub struct Application {
 }
 
 impl Application {
+    pub fn new() -> Self {
+        Self {
+            chunk: Chunk::new(),
+            globals: Vec::new(),
+        }
+    }
     fn len(&self) -> usize {
         self.chunk.code.len()
     }
