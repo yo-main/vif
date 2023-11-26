@@ -9,6 +9,7 @@ use crate::function::Function;
 use crate::local::Local;
 use crate::parser_rule::PrattParser;
 use crate::precedence::Precedence;
+use crate::variable;
 use crate::OpCode;
 use crate::Variable;
 
@@ -136,6 +137,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
     }
 
     fn if_statement(&mut self) -> Result<(), CompilerError> {
+        log::debug!("Starting if statement");
         self.expression()?;
         self.consume(TokenType::DoubleDot, "Expects : after if statement")?;
         self.consume(TokenType::NewLine, "Expects \\n after if statement")?;
@@ -145,8 +147,8 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
         self.statement()?;
 
         let else_jump = self.emit_jump(OpCode::Jump(self.function.chunk.code.len()));
-        self.emit_op_code(OpCode::Pop);
         self.patch_jump(then_jump);
+        self.emit_op_code(OpCode::Pop);
 
         let res = match self.advance() {
             Ok(t) if t.r#type == TokenType::Else => {
@@ -169,6 +171,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
     }
 
     fn while_statement(&mut self) -> Result<(), CompilerError> {
+        log::debug!("Starting while statement");
         let loop_start = self.function.chunk.code.len();
 
         self.expression()?;
@@ -189,6 +192,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
     }
 
     pub fn break_loop(&mut self) -> Result<(), CompilerError> {
+        log::debug!("Starting break loop statement");
         self.emit_op_code(OpCode::False); // fake a false condition
         match self.loop_details.last() {
             Some(detail) => self.emit_op_code(OpCode::Goto(detail.1)),
@@ -202,6 +206,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
     }
 
     pub fn continue_loop(&mut self) -> Result<(), CompilerError> {
+        log::debug!("Starting continue loop statement");
         match self.loop_details.last() {
             Some(detail) => self.emit_op_code(OpCode::Goto(detail.0)),
             None => {
@@ -214,6 +219,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
     }
 
     fn function_declaration(&mut self) -> Result<(), CompilerError> {
+        log::debug!("Starting function declaration");
         let var = self.parse_variable()?;
         self.function_statement()?;
         self.define_variable(var);
@@ -221,6 +227,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
     }
 
     fn function_statement(&mut self) -> Result<(), CompilerError> {
+        log::debug!("Starting function statement");
         let mut function = Function::new(0, "function".to_owned());
         let mut compiler = Compiler::new(self.scanner, &mut function);
 
@@ -251,6 +258,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
     }
 
     fn block(&mut self) -> Result<(), CompilerError> {
+        log::debug!("Starting block");
         loop {
             match self.advance()? {
                 t if t.r#type == TokenType::Dedent => break,
@@ -282,6 +290,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
     }
 
     fn var_declaration(&mut self) -> Result<(), CompilerError> {
+        log::debug!("Starting variable declaration");
         let variable = self.parse_variable()?;
 
         match self.advance()? {
@@ -304,6 +313,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
 
     fn parse_variable(&mut self) -> Result<usize, CompilerError> {
         let token = self.advance()?;
+        log::debug!("Parse variable {}", token);
 
         let variable = match token.r#type {
             TokenType::Identifier(s) => Variable::Identifier(s),
@@ -313,31 +323,40 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
                 )))
             }
         };
+
         Ok(self.register_variable(variable))
     }
 
     fn initialize_variable(&mut self) {
         if let Some(var) = self.function.locals.last_mut() {
+            log::debug!("Initialize variable {var}");
             var.depth = Some(self.scope_depth);
         }
     }
 
-    fn define_variable(&mut self, variable: usize) {
+    fn define_variable(&mut self, variable_index: usize) {
+        log::debug!("Starting define variable");
         if self.scope_depth > 0 {
             self.initialize_variable();
-        } else {
-            self.emit_op_code(OpCode::GlobalVariable(variable))
+            return;
         }
+
+        self.emit_op_code(OpCode::GlobalVariable(variable_index));
     }
 
     fn register_variable(&mut self, variable: Variable) -> usize {
+        log::debug!("Register variable {}", variable);
         if self.scope_depth > 0 {
             self.function.locals.push(Local::new(variable, None));
             0
         } else {
-            self.globals.push(variable);
-            self.globals.len() - 1
+            self.make_constant(variable)
         }
+    }
+
+    fn make_constant(&mut self, variable: Variable) -> usize {
+        self.globals.push(variable);
+        self.globals.len() - 1
     }
 
     fn expression_statement(&mut self) -> Result<(), CompilerError> {
@@ -377,6 +396,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
     }
 
     fn parse_precedence(&mut self, precedence: Precedence) -> Result<(), CompilerError> {
+        log::debug!("Starting parsing precedence");
         let precedence = precedence as u8;
 
         let token = self.advance()?;
@@ -409,6 +429,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
     }
 
     pub fn and(&mut self) -> Result<(), CompilerError> {
+        log::debug!("Starting and operation");
         let end_jump = self.emit_jump(OpCode::JumpIfFalse(self.function.chunk.code.len()));
         self.emit_op_code(OpCode::Pop);
         let res = self.parse_precedence(Precedence::And);
@@ -417,6 +438,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
     }
 
     pub fn or(&mut self) -> Result<(), CompilerError> {
+        log::debug!("Starting or operation");
         let else_jump = self.emit_jump(OpCode::JumpIfFalse(self.function.chunk.code.len()));
         let end_jump = self.emit_jump(OpCode::Jump(self.function.chunk.code.len()));
 
@@ -425,6 +447,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
 
         let res = self.parse_precedence(Precedence::Or);
         self.patch_jump(end_jump);
+        self.emit_op_code(OpCode::Pop);
         res
     }
 
@@ -433,6 +456,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
         token_type: &TokenType,
         can_assign: bool,
     ) -> Result<(), CompilerError> {
+        log::debug!("Starting variable");
         match token_type {
             TokenType::Identifier(s) => {
                 self.named_variable(Variable::Identifier(s.clone()), can_assign)
@@ -446,24 +470,38 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
         variable: Variable,
         can_assign: bool,
     ) -> Result<(), CompilerError> {
+        log::debug!("Named variable {} (assign={})", variable, can_assign);
         let is_set = can_assign && self.match_token(TokenType::Equal)?;
 
+        println!(
+            "VARIABLE RESOLVING - {} - {}",
+            self.function.locals.len(),
+            self.scope_depth
+        );
         let op_code = match self.resolve_local(&variable)? {
             Some(index) => match is_set {
                 true => {
+                    println!("SET LOCAL");
                     self.expression()?;
                     OpCode::SetLocal(index)
                 }
-                false => OpCode::GetLocal(index),
+                false => {
+                    println!("GET LOCAL");
+                    OpCode::GetLocal(index)
+                }
             },
             None => {
-                let index = self.register_variable(variable);
+                let index = self.make_constant(variable);
                 match is_set {
                     true => {
+                        println!("SET GLOBAL");
                         self.expression()?;
                         OpCode::SetGlobal(index)
                     }
-                    false => OpCode::GetGlobal(index),
+                    false => {
+                        println!("GET GLOBAL");
+                        OpCode::GetGlobal(index)
+                    }
                 }
             }
         };
@@ -474,6 +512,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
     }
 
     fn resolve_local(&mut self, variable: &Variable) -> Result<Option<usize>, CompilerError> {
+        log::debug!("Resolve variable {}", variable);
         let var_name = match variable {
             Variable::Identifier(s) => s,
             _ => return Ok(None), // TODO: I beg you to change that
@@ -485,7 +524,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
                     None => {
                         return Err(CompilerError::Unknown(format!(
                             "Can't read local variable in its own initializer"
-                        )))
+                        )));
                     }
                     Some(_) => return Ok(Some(self.function.locals.len() - i - 1)),
                 },
@@ -497,6 +536,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
     }
 
     pub fn binary(&mut self, token_type: &TokenType) -> Result<(), CompilerError> {
+        log::debug!("Binary expresion: {}", token_type);
         let rule = self.get_rule(token_type);
         self.parse_precedence(rule)?;
 
@@ -570,6 +610,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
     }
 
     pub fn literal(&mut self, token: &TokenType) -> Result<(), CompilerError> {
+        log::debug!("Starting literal {token}");
         match token {
             TokenType::False => self.emit_op_code(OpCode::False),
             TokenType::True => self.emit_op_code(OpCode::True),
