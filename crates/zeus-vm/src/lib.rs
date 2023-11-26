@@ -9,6 +9,7 @@ use std::collections::HashMap;
 
 use crate::callframe::CodeIterator;
 use crate::vm::VM;
+use callframe::CallFrame;
 use error::InterpreterError;
 use zeus_compiler::{compile, Application};
 
@@ -21,7 +22,12 @@ pub fn interpret(content: String) -> Result<(), InterpreterError> {
         Err(e) => return Err(InterpreterError::CompileError(format!("{}", e))),
     };
 
-    let mut vm: VM<Application> = vm::VM::new(&function, &mut stack, &mut variables);
+    let mut vm: VM<Application> = vm::VM {
+        application: &function,
+        stack: &mut stack,
+        variables: &mut variables,
+        call_frames: vec![CallFrame::new(&function, 0)],
+    };
 
     vm.interpret_loop()?;
 

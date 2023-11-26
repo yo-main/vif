@@ -7,8 +7,6 @@ use crate::error::RuntimeErrorType;
 use crate::value::Value;
 use crate::value_error;
 use zeus_compiler::Application;
-use zeus_compiler::Chunk;
-use zeus_compiler::CompilerError;
 use zeus_compiler::OpCode;
 use zeus_compiler::Variable;
 
@@ -18,10 +16,10 @@ where
     'function: 'value,
     R: CodeIterator,
 {
-    application: &'function Application,
-    stack: &'stack mut Vec<Value<'value>>,
-    variables: &'variables mut HashMap<String, Value<'value>>,
-    call_frames: Vec<CallFrame<'stack, 'function, R>>,
+    pub application: &'function Application,
+    pub stack: &'stack mut Vec<Value<'value>>,
+    pub variables: &'variables mut HashMap<String, Value<'value>>,
+    pub call_frames: Vec<CallFrame<'stack, 'function, R>>,
 }
 
 impl<'function, 'stack, 'value, 'variables, R> VM<'function, 'stack, 'value, 'variables, R>
@@ -30,19 +28,19 @@ where
     'function: 'value,
     R: CodeIterator,
 {
-    pub fn new(
-        application: &'function Application,
-        stack: &'stack mut Vec<Value<'value>>,
-        variables: &'variables mut HashMap<String, Value<'value>>,
-    ) -> Self {
-        let call_frames = vec![];
-        VM {
-            application,
-            stack,
-            variables,
-            call_frames,
-        }
-    }
+    // pub fn new(
+    //     application: &'function Application,
+    //     stack: &'stack mut Vec<Value<'value>>,
+    //     variables: &'variables mut HashMap<String, Value<'value>>,
+    // ) -> Self {
+    //     let call_frame: CallFrame<'_, '_, R> = CallFrame::new(application, 0);
+    //     VM {
+    //         application,
+    //         stack,
+    //         variables,
+    //         call_frames: vec![call_frame],
+    //     }
+    // }
 
     pub fn interpret_loop(&mut self) -> Result<(), InterpreterError> {
         loop {
