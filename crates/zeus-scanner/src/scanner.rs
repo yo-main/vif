@@ -170,12 +170,16 @@ impl<'a> Scanner<'a> {
             self.indent_stack.push(stack);
             Ok(TokenType::Indent)
         } else {
-            self.indent_stack.pop().unwrap();
-            let previous_stack = *self.indent_stack.last().unwrap();
-            if stack == previous_stack {
-                Ok(TokenType::Dedent)
-            } else {
-                return Err(self.report_error(ScanningErrorType::Indentation));
+            loop {
+                self.indent_stack.pop().unwrap();
+                let previous_stack = *self.indent_stack.last().unwrap();
+                if stack == previous_stack {
+                    return Ok(TokenType::Dedent);
+                } else if previous_stack > stack {
+                    continue;
+                } else {
+                    return Err(self.report_error(ScanningErrorType::Indentation));
+                }
             }
         }
     }
