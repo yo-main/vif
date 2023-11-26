@@ -1,25 +1,17 @@
 use crate::compiler::Compiler;
-use crate::compiler::Registry;
 use crate::error::CompilerError;
 use crate::precedence::Precedence;
 
 use zeus_scanner::TokenType;
 
 pub trait PrattParser {
-    fn infix<R>(&self, compiler: &mut Compiler<R>) -> Result<(), CompilerError>
-    where
-        R: Registry;
-    fn prefix<R>(&self, compiler: &mut Compiler<R>, can_assign: bool) -> Result<(), CompilerError>
-    where
-        R: Registry;
+    fn infix(&self, compiler: &mut Compiler) -> Result<(), CompilerError>;
+    fn prefix(&self, compiler: &mut Compiler, can_assign: bool) -> Result<(), CompilerError>;
     fn precedence(&self) -> Precedence;
 }
 
 impl PrattParser for TokenType {
-    fn prefix<R>(&self, compiler: &mut Compiler<R>, can_assign: bool) -> Result<(), CompilerError>
-    where
-        R: Registry,
-    {
+    fn prefix(&self, compiler: &mut Compiler, can_assign: bool) -> Result<(), CompilerError> {
         log::debug!("Prefix: {}", self);
         match self {
             Self::LeftParen => compiler.grouping(),
@@ -37,10 +29,7 @@ impl PrattParser for TokenType {
         }
     }
 
-    fn infix<R>(&self, compiler: &mut Compiler<R>) -> Result<(), CompilerError>
-    where
-        R: Registry,
-    {
+    fn infix(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
         log::debug!("Infix: {}", self);
         match self {
             Self::Minus => compiler.binary(self),

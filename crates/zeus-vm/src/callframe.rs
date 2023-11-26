@@ -1,47 +1,26 @@
-use zeus_compiler::Application;
 use zeus_compiler::Function;
 use zeus_compiler::OpCode;
 
-pub struct CallFrame<'stack, 'function, R>
+pub struct CallFrame<'stack, 'function>
 where
     'function: 'stack,
-    R: CodeIterator,
 {
-    pub iterator: &'function R,
-    start: usize,
+    pub function: &'function Function,
     pub ip: std::slice::Iter<'stack, OpCode>,
 }
 
-impl<'stack, 'function, R> CallFrame<'stack, 'function, R>
+impl<'stack, 'function> CallFrame<'stack, 'function>
 where
     'function: 'stack,
-    R: CodeIterator,
 {
-    pub fn new(iterator: &'function R, index: usize) -> Self {
+    pub fn new(function: &'function Function, index: usize) -> Self {
         Self {
-            iterator,
-            ip: iterator.iter(0),
-            start: index,
+            function,
+            ip: function.chunk.iter(index),
         }
     }
 
     pub fn reset_ip(&mut self, index: usize) {
-        self.ip = self.iterator.iter(index);
+        self.ip = self.function.chunk.iter(index);
     }
-}
-
-impl CodeIterator for Function {
-    fn iter(&self, index: usize) -> std::slice::Iter<OpCode> {
-        self.chunk.iter(index)
-    }
-}
-
-impl CodeIterator for Application {
-    fn iter(&self, index: usize) -> std::slice::Iter<OpCode> {
-        self.chunk.iter(index)
-    }
-}
-
-pub trait CodeIterator {
-    fn iter(&self, index: usize) -> std::slice::Iter<OpCode>;
 }

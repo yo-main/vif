@@ -1,15 +1,21 @@
 use crate::chunk::Chunk;
 use crate::op_code::OpCode;
+use crate::Variable;
 
-pub fn disassemble_chunk(chunk: &Chunk, name: &str) {
+pub fn disassemble_chunk(chunk: &Chunk, name: &str, globals: &Vec<Variable>) {
     println!("== {} ==", name);
     chunk
         .iter(0)
         .enumerate()
-        .for_each(|(i, c)| disassemble_instruction(i, c, chunk))
+        .for_each(|(i, c)| disassemble_instruction(i, c, chunk, globals))
 }
 
-pub fn disassemble_instruction(offset: usize, op_code: &OpCode, chunk: &Chunk) {
+pub fn disassemble_instruction(
+    offset: usize,
+    op_code: &OpCode,
+    chunk: &Chunk,
+    globals: &Vec<Variable>,
+) {
     print!("{:0>4} ", offset);
     if offset > 0 && chunk.get_line(offset - 1) == chunk.get_line(offset) {
         print!("{char:>4} ", char = "|",);
@@ -19,12 +25,12 @@ pub fn disassemble_instruction(offset: usize, op_code: &OpCode, chunk: &Chunk) {
 
     match op_code {
         OpCode::Return => simple_instruction("OP_RETURN"),
-        OpCode::Constant(i) => constant_instruction("OP_CONSTANT", chunk, *i),
-        OpCode::GlobalVariable(i) => constant_instruction("OP_GLOBAL_VARIABLE", chunk, *i),
-        OpCode::GetGlobal(i) => constant_instruction("OP_GET_GLOBAL", chunk, *i),
-        OpCode::SetGlobal(i) => constant_instruction("OP_SET_GLOBAL", chunk, *i),
-        OpCode::GetLocal(i) => constant_instruction("OP_GET_LOCAL", chunk, *i),
-        OpCode::SetLocal(i) => constant_instruction("OP_SET_LOCAL", chunk, *i),
+        OpCode::Constant(i) => constant_instruction("OP_CONSTANT", chunk, *i, globals),
+        OpCode::GlobalVariable(i) => constant_instruction("OP_GLOBAL_VARIABLE", chunk, *i, globals),
+        OpCode::GetGlobal(i) => constant_instruction("OP_GET_GLOBAL", chunk, *i, globals),
+        OpCode::SetGlobal(i) => constant_instruction("OP_SET_GLOBAL", chunk, *i, globals),
+        OpCode::GetLocal(i) => constant_instruction("OP_GET_LOCAL", chunk, *i, globals),
+        OpCode::SetLocal(i) => constant_instruction("OP_SET_LOCAL", chunk, *i, globals),
         OpCode::Negate => simple_instruction("OP_NEGATE"),
         OpCode::Add => simple_instruction("OP_ADD"),
         OpCode::Substract => simple_instruction("OP_SUBSTRACT"),
@@ -57,6 +63,6 @@ fn jump_instruction(name: &str, jump: &usize) {
     println!("{} {}", name, jump);
 }
 
-fn constant_instruction(name: &str, chunk: &Chunk, index: usize) {
-    println!("{} {}", name, chunk.get_constant(index).unwrap());
+fn constant_instruction(name: &str, chunk: &Chunk, index: usize, globals: &Vec<Variable>) {
+    println!("{} {}", name, globals.get(index).unwrap());
 }

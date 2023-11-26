@@ -1,32 +1,29 @@
 use std::collections::HashMap;
 
 use crate::callframe::CallFrame;
-use crate::callframe::CodeIterator;
 use crate::error::InterpreterError;
 use crate::error::RuntimeErrorType;
 use crate::value::Value;
 use crate::value_error;
-use zeus_compiler::Application;
+use zeus_compiler::Function;
 use zeus_compiler::OpCode;
 use zeus_compiler::Variable;
 
-pub struct VM<'function, 'stack, 'value, 'variables, R>
+pub struct VM<'function, 'stack, 'value, 'variables, 'globals>
 where
-    'function: 'stack,
-    'function: 'value,
-    R: CodeIterator,
+    'globals: 'value,
 {
-    pub application: &'function Application,
+    pub function: &'function Function,
     pub stack: &'stack mut Vec<Value<'value>>,
     pub variables: &'variables mut HashMap<String, Value<'value>>,
-    pub call_frames: Vec<CallFrame<'stack, 'function, R>>,
+    pub globals: &'globals Vec<Variable>,
+    pub call_frames: Vec<CallFrame<'stack, 'function>>,
 }
 
-impl<'function, 'stack, 'value, 'variables, R> VM<'function, 'stack, 'value, 'variables, R>
+impl<'function, 'stack, 'value, 'variables, 'globals>
+    VM<'function, 'stack, 'value, 'variables, 'globals>
 where
-    'function: 'stack,
-    'function: 'value,
-    R: CodeIterator,
+    'globals: 'value,
 {
     // pub fn new(
     //     application: &'function Application,
@@ -69,8 +66,8 @@ where
             }
             OpCode::Return => {}
             OpCode::GlobalVariable(i) => {
-                let var_name = match self.application.chunk.get_constant(*i) {
-                    Ok(Variable::Identifier(s)) => s,
+                let var_name = match self.globals.get(*i) {
+                    Some(Variable::Identifier(s)) => s,
                     _ => return Err(InterpreterError::Impossible),
                 };
 
@@ -108,8 +105,8 @@ where
             OpCode::GetLocal(i) => self.stack.push(self.stack.get(*i).unwrap().clone()),
             OpCode::SetLocal(i) => self.stack[*i] = self.stack.last().unwrap().clone(),
             OpCode::GetGlobal(i) => {
-                let var_name = match self.application.chunk.get_constant(*i) {
-                    Ok(Variable::Identifier(s)) => s,
+                let var_name = match self.globals.get(*i) {
+                    Some(Variable::Identifier(s)) => s,
                     _ => return Err(InterpreterError::Impossible),
                 };
 
@@ -125,8 +122,8 @@ where
                 }
             }
             OpCode::SetGlobal(i) => {
-                let var_name = match self.application.chunk.get_constant(*i) {
-                    Ok(Variable::Identifier(s)) => s,
+                let var_name = match self.globals.get(*i) {
+                    Some(Variable::Identifier(s)) => s,
                     _ => return Err(InterpreterError::Impossible),
                 };
 
@@ -151,8 +148,8 @@ where
             }
             OpCode::Constant(i) => {
                 let i = *i;
-                match self.application.chunk.get_constant(i) {
-                    Ok(ref c) => self.stack.push(Value::Constant(c)),
+                match self.globals.get(i) {
+                    Some(ref c) => self.stack.push(Value::Constant(c)),
                     _ => return Err(InterpreterError::ConstantNotFound),
                 };
             }
