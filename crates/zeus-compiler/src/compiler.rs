@@ -47,7 +47,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
     }
 
     fn emit_constant(&mut self, variable: Variable) {
-        let index = self.globals.push(variable);
+        self.globals.push(variable);
         self.emit_op_code(OpCode::Constant(self.globals.len() - 1))
     }
 
@@ -145,8 +145,8 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
         self.statement()?;
 
         let else_jump = self.emit_jump(OpCode::Jump(self.function.chunk.code.len()));
-        self.patch_jump(then_jump);
         self.emit_op_code(OpCode::Pop);
+        self.patch_jump(then_jump);
 
         let res = match self.advance() {
             Ok(t) if t.r#type == TokenType::Else => {

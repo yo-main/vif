@@ -12,5 +12,6 @@ while i < 5:
 	else:
 		@ "badaboom"
 
+	i = i + 1
 
 1== 1
