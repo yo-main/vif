@@ -473,35 +473,22 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
         log::debug!("Named variable {} (assign={})", variable, can_assign);
         let is_set = can_assign && self.match_token(TokenType::Equal)?;
 
-        println!(
-            "VARIABLE RESOLVING - {} - {}",
-            self.function.locals.len(),
-            self.scope_depth
-        );
         let op_code = match self.resolve_local(&variable)? {
             Some(index) => match is_set {
                 true => {
-                    println!("SET LOCAL");
                     self.expression()?;
                     OpCode::SetLocal(index)
                 }
-                false => {
-                    println!("GET LOCAL");
-                    OpCode::GetLocal(index)
-                }
+                false => OpCode::GetLocal(index),
             },
             None => {
                 let index = self.make_constant(variable);
                 match is_set {
                     true => {
-                        println!("SET GLOBAL");
                         self.expression()?;
                         OpCode::SetGlobal(index)
                     }
-                    false => {
-                        println!("GET GLOBAL");
-                        OpCode::GetGlobal(index)
-                    }
+                    false => OpCode::GetGlobal(index),
                 }
             }
         };
