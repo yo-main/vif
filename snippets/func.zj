@@ -1,6 +1,5 @@
 def coucou():
 	1 + 1
-	@ "coucou"
-
+	@ "MYSTRING"
 
 @ coucou

@@ -250,11 +250,20 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
             }
         }
         compiler.consume(TokenType::DoubleDot, "Expects : after function declaration")?;
-        compiler.block()?;
+        compiler.consume(
+            TokenType::NewLine,
+            "Expects NewLine after function declaration",
+        )?;
+        compiler.consume(
+            TokenType::Indent,
+            "Expects indentation after function declaration",
+        )?;
+
+        let res = compiler.block();
         compiler.end();
         self.emit_constant(Variable::Function(function));
 
-        Ok(())
+        res
     }
 
     fn block(&mut self) -> Result<(), CompilerError> {
