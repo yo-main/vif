@@ -27,6 +27,7 @@ pub enum OpCode {
     JumpIfFalse(usize),
     Jump(usize),
     Goto(usize),
+    Call(usize),
 }
 
 impl std::fmt::Display for OpCode {
@@ -60,6 +61,7 @@ impl std::fmt::Display for OpCode {
             Self::JumpIfFalse(i) => write!(f, "OP_JUMP_IF_FALSE {i}"),
             Self::Jump(i) => write!(f, "OP_JUMP {i}"),
             Self::Goto(i) => write!(f, "OP_GOTO {i}"),
+            Self::Call(i) => write!(f, "OP_CALL {i}"),
         }
     }
 }

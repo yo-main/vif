@@ -136,6 +136,32 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
         }
     }
 
+    pub fn call(&mut self) -> Result<(), CompilerError> {
+        let arg_count = self.argument_list()?;
+        self.emit_op_code(OpCode::Call(arg_count));
+        Ok(())
+    }
+
+    fn argument_list(&mut self) -> Result<usize, CompilerError> {
+        let mut arg_acount = 0;
+        loop {
+            match self.advance()? {
+                t if t.r#type == TokenType::Comma => {
+                    self.expression()?;
+                    arg_acount += 1;
+                }
+                t if t.r#type == TokenType::RightParen => break,
+                _ => {
+                    return Err(CompilerError::SyntaxError(format!(
+                        "Unexpected character while parsing arguments"
+                    )))
+                }
+            }
+        }
+
+        Ok(arg_acount)
+    }
+
     fn if_statement(&mut self) -> Result<(), CompilerError> {
         log::debug!("Starting if statement");
         self.expression()?;

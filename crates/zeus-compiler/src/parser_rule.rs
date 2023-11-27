@@ -32,6 +32,7 @@ impl PrattParser for TokenType {
     fn infix(&self, compiler: &mut Compiler) -> Result<(), CompilerError> {
         log::debug!("Infix: {}", self);
         match self {
+            Self::LeftParen => compiler.call(),
             Self::Minus => compiler.binary(self),
             Self::Plus => compiler.binary(self),
             Self::Slash => compiler.binary(self),
@@ -62,6 +63,7 @@ impl PrattParser for TokenType {
             Self::LessEqual => Precedence::Comparison,
             Self::And => Precedence::And,
             Self::Or => Precedence::Or,
+            Self::LeftParen => Precedence::Call,
             _ => Precedence::None,
         }
     }

@@ -24,6 +24,7 @@ impl<'function, 'stack, 'value, 'variables, 'globals>
     VM<'function, 'stack, 'value, 'variables, 'globals>
 where
     'globals: 'value,
+    'globals: 'function,
 {
     // pub fn new(
     //     application: &'function Application,
@@ -75,6 +76,42 @@ where
                     var_name.clone(),
                     self.stack.pop().ok_or(InterpreterError::Impossible)?,
                 );
+            }
+            OpCode::Call(arg_count) => {
+                let frame = self.call_frames.last_mut().unwrap();
+                match frame.ip.nth(*arg_count) {
+                    Some(OpCode::Constant(i)) => match self.globals.get(*i) {
+                        Some(Variable::Function(f)) => {
+                            if f.arity != *arg_count {
+                                return Err(InterpreterError::RuntimeError(
+                                    RuntimeErrorType::FunctionCall(format!(
+                                        "Expected {} parameters, got {}",
+                                        f.arity, arg_count
+                                    )),
+                                ));
+                            }
+                            self.call_frames.push(CallFrame {
+                                function: f,
+                                ip: f.chunk.iter(0),
+                            });
+                        }
+                        _ => {
+                            return Err(InterpreterError::RuntimeError(
+                                RuntimeErrorType::ValueError(format!("Expected function")),
+                            ))
+                        }
+                    },
+                    Some(_) => {
+                        return Err(InterpreterError::RuntimeError(
+                            RuntimeErrorType::ValueError(format!("Expected function")),
+                        ))
+                    }
+                    None => {
+                        return Err(InterpreterError::RuntimeError(
+                            RuntimeErrorType::ValueError(format!("Not enough arguments")),
+                        ))
+                    }
+                }
             }
             OpCode::Goto(i) => self.call_frames.last_mut().unwrap().reset_ip(*i),
             OpCode::Jump(i) => self

@@ -2,14 +2,14 @@ use crate::local::Local;
 use crate::Chunk;
 
 pub struct Function {
-    pub arity: u8,
+    pub arity: usize,
     pub chunk: Chunk,
     pub name: String,
     pub locals: Vec<Local>,
 }
 
 impl Function {
-    pub fn new(arity: u8, name: String) -> Self {
+    pub fn new(arity: usize, name: String) -> Self {
         Self {
             arity,
             name,

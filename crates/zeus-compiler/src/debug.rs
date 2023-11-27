@@ -52,6 +52,7 @@ pub fn disassemble_instruction(
         OpCode::JumpIfFalse(i) => jump_instruction("OP_JUMP_IF_FALSE", i),
         OpCode::Jump(i) => jump_instruction("OP_JUMP", i),
         OpCode::Goto(i) => jump_instruction("OP_GOTO", i),
+        OpCode::Call(i) => jump_instruction("OP_CALL", i),
     }
 }
 
