@@ -64,6 +64,6 @@ fn jump_instruction(name: &str, jump: &usize) {
     println!("{} {}", name, jump);
 }
 
-fn constant_instruction(name: &str, chunk: &Chunk, index: usize, globals: &Vec<Variable>) {
+fn constant_instruction(name: &str, _chunk: &Chunk, index: usize, globals: &Vec<Variable>) {
     println!("{} {}", name, globals.get(index).unwrap());
 }

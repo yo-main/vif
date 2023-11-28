@@ -3,6 +3,7 @@ var pl = "pl"
 def test():
 	@ 123
 
+
 def coucou():
 	var aok = 4
 	var abc = 1 + 1

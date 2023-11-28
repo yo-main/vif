@@ -1,6 +1,4 @@
 use crate::op_code::OpCode;
-use crate::CompilerError;
-use crate::Variable;
 
 pub struct Chunk {
     pub code: Vec<OpCode>,

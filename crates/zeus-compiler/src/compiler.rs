@@ -3,14 +3,12 @@ use zeus_scanner::ScanningErrorType;
 use zeus_scanner::Token;
 use zeus_scanner::TokenType;
 
-use crate::compiler;
 use crate::debug::disassemble_chunk;
 use crate::error::CompilerError;
 use crate::function::Function;
 use crate::local::Local;
 use crate::parser_rule::PrattParser;
 use crate::precedence::Precedence;
-use crate::variable;
 use crate::OpCode;
 use crate::Variable;
 
