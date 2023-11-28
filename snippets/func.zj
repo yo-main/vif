@@ -1,5 +1,6 @@
 def coucou():
-	1 + 1
+	var abc = 1 + 1
 	@ "MYSTRING"
+	@ abc
 
 coucou()

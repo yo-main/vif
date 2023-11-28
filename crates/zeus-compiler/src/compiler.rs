@@ -551,7 +551,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
                             "Can't read local variable in its own initializer"
                         )));
                     }
-                    Some(_) => return Ok(Some(self.function.locals.len() - i - 1)),
+                    Some(_) => return Ok(Some(self.function.locals.len() - i)),
                 },
                 _ => (),
             }
