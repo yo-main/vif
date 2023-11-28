@@ -3,6 +3,7 @@ use zeus_scanner::ScanningErrorType;
 use zeus_scanner::Token;
 use zeus_scanner::TokenType;
 
+use crate::compiler;
 use crate::debug::disassemble_chunk;
 use crate::error::CompilerError;
 use crate::function::Function;
@@ -256,6 +257,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
         log::debug!("Starting function statement");
         let mut function = Function::new(0, "function".to_owned());
         let mut compiler = Compiler::new(self.scanner, &mut function);
+        std::mem::swap(&mut compiler.globals, &mut self.globals);
 
         compiler.begin_scope();
         compiler.consume(TokenType::LeftParen, "Expects ( after function name")?;
@@ -286,7 +288,8 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
         )?;
 
         let res = compiler.block();
-        compiler.end();
+        let mut globals = compiler.end();
+        std::mem::swap(&mut globals, &mut self.globals);
         self.emit_constant(Variable::Function(function));
 
         res

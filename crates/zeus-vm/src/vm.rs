@@ -83,7 +83,7 @@ where
                     self.stack.pop().ok_or(InterpreterError::Impossible)?,
                 );
             }
-            OpCode::Call(arg_count) => match self.stack.pop() {
+            OpCode::Call(arg_count) => match self.stack.last() {
                 Some(Value::Constant(Variable::Function(func))) => {
                     if func.arity != *arg_count {
                         return Err(InterpreterError::RuntimeError(
