@@ -103,6 +103,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
     pub fn declaration(&mut self) -> Result<(), CompilerError> {
         log::debug!("Starting declaration");
         match self.advance()? {
+            t if t.r#type == TokenType::NewLine => self.declaration(),
             t if t.r#type == TokenType::Def => self.function_declaration(),
             t if t.r#type == TokenType::Var => self.var_declaration(),
             t => {
