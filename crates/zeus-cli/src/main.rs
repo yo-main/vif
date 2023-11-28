@@ -8,8 +8,10 @@ fn setup_logging() {
         .map(|lvl| lvl.parse().unwrap())
         .unwrap_or(log::LevelFilter::Trace);
 
+    let debug = std::env::var("DEBUG").and(Ok(true)).unwrap_or(false);
+
     // Separate file config so we can include year, month and day in file logs
-    let _ = fern::Dispatch::new()
+    let mut log_builder = fern::Dispatch::new()
         .format(|out, message, record| {
             out.finish(format_args!(
                 "{} - {} - {:<30} \t{}",
@@ -20,8 +22,13 @@ fn setup_logging() {
             ))
         })
         .level(level)
-        .chain(std::io::stdout())
-        .apply();
+        .chain(fern::log_file("/tmp/zeus.log").unwrap());
+
+    if debug {
+        log_builder = log_builder.chain(std::io::stdout());
+    };
+
+    log_builder.apply().unwrap();
 }
 
 fn main() {
