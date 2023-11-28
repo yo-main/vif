@@ -24,7 +24,7 @@ impl<'function, 'stack, 'value, 'variables, 'globals>
     VM<'function, 'stack, 'value, 'variables, 'globals>
 where
     'globals: 'value,
-    'globals: 'function,
+    'value: 'function,
 {
     // pub fn new(
     //     application: &'function Application,
@@ -44,7 +44,13 @@ where
         loop {
             let frame = self.call_frames.last_mut().unwrap();
             match frame.ip.next() {
-                None => break,
+                None => {
+                    if self.call_frames.len() > 1 {
+                        self.call_frames.pop();
+                    } else {
+                        break;
+                    }
+                }
                 Some(byte) => self.interpret(byte)?,
             }
         }
@@ -77,42 +83,32 @@ where
                     self.stack.pop().ok_or(InterpreterError::Impossible)?,
                 );
             }
-            OpCode::Call(arg_count) => {
-                let frame = self.call_frames.last_mut().unwrap();
-                match frame.ip.nth(*arg_count) {
-                    Some(OpCode::Constant(i)) => match self.globals.get(*i) {
-                        Some(Variable::Function(f)) => {
-                            if f.arity != *arg_count {
-                                return Err(InterpreterError::RuntimeError(
-                                    RuntimeErrorType::FunctionCall(format!(
-                                        "Expected {} parameters, got {}",
-                                        f.arity, arg_count
-                                    )),
-                                ));
-                            }
-                            self.call_frames.push(CallFrame {
-                                function: f,
-                                ip: f.chunk.iter(0),
-                            });
-                        }
-                        _ => {
-                            return Err(InterpreterError::RuntimeError(
-                                RuntimeErrorType::ValueError(format!("Expected function")),
-                            ))
-                        }
-                    },
-                    Some(_) => {
+            OpCode::Call(arg_count) => match self.stack.pop() {
+                Some(Value::Constant(Variable::Function(func))) => {
+                    if func.arity != *arg_count {
                         return Err(InterpreterError::RuntimeError(
-                            RuntimeErrorType::ValueError(format!("Expected function")),
-                        ))
+                            RuntimeErrorType::FunctionCall(format!(
+                                "Expected {} parameters, got {}",
+                                func.arity, arg_count
+                            )),
+                        ));
                     }
-                    None => {
-                        return Err(InterpreterError::RuntimeError(
-                            RuntimeErrorType::ValueError(format!("Not enough arguments")),
-                        ))
-                    }
+                    self.call_frames.push(CallFrame {
+                        function: func,
+                        ip: func.chunk.iter(0),
+                    });
                 }
-            }
+                Some(v) => {
+                    return Err(InterpreterError::RuntimeError(
+                        RuntimeErrorType::ValueError(format!("Expected function, got {v}")),
+                    ))
+                }
+                None => {
+                    return Err(InterpreterError::RuntimeError(
+                        RuntimeErrorType::ValueError(format!("Not enough arguments")),
+                    ))
+                }
+            },
             OpCode::Goto(i) => self.call_frames.last_mut().unwrap().reset_ip(*i),
             OpCode::Jump(i) => self
                 .call_frames
