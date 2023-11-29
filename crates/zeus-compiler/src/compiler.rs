@@ -288,6 +288,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
         )?;
 
         let res = compiler.block();
+        compiler.end_scope();
         let mut globals = compiler.end();
         std::mem::swap(&mut globals, &mut self.globals);
         log::debug!("Function compiling terminated");
