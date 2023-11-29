@@ -121,7 +121,6 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
                 return Ok(());
             }
             t if t.r#type == TokenType::If => self.if_statement(),
-            t if t.r#type == TokenType::NewLine => self.statement(),
             t if t.r#type == TokenType::While => self.while_statement(),
             t if t.r#type == TokenType::Indent => {
                 self.begin_scope();
@@ -137,6 +136,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
     }
 
     pub fn call(&mut self) -> Result<(), CompilerError> {
+        log::debug!("Starting call");
         let arg_count = self.argument_list()?;
         self.emit_op_code(OpCode::Call(arg_count));
         Ok(())
@@ -259,6 +259,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
         std::mem::swap(&mut compiler.globals, &mut self.globals);
 
         compiler.begin_scope();
+        log::debug!("Function compiling starting");
         compiler.consume(TokenType::LeftParen, "Expects ( after function name")?;
         match compiler.advance()? {
             mut t if t.r#type == TokenType::Comma => {
@@ -289,13 +290,14 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
         let res = compiler.block();
         let mut globals = compiler.end();
         std::mem::swap(&mut globals, &mut self.globals);
+        log::debug!("Function compiling terminated");
         self.emit_constant(Variable::Function(function));
 
         res
     }
 
     fn block(&mut self) -> Result<(), CompilerError> {
-        log::debug!("Starting block");
+        log::debug!("Block starting");
         loop {
             match self.advance()? {
                 t if t.r#type == TokenType::Dedent => break,
@@ -306,6 +308,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
                 }
             }
         }
+        log::debug!("Block ending");
 
         Ok(())
     }

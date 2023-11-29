@@ -16,7 +16,7 @@ impl Zeus {
     fn run(&mut self, content: String) -> Result<(), ZeusError> {
         match interpret(content) {
             Ok(_) => log::info!("Interpreter says Bye"),
-            Err(e) => log::error!("Intepreter error: {e}"),
+            Err(e) => println!("Intepreter error: {e}"),
         }
 
         Ok(())

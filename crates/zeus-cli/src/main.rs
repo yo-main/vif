@@ -46,24 +46,4 @@ fn main() {
         Ok(_) => (),
         Err(e) => println!("Error: {e}"),
     }
-
-    // let mut chunk = opcode::Chunk::new();
-    // let cons = chunk.add_constant(value::Constant::Integer(61));
-    // let cons2 = chunk.add_constant(value::Constant::Integer(2));
-    // chunk.write_chunk(opcode::OpCode::OP_CONSTANT(cons), 1);
-    // chunk.write_chunk(opcode::OpCode::OP_CONSTANT(cons), 1);
-    // chunk.write_chunk(opcode::OpCode::OP_CONSTANT(cons), 1);
-    // chunk.write_chunk(opcode::OpCode::OP_CONSTANT(cons2), 210);
-    // chunk.write_chunk(opcode::OpCode::OP_ADD, 210);
-    // chunk.write_chunk(opcode::OpCode::OP_SUBSTRACT, 210);
-    // chunk.write_chunk(opcode::OpCode::OP_NEGATE, 210);
-    // chunk.write_chunk(opcode::OpCode::OP_MULTIPLY, 210);
-    // // chunk.write_chunk(opcode::OpCode::OP_ADD, 210);
-    // chunk.write_chunk(opcode::OpCode::OP_RETURN, 210);
-    // let mut vm = vm::VM::new();
-    // match vm.interpret(&mut chunk) {
-    //     Ok(v) => println!("Success"),
-    //     Err(e) => println!("Error: {}", e),
-    // }
-    // debug::disassemble_chunk(&chunk, "test chunk");
 }

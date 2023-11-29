@@ -1,7 +1,11 @@
-var pl = "pl"
+var pl = 1
 
 def test():
 	@ 123
+	pl = pl + 1
+
+	if pl < 8:
+		test()
 
 
 def coucou():
