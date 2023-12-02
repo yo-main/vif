@@ -21,11 +21,10 @@ pub fn interpret(content: String) -> Result<(), InterpreterError> {
     };
 
     let mut vm = vm::VM {
-        function: &function,
         globals: &globals,
         stack: &mut stack,
         variables: &mut variables,
-        call_frames: vec![CallFrame::new(&function, 0)],
+        call_frames: vec![CallFrame::new(&function, 0, 0)],
     };
 
     vm.interpret_loop()?;

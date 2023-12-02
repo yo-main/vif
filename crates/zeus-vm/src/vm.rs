@@ -5,7 +5,6 @@ use crate::error::InterpreterError;
 use crate::error::RuntimeErrorType;
 use crate::value::Value;
 use crate::value_error;
-use zeus_compiler::Function;
 use zeus_compiler::OpCode;
 use zeus_compiler::Variable;
 
@@ -13,7 +12,6 @@ pub struct VM<'function, 'stack, 'value, 'variables, 'globals>
 where
     'globals: 'value,
 {
-    pub function: &'function Function,
     pub stack: &'stack mut Vec<Value<'value>>,
     pub variables: &'variables mut HashMap<String, Value<'value>>,
     pub globals: &'globals Vec<Variable>,
@@ -71,7 +69,25 @@ where
             OpCode::Pop => {
                 self.stack.pop().ok_or(InterpreterError::Impossible)?;
             }
-            OpCode::Return => {}
+            OpCode::Return => {
+                let result = self
+                    .stack
+                    .pop()
+                    .ok_or(InterpreterError::RuntimeError(
+                        RuntimeErrorType::ValueError(format!("Nothing to return")),
+                    ))
+                    .unwrap();
+
+                if self.call_frames.len() == 1 {
+                    self.stack.pop();
+                    return Ok(());
+                }
+
+                let old_frame = self.call_frames.pop().unwrap();
+                self.stack.drain(old_frame.stack_position - 1..);
+
+                self.stack.push(result);
+            }
             OpCode::GlobalVariable(i) => {
                 let var_name = match self.globals.get(*i) {
                     Some(Variable::Identifier(s)) => s,
@@ -96,6 +112,7 @@ where
                     self.call_frames.push(CallFrame {
                         function: func,
                         ip: func.chunk.iter(0),
+                        stack_position: self.stack.len(),
                     });
                 }
                 Some(v) => {

@@ -1,2 +1,7 @@
-var hello = "Hello"
-@ hello + " world !"
+def test():
+	var p = 1
+	var m = 3
+	return 1
+
+
+@ test()

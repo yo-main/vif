@@ -122,6 +122,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
             }
             t if t.r#type == TokenType::If => self.if_statement(),
             t if t.r#type == TokenType::While => self.while_statement(),
+            t if t.r#type == TokenType::Return => self.return_statement(),
             t if t.r#type == TokenType::Indent => {
                 self.begin_scope();
                 let res = self.block();
@@ -133,6 +134,29 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
                 self.expression_statement()
             }
         }
+    }
+
+    fn return_statement(&mut self) -> Result<(), CompilerError> {
+        if self.scope_depth == 0 {
+            return Err(CompilerError::SyntaxError(format!(
+                "You can't return on top-level code"
+            )));
+        }
+
+        match self.advance()? {
+            t if t.r#type == TokenType::NewLine => self.emit_op_code(OpCode::None),
+            t => {
+                self.pending = Some(t);
+                self.expression()?;
+                self.consume(
+                    TokenType::NewLine,
+                    "Expects new line after return statement",
+                )?;
+            }
+        };
+
+        self.emit_op_code(OpCode::Return);
+        Ok(())
     }
 
     pub fn call(&mut self) -> Result<(), CompilerError> {
@@ -654,7 +678,13 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
     }
 
     pub fn end(mut self) -> Vec<Variable> {
-        self.emit_op_code(OpCode::Return);
+        match self.function.chunk.code.last() {
+            Some(OpCode::Return) => (),
+            _ => {
+                self.emit_op_code(OpCode::None);
+                self.emit_op_code(OpCode::Return);
+            }
+        }
         disassemble_chunk(
             &self.function.chunk,
             self.function.name.as_str(),

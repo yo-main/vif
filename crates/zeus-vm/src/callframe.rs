@@ -7,16 +7,18 @@ where
 {
     pub function: &'function Function,
     pub ip: std::slice::Iter<'stack, OpCode>,
+    pub stack_position: usize,
 }
 
 impl<'stack, 'function> CallFrame<'stack, 'function>
 where
     'function: 'stack,
 {
-    pub fn new(function: &'function Function, index: usize) -> Self {
+    pub fn new(function: &'function Function, index: usize, stack_position: usize) -> Self {
         Self {
             function,
             ip: function.chunk.iter(index),
+            stack_position,
         }
     }
 
