@@ -1,7 +1,8 @@
-def test():
+def test(a, b):
 	var p = 1
 	var m = 3
-	return 1
+	@ a
+	@ b
+	return a+b
 
-
-@ test()
+@ test(9, 2)

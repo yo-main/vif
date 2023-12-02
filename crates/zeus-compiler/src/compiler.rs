@@ -170,15 +170,12 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
         let mut arg_acount = 0;
         loop {
             match self.advance()? {
-                t if t.r#type == TokenType::Comma => {
+                t if t.r#type == TokenType::Comma => (),
+                t if t.r#type == TokenType::RightParen => break,
+                t => {
+                    self.pending = Some(t);
                     self.expression()?;
                     arg_acount += 1;
-                }
-                t if t.r#type == TokenType::RightParen => break,
-                _ => {
-                    return Err(CompilerError::SyntaxError(format!(
-                        "Unexpected character while parsing arguments"
-                    )))
                 }
             }
         }
@@ -285,22 +282,19 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
         compiler.begin_scope();
         log::debug!("Function compiling starting");
         compiler.consume(TokenType::LeftParen, "Expects ( after function name")?;
-        match compiler.advance()? {
-            mut t if t.r#type == TokenType::Comma => {
-                while t.r#type == TokenType::Comma {
+        loop {
+            match compiler.advance()? {
+                t if t.r#type == TokenType::Comma => (),
+                t if t.r#type == TokenType::RightParen => break,
+                t => {
                     compiler.function.arity += 1;
+                    compiler.pending = Some(t);
                     let variable = compiler.parse_variable()?;
                     compiler.define_variable(variable);
-                    t = compiler.advance()?;
                 }
             }
-            t if t.r#type == TokenType::RightParen => (),
-            t => {
-                return Err(CompilerError::SyntaxError(format!(
-                    "Unexpected char in function declaration: {t}"
-                )))
-            }
         }
+
         compiler.consume(TokenType::DoubleDot, "Expects : after function declaration")?;
         compiler.consume(
             TokenType::NewLine,
@@ -312,7 +306,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
         )?;
 
         let res = compiler.block();
-        compiler.end_scope();
+        // compiler.end_scope();
         let mut globals = compiler.end();
         std::mem::swap(&mut globals, &mut self.globals);
         log::debug!("Function compiling terminated");
@@ -343,6 +337,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
     }
 
     fn end_scope(&mut self) {
+        // Since we adjust stack on the VM, I'm wondering if that part is still needed ?
         while let Some(variable) = self.function.locals.last() {
             // TODO: maybe use a match here ?
             if variable.depth.unwrap_or(usize::MAX) >= self.scope_depth {

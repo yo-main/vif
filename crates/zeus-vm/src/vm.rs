@@ -84,7 +84,7 @@ where
                 }
 
                 let old_frame = self.call_frames.pop().unwrap();
-                self.stack.drain(old_frame.stack_position - 1..);
+                self.stack.drain(old_frame.stack_position..);
 
                 self.stack.push(result);
             }
@@ -99,8 +99,8 @@ where
                     self.stack.pop().ok_or(InterpreterError::Impossible)?,
                 );
             }
-            OpCode::Call(arg_count) => match self.stack.last() {
-                Some(Value::Constant(Variable::Function(func))) => {
+            OpCode::Call(arg_count) => match &self.stack[self.stack.len() - arg_count - 1] {
+                Value::Constant(Variable::Function(func)) => {
                     if func.arity != *arg_count {
                         return Err(InterpreterError::RuntimeError(
                             RuntimeErrorType::FunctionCall(format!(
@@ -112,17 +112,12 @@ where
                     self.call_frames.push(CallFrame {
                         function: func,
                         ip: func.chunk.iter(0),
-                        stack_position: self.stack.len(),
+                        stack_position: self.stack.len() - arg_count - 1,
                     });
                 }
-                Some(v) => {
+                v => {
                     return Err(InterpreterError::RuntimeError(
                         RuntimeErrorType::ValueError(format!("Expected function, got {v}")),
-                    ))
-                }
-                None => {
-                    return Err(InterpreterError::RuntimeError(
-                        RuntimeErrorType::ValueError(format!("Not enough arguments")),
                     ))
                 }
             },
