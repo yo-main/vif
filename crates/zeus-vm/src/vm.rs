@@ -40,6 +40,7 @@ where
 
     pub fn interpret_loop(&mut self) -> Result<(), InterpreterError> {
         loop {
+            // println!("{:?}", self.stack);
             let frame = self.call_frames.last_mut().unwrap();
             match frame.ip.next() {
                 None => {
@@ -147,8 +148,15 @@ where
                 }
             }
             // WTF is that ?? It's working though but wow. I'll need to spend more time studying how
-            OpCode::GetLocal(i) => self.stack.push(self.stack.get(*i).unwrap().clone()),
-            OpCode::SetLocal(i) => self.stack[*i] = self.stack.last().unwrap().clone(),
+            OpCode::GetLocal(i) => {
+                let frame = self.call_frames.last().unwrap();
+                self.stack
+                    .push(self.stack.get(*i + frame.stack_position).unwrap().clone())
+            }
+            OpCode::SetLocal(i) => {
+                let frame = self.call_frames.last().unwrap();
+                self.stack[*i + frame.stack_position] = self.stack.last().unwrap().clone()
+            }
             OpCode::GetGlobal(i) => {
                 let var_name = match self.globals.get(*i) {
                     Some(Variable::Identifier(s)) => s,

@@ -124,9 +124,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
             t if t.r#type == TokenType::While => self.while_statement(),
             t if t.r#type == TokenType::Return => self.return_statement(),
             t if t.r#type == TokenType::Indent => {
-                self.begin_scope();
                 let res = self.block();
-                self.end_scope();
                 return res;
             }
             t => {
@@ -190,10 +188,12 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
         self.consume(TokenType::NewLine, "Expects \\n after if statement")?;
 
         let then_jump = self.emit_jump(OpCode::JumpIfFalse(self.function.chunk.code.len()));
+
         self.emit_op_code(OpCode::Pop);
         self.statement()?;
 
         let else_jump = self.emit_jump(OpCode::Jump(self.function.chunk.code.len()));
+
         self.patch_jump(then_jump);
         self.emit_op_code(OpCode::Pop);
 
@@ -339,6 +339,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
     fn end_scope(&mut self) {
         // Since we adjust stack on the VM, I'm wondering if that part is still needed ?
         while let Some(variable) = self.function.locals.last() {
+            println!("{variable} {} {:?}", self.scope_depth, variable.depth);
             // TODO: maybe use a match here ?
             if variable.depth.unwrap_or(usize::MAX) >= self.scope_depth {
                 self.function.locals.pop().unwrap();
