@@ -27,19 +27,20 @@ where
     'globals: 'value,
     'value: 'function,
 {
-    // pub fn new(
-    //     application: &'function Application,
-    //     stack: &'stack mut Vec<Value<'value>>,
-    //     variables: &'variables mut HashMap<String, Value<'value>>,
-    // ) -> Self {
-    //     let call_frame: CallFrame<'_, '_, R> = CallFrame::new(application, 0);
-    //     VM {
-    //         application,
-    //         stack,
-    //         variables,
-    //         call_frames: vec![call_frame],
-    //     }
-    // }
+    pub fn new(
+        stack: &'stack mut Vec<Value<'value>>,
+        variables: &'variables mut HashMap<String, Value<'value>>,
+        globals: &'globals Vec<Variable>,
+        frame: CallFrame<'stack, 'function>,
+    ) -> Self {
+        VM {
+            stack,
+            variables,
+            globals,
+            frame,
+            previous_frames: Vec::new(),
+        }
+    }
 
     pub fn interpret_loop(&mut self) -> Result<(), InterpreterError> {
         loop {

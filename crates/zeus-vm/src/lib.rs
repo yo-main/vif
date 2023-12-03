@@ -19,13 +19,12 @@ pub fn interpret(content: String) -> Result<(), InterpreterError> {
         Err(e) => return Err(InterpreterError::CompileError(format!("{}", e))),
     };
 
-    let mut vm = vm::VM {
-        globals: &globals,
-        stack: &mut stack,
-        variables: &mut variables,
-        frame: CallFrame::new(&function, 0, 0),
-        previous_frames: Vec::new(),
-    };
+    let mut vm = vm::VM::new(
+        &mut stack,
+        &mut variables,
+        &globals,
+        CallFrame::new(&function, 0, 0),
+    );
 
     vm.interpret_loop()?;
 
