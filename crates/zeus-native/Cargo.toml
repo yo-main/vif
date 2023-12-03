@@ -8,4 +8,4 @@ edition = "2021"
 [dependencies]
 chrono = "0.4.31"
 zeus-compiler = { version = "0.1.0", path = "../zeus-compiler" }
-zeus-values = { version = "0.1.0", path = "../zeus-values" }
+zeus-objects = { version = "0.1.0", path = "../zeus-objects" }

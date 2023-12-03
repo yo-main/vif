@@ -1,6 +1,6 @@
-use crate::chunk::Chunk;
-use crate::op_code::OpCode;
-use crate::Variable;
+use zeus_objects::chunk::Chunk;
+use zeus_objects::op_code::OpCode;
+use zeus_objects::variable::Variable;
 
 pub fn disassemble_chunk(chunk: &Chunk, name: &str, globals: &Vec<Variable>) {
     println!("== {} ==", name);

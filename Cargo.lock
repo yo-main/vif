@@ -458,6 +458,7 @@ name = "zeus-compiler"
 version = "0.1.0"
 dependencies = [
  "log",
+ "zeus-objects",
  "zeus-scanner",
 ]
 
@@ -467,21 +468,18 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "zeus-compiler",
- "zeus-values",
+ "zeus-objects",
 ]
+
+[[package]]
+name = "zeus-objects"
+version = "0.1.0"
 
 [[package]]
 name = "zeus-scanner"
 version = "0.1.0"
 dependencies = [
  "log",
-]
-
-[[package]]
-name = "zeus-values"
-version = "0.1.0"
-dependencies = [
- "zeus-compiler",
 ]
 
 [[package]]
@@ -493,6 +491,6 @@ dependencies = [
  "log",
  "zeus-compiler",
  "zeus-native",
+ "zeus-objects",
  "zeus-scanner",
- "zeus-values",
 ]

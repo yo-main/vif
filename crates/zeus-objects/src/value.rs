@@ -1,9 +1,9 @@
-use zeus_compiler::Variable;
+use crate::variable::Variable;
 
 use crate::divide_by_zero_error;
 use crate::errors::ValueError;
+use crate::function::NativeFunction;
 use crate::value_error;
-use zeus_compiler::NativeFunction;
 
 #[derive(Debug, Clone)]
 pub enum Value<'c> {

@@ -1,5 +1,5 @@
+use crate::chunk::Chunk;
 use crate::local::Local;
-use crate::Chunk;
 
 #[derive(Clone)]
 pub enum Arity {

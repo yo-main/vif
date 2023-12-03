@@ -1,5 +1,5 @@
 use zeus_compiler::Function;
-use zeus_compiler::OpCode;
+use zeus_objects::op_code::OpCode;
 
 pub struct CallFrame<'stack, 'function>
 where

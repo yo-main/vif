@@ -5,14 +5,15 @@ use zeus_scanner::TokenType;
 
 use crate::debug::disassemble_chunk;
 use crate::error::CompilerError;
-use crate::function::Function;
-use crate::local::Local;
 use crate::parser_rule::PrattParser;
 use crate::precedence::Precedence;
 use crate::NativeFunction;
 use crate::NativeFunctionCallee;
 use crate::OpCode;
 use crate::Variable;
+use zeus_objects::function::Arity;
+use zeus_objects::function::Function;
+use zeus_objects::local::Local;
 
 pub struct Compiler<'scanner, 'function, 'a> {
     scanner: &'scanner mut Scanner<'a>,
@@ -277,7 +278,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
 
     fn function_statement(&mut self) -> Result<(), CompilerError> {
         log::debug!("Starting function statement");
-        let mut function = Function::new(crate::function::Arity::None, "function".to_owned());
+        let mut function = Function::new(Arity::None, "function".to_owned());
         let mut compiler = Compiler::new(self.scanner, &mut function);
         std::mem::swap(&mut compiler.globals, &mut self.globals);
 

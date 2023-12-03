@@ -1,5 +1,5 @@
 use crate::errors::NativeError;
-use zeus_values::value::Value;
+use zeus_objects::value::Value;
 
 pub fn print(iter: &[Value<'_>]) -> Result<(), NativeError> {
     println!(

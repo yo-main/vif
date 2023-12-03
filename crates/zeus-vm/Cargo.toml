@@ -12,4 +12,4 @@ log = "0.4.20"
 zeus-compiler = { version = "0.1.0", path = "../zeus-compiler" }
 zeus-native = { version = "0.1.0", path = "../zeus-native" }
 zeus-scanner = { version = "0.1", path = "../zeus-scanner"}
-zeus-values = { version = "0.1.0", path = "../zeus-values" }
+zeus-objects = { version = "0.1.0", path = "../zeus-objects" }

@@ -3,7 +3,7 @@ pub mod io;
 pub mod time;
 use zeus_compiler::NativeFunction;
 use zeus_compiler::NativeFunctionCallee;
-use zeus_values::value::Value;
+use zeus_objects::value::Value;
 
 pub fn execute_native_call<'v>(
     stack: &Vec<Value<'v>>,

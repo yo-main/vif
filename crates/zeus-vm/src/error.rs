@@ -1,4 +1,4 @@
-use zeus_values::errors::ValueError;
+use zeus_objects::errors::ValueError;
 
 pub enum InterpreterError {
     Ok,

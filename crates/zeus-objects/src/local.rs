@@ -1,4 +1,4 @@
-use crate::Variable;
+use crate::variable::Variable;
 
 pub struct Local {
     pub variable: Variable,

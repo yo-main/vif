@@ -1,26 +1,22 @@
-mod chunk;
 mod compiler;
 mod debug;
 mod error;
-mod function;
-mod local;
-mod op_code;
 mod parser_rule;
 mod precedence;
-mod variable;
 
-pub use crate::chunk::Chunk;
 pub use crate::error::CompilerError;
-pub use crate::function::Function;
-pub use crate::function::NativeFunction;
-pub use crate::function::NativeFunctionCallee;
-pub use crate::op_code::OpCode;
-pub use crate::variable::Variable;
 use compiler::Compiler;
+pub use zeus_objects::chunk::Chunk;
+pub use zeus_objects::function::Arity;
+pub use zeus_objects::function::Function;
+pub use zeus_objects::function::NativeFunction;
+pub use zeus_objects::function::NativeFunctionCallee;
+pub use zeus_objects::op_code::OpCode;
+pub use zeus_objects::variable::Variable;
 use zeus_scanner::Scanner;
 
 pub fn compile(content: String) -> Result<(Function, Vec<Variable>), CompilerError> {
-    let mut function = Function::new(function::Arity::None, "Main".to_owned());
+    let mut function = Function::new(Arity::None, "Main".to_owned());
     let mut scanner = Scanner::new(content.as_str());
     let mut compiler = Compiler::new(&mut scanner, &mut function);
     let mut errors = Vec::new();

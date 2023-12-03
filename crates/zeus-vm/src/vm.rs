@@ -5,10 +5,10 @@ use crate::error::InterpreterError;
 use crate::error::RuntimeErrorType;
 use crate::value_error;
 use zeus_compiler::NativeFunctionCallee;
-use zeus_compiler::OpCode;
 use zeus_compiler::Variable;
 use zeus_native::execute_native_call;
-use zeus_values::value::Value;
+use zeus_objects::op_code::OpCode;
+use zeus_objects::value::Value;
 
 pub struct VM<'function, 'stack, 'value, 'variables, 'globals>
 where
