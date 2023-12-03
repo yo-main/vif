@@ -1,4 +1,5 @@
 pub mod errors;
+pub mod io;
 pub mod time;
 use zeus_compiler::NativeFunction;
 use zeus_compiler::NativeFunctionCallee;
@@ -12,7 +13,11 @@ pub fn execute_native_call<'v>(
     let stack_start = stack.len() - arg_count - 1;
 
     let res = match func.function {
-        NativeFunctionCallee::GetTime => Value::Integer(time::get_time(stack)?),
+        NativeFunctionCallee::GetTime => Value::Integer(time::get_time()?),
+        NativeFunctionCallee::Print => {
+            io::print(&stack[stack_start..])?;
+            Value::None
+        }
     };
 
     Ok(res)

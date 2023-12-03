@@ -526,6 +526,10 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
                     Variable::Native(NativeFunction::new(NativeFunctionCallee::GetTime)),
                     can_assign,
                 ),
+                "print" => self.named_variable(
+                    Variable::Native(NativeFunction::new(NativeFunctionCallee::Print)),
+                    can_assign,
+                ),
                 _ => self.named_variable(Variable::Identifier(s.clone()), can_assign),
             },
             _ => return Err(CompilerError::Unknown(format!("Impossible"))),

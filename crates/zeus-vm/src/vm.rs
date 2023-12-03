@@ -186,9 +186,7 @@ where
                         ));
                     }
                 },
-                Some(Variable::Native(f)) => match f.function {
-                    NativeFunctionCallee::GetTime => self.stack.push(Value::Native(f.clone())),
-                },
+                Some(Variable::Native(f)) => self.stack.push(Value::Native(f.clone())),
                 _ => return Err(InterpreterError::Impossible),
             },
             OpCode::SetGlobal(i) => {

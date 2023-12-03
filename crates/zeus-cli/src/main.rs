@@ -6,7 +6,7 @@ mod error;
 fn setup_logging() {
     let level = std::env::var("ZEUS_LOG_LEVEL")
         .map(|lvl| lvl.parse().unwrap())
-        .unwrap_or(log::LevelFilter::Trace);
+        .unwrap_or(log::LevelFilter::Error);
 
     let debug = std::env::var("DEBUG").and(Ok(true)).unwrap_or(false);
 

@@ -1,6 +1,11 @@
 use crate::local::Local;
 use crate::Chunk;
 
+pub enum Arity {
+    Fixed(usize),
+    Infinite,
+    None,
+}
 pub struct Function {
     pub arity: usize,
     pub chunk: Chunk,
@@ -38,6 +43,7 @@ impl std::fmt::Debug for Function {
 #[derive(Clone)]
 pub enum NativeFunctionCallee {
     GetTime,
+    Print,
 }
 
 #[derive(Clone)]
@@ -53,6 +59,11 @@ impl NativeFunction {
             NativeFunctionCallee::GetTime => Self {
                 arity: 0,
                 name: "get_time".to_owned(),
+                function: callee,
+            },
+            NativeFunctionCallee::Print => Self {
+                arity: usize::MAX,
+                name: "print".to_owned(),
                 function: callee,
             },
         }
