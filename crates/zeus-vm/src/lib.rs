@@ -2,7 +2,6 @@
 
 mod callframe;
 mod error;
-pub mod value;
 mod vm;
 
 use std::collections::HashMap;

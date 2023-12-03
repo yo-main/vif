@@ -9,6 +9,8 @@ use crate::function::Function;
 use crate::local::Local;
 use crate::parser_rule::PrattParser;
 use crate::precedence::Precedence;
+use crate::NativeFunction;
+use crate::NativeFunctionCallee;
 use crate::OpCode;
 use crate::Variable;
 
@@ -519,9 +521,13 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
     ) -> Result<(), CompilerError> {
         log::debug!("Starting variable");
         match token_type {
-            TokenType::Identifier(s) => {
-                self.named_variable(Variable::Identifier(s.clone()), can_assign)
-            }
+            TokenType::Identifier(s) => match s.as_str() {
+                "get_time" => self.named_variable(
+                    Variable::Native(NativeFunction::new(NativeFunctionCallee::GetTime)),
+                    can_assign,
+                ),
+                _ => self.named_variable(Variable::Identifier(s.clone()), can_assign),
+            },
             _ => return Err(CompilerError::Unknown(format!("Impossible"))),
         }
     }
@@ -563,6 +569,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
         log::debug!("Resolve variable {}", variable);
         let var_name = match variable {
             Variable::Identifier(s) => s,
+            Variable::Native(f) => &f.name,
             _ => return Ok(None), // TODO: I beg you to change that
         };
 

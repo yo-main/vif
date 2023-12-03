@@ -3,10 +3,12 @@ use std::collections::HashMap;
 use crate::callframe::CallFrame;
 use crate::error::InterpreterError;
 use crate::error::RuntimeErrorType;
-use crate::value::Value;
 use crate::value_error;
+use zeus_compiler::NativeFunctionCallee;
 use zeus_compiler::OpCode;
 use zeus_compiler::Variable;
+use zeus_native::execute_native_call;
+use zeus_values::value::Value;
 
 pub struct VM<'function, 'stack, 'value, 'variables, 'globals>
 where
@@ -74,9 +76,7 @@ where
                 let result = self
                     .stack
                     .pop()
-                    .ok_or(InterpreterError::RuntimeError(
-                        RuntimeErrorType::ValueError(format!("Nothing to return")),
-                    ))
+                    .ok_or(InterpreterError::CompileError(format!("Nothing to return")))
                     .unwrap();
 
                 if self.call_frames.len() == 1 {
@@ -116,10 +116,28 @@ where
                         stack_position: self.stack.len() - arg_count - 1,
                     });
                 }
+                Value::Native(func) => {
+                    if func.arity != *arg_count {
+                        return Err(InterpreterError::RuntimeError(
+                            RuntimeErrorType::FunctionCall(format!(
+                                "Expected {} parameters, got {}",
+                                func.arity, arg_count
+                            )),
+                        ));
+                    }
+
+                    let res = execute_native_call(self.stack, *arg_count, func).map_err(|e| {
+                        InterpreterError::RuntimeError(RuntimeErrorType::FunctionFailed(format!(
+                            "{e}"
+                        )))
+                    })?;
+
+                    self.stack.push(res);
+                }
                 v => {
-                    return Err(InterpreterError::RuntimeError(
-                        RuntimeErrorType::ValueError(format!("Expected function, got {v}")),
-                    ))
+                    return Err(InterpreterError::CompileError(format!(
+                        "Expected function, got {v}"
+                    )))
                 }
             },
             OpCode::Goto(i) => self.call_frames.last_mut().unwrap().reset_ip(*i),
@@ -157,23 +175,22 @@ where
                 let frame = self.call_frames.last().unwrap();
                 self.stack[*i + frame.stack_position] = self.stack.last().unwrap().clone()
             }
-            OpCode::GetGlobal(i) => {
-                let var_name = match self.globals.get(*i) {
-                    Some(Variable::Identifier(s)) => s,
-                    _ => return Err(InterpreterError::Impossible),
-                };
-
-                match self.variables.get(var_name) {
+            OpCode::GetGlobal(i) => match self.globals.get(*i) {
+                Some(Variable::Identifier(s)) => match self.variables.get(s) {
                     Some(value) => self.stack.push(value.clone()),
                     _ => {
                         return Err(InterpreterError::RuntimeError(
                             RuntimeErrorType::UndeclaredVariable(format!(
-                                "Undeclared variable: {var_name}"
+                                "Undeclared variable: {s}"
                             )),
-                        ))
+                        ));
                     }
-                }
-            }
+                },
+                Some(Variable::Native(f)) => match f.function {
+                    NativeFunctionCallee::GetTime => self.stack.push(Value::Native(f.clone())),
+                },
+                _ => return Err(InterpreterError::Impossible),
+            },
             OpCode::SetGlobal(i) => {
                 let var_name = match self.globals.get(*i) {
                     Some(Variable::Identifier(s)) => s,
@@ -194,7 +211,7 @@ where
                             RuntimeErrorType::UndeclaredVariable(format!(
                                 "Can't assign to undeclared variable: {var_name}"
                             )),
-                        ))
+                        ));
                     }
                     _ => (),
                 }
@@ -242,14 +259,16 @@ where
                                 Variable::Function(f) => {
                                     return value_error!("Can't negate a function name: {f}")
                                 }
+                                Variable::Native(f) => {
+                                    return value_error!("Can't negate a function name: {f}")
+                                }
                             },
                             _ => return Err(InterpreterError::Impossible), // impossible
                         };
 
                         self.stack.push(new_value);
                     }
-                    Value::String(_) => return value_error!("Can't negate {value}"),
-                    Value::BinaryOp(_) => return value_error!("Can't negate {value}"),
+                    _ => return value_error!("Can't negate {value}"),
                 };
             }
             OpCode::Negate => {
@@ -274,15 +293,16 @@ where
                                 Variable::Function(f) => {
                                     return value_error!("Can't negate a function name: {f}")
                                 }
+                                Variable::Native(f) => {
+                                    return value_error!("Can't negate a function name: {f}")
+                                }
                             },
                             _ => return Err(InterpreterError::Impossible),
                         };
 
                         self.stack.push(new_value);
                     }
-                    Value::String(_) => return value_error!("Can't negate {value}"),
-                    Value::BinaryOp(_) => return value_error!("Can't negate {value}"),
-                    Value::None => return value_error!("Can't negate {value}"),
+                    _ => return value_error!("Can't negate {value}"),
                 };
             }
             OpCode::True => self.stack.push(Value::Boolean(true)),
@@ -327,7 +347,7 @@ where
                             self.stack.push(value);
                         }
                         Ok(None) => (),
-                        Err(e) => return Err(e),
+                        Err(e) => return Err(e.into()),
                     },
                     None => return Err(InterpreterError::EmptyStack),
                 }
@@ -341,7 +361,7 @@ where
                             self.stack.push(value);
                         }
                         Ok(None) => (),
-                        Err(e) => return Err(e),
+                        Err(e) => return Err(e.into()),
                     },
                     None => return Err(InterpreterError::EmptyStack),
                 }
@@ -355,7 +375,7 @@ where
                             self.stack.push(value);
                         }
                         Ok(None) => (),
-                        Err(e) => return Err(e),
+                        Err(e) => return Err(e.into()),
                     },
                     None => return Err(InterpreterError::EmptyStack),
                 }
@@ -369,7 +389,7 @@ where
                             self.stack.push(value);
                         }
                         Ok(None) => (),
-                        Err(e) => return Err(e),
+                        Err(e) => return Err(e.into()),
                     },
                     None => return Err(InterpreterError::EmptyStack),
                 }
@@ -383,7 +403,11 @@ where
                             self.stack.push(value);
                         }
                         Ok(None) => (),
-                        Err(e) => return Err(e),
+                        Err(e) => {
+                            return Err(InterpreterError::RuntimeError(
+                                RuntimeErrorType::ValueError(format!("{e}")),
+                            ))
+                        }
                     },
                     None => return Err(InterpreterError::EmptyStack),
                 }

@@ -1,8 +1,1 @@
-def test(a, b):
-	var p = 1
-	var m = 3
-	@ a
-	@ b
-	return a+b
-
-@ test(9, 2)
+@ get_time()

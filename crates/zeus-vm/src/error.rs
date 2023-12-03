@@ -1,3 +1,5 @@
+use zeus_values::errors::ValueError;
+
 pub enum InterpreterError {
     Ok,
     EmptyStack,
@@ -13,6 +15,7 @@ pub enum RuntimeErrorType {
     DivideByZero(String),
     UndeclaredVariable(String),
     FunctionCall(String),
+    FunctionFailed(String),
 }
 
 #[macro_export]
@@ -20,14 +23,6 @@ macro_rules! value_error {
     ($($arg:tt)*) => {{
         let res = format!($($arg)*);
         Err($crate::error::InterpreterError::RuntimeError($crate::error::RuntimeErrorType::ValueError(res)))
-    }}
-}
-
-#[macro_export]
-macro_rules! divide_by_zero_error {
-    ($($arg:tt)*) => {{
-        let res = format!($($arg)*);
-        Err($crate::error::InterpreterError::RuntimeError($crate::error::RuntimeErrorType::DivideByZero(res)))
     }}
 }
 
@@ -39,6 +34,7 @@ impl std::fmt::Display for RuntimeErrorType {
             Self::DivideByZero(s) => write!(f, "Divide by zero: {s}"),
             Self::UndeclaredVariable(s) => write!(f, "Undeclared variable: {s}"),
             Self::FunctionCall(s) => write!(f, "Function call error: {s}"),
+            Self::FunctionFailed(s) => write!(f, "Function failed: {s}"),
         }
     }
 }
@@ -66,5 +62,11 @@ impl std::fmt::Debug for InterpreterError {
             Self::ConstantNotFound => write!(f, "Constant not found"),
             Self::Impossible => write!(f, "Impossible"),
         }
+    }
+}
+
+impl From<ValueError> for InterpreterError {
+    fn from(value: ValueError) -> Self {
+        InterpreterError::RuntimeError(RuntimeErrorType::ValueError(format!("value")))
     }
 }

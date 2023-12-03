@@ -1,8 +1,9 @@
 use zeus_compiler::Variable;
 
 use crate::divide_by_zero_error;
-use crate::error::InterpreterError;
+use crate::errors::ValueError;
 use crate::value_error;
+use zeus_compiler::NativeFunction;
 
 #[derive(Debug, Clone)]
 pub enum Value<'c> {
@@ -13,6 +14,7 @@ pub enum Value<'c> {
     Constant(&'c Variable),
     BinaryOp(BinaryOp),
     Boolean(bool),
+    Native(NativeFunction),
     None,
 }
 
@@ -35,6 +37,7 @@ impl std::fmt::Display for Value<'_> {
             Self::BinaryOp(o) => write!(f, "{}", o),
             Self::Boolean(b) => write!(f, "{}", b),
             Self::String(s) => write!(f, "{}", s),
+            Self::Native(s) => write!(f, "{}", s),
             Self::None => write!(f, "None"),
         }
     }
@@ -92,12 +95,6 @@ impl<'c> Values<'c> {
 }
 
 impl Value<'_> {
-    fn value_error(&self, other: &Self) -> InterpreterError {
-        InterpreterError::RuntimeError(crate::error::RuntimeErrorType::ValueError(format!(
-            "Can't compare {self} and {other}"
-        )))
-    }
-
     pub fn eq(&self, other: &Self) -> bool {
         match self {
             Self::Integer(i) => match other {
@@ -242,7 +239,7 @@ impl Value<'_> {
         }
     }
 
-    pub fn lt(&self, other: &Self) -> Result<bool, InterpreterError> {
+    pub fn lt(&self, other: &Self) -> Result<bool, ValueError> {
         match self {
             Self::Integer(i) => match other {
                 Self::Integer(j) => Ok(i < j),
@@ -252,7 +249,7 @@ impl Value<'_> {
                 Self::Constant(Variable::Float(j)) => Ok((*i as f64) < *j),
                 Self::Boolean(true) => Ok(i < &1),
                 Self::Boolean(false) => Ok(i < &0),
-                _ => Err(self.value_error(other)),
+                _ => return value_error!("Can't compare {self} and {other}"),
             },
             Self::Index(i) => match other {
                 Self::Integer(j) => Ok(i < j),
@@ -262,7 +259,7 @@ impl Value<'_> {
                 Self::Constant(Variable::Float(j)) => Ok((*i as f64) < *j),
                 Self::Boolean(true) => Ok(i < &1),
                 Self::Boolean(false) => Ok(i < &0),
-                _ => Err(self.value_error(other)),
+                _ => return value_error!("Can't compare {self} and {other}"),
             },
             Self::Float(i) => match other {
                 Self::Integer(j) => Ok(*i < *j as f64),
@@ -272,7 +269,7 @@ impl Value<'_> {
                 Self::Constant(Variable::Float(j)) => Ok(i < j),
                 Self::Boolean(true) => Ok(i < &1.0),
                 Self::Boolean(false) => Ok(i < &0.0),
-                _ => Err(self.value_error(other)),
+                _ => return value_error!("Can't compare {self} and {other}"),
             },
             Self::Constant(Variable::Integer(i)) => match other {
                 Self::Integer(j) => Ok(i < j),
@@ -282,7 +279,7 @@ impl Value<'_> {
                 Self::Constant(Variable::Float(j)) => Ok((*i as f64) < *j),
                 Self::Boolean(true) => Ok(i < &1),
                 Self::Boolean(false) => Ok(i < &0),
-                _ => Err(self.value_error(other)),
+                _ => return value_error!("Can't compare {self} and {other}"),
             },
             Self::Constant(Variable::Float(i)) => match other {
                 Self::Integer(j) => Ok(*i < (*j as f64)),
@@ -292,7 +289,7 @@ impl Value<'_> {
                 Self::Constant(Variable::Float(j)) => Ok((*i as f64) < *j),
                 Self::Boolean(true) => Ok(i < &1.0),
                 Self::Boolean(false) => Ok(i < &0.0),
-                _ => Err(self.value_error(other)),
+                _ => return value_error!("Can't compare {self} and {other}"),
             },
             Self::Boolean(i) => match other {
                 Self::Boolean(j) => Ok(i < j),
@@ -301,13 +298,13 @@ impl Value<'_> {
                 Self::Float(j) => Ok(&1.0 < j),
                 Self::Constant(Variable::Integer(j)) => Ok(&1 < j),
                 Self::Constant(Variable::Float(j)) => Ok(&1.0 < j),
-                _ => Err(self.value_error(other)),
+                _ => return value_error!("Can't compare {self} and {other}"),
             },
-            _ => Err(self.value_error(other)),
+            _ => return value_error!("Can't compare {self} and {other}"),
         }
     }
 
-    pub fn lte(&self, other: &Self) -> Result<bool, InterpreterError> {
+    pub fn lte(&self, other: &Self) -> Result<bool, ValueError> {
         match self {
             Self::Integer(i) => match other {
                 Self::Integer(j) => Ok(i <= j),
@@ -317,7 +314,7 @@ impl Value<'_> {
                 Self::Constant(Variable::Float(j)) => Ok((*i as f64) <= *j),
                 Self::Boolean(true) => Ok(i <= &1),
                 Self::Boolean(false) => Ok(i <= &0),
-                _ => Err(self.value_error(other)),
+                _ => return value_error!("Can't compare {self} and {other}"),
             },
             Self::Index(i) => match other {
                 Self::Integer(j) => Ok(i <= j),
@@ -327,7 +324,7 @@ impl Value<'_> {
                 Self::Constant(Variable::Float(j)) => Ok((*i as f64) <= *j),
                 Self::Boolean(true) => Ok(i <= &1),
                 Self::Boolean(false) => Ok(i <= &0),
-                _ => Err(self.value_error(other)),
+                _ => return value_error!("Can't compare {self} and {other}"),
             },
             Self::Float(i) => match other {
                 Self::Integer(j) => Ok(*i <= *j as f64),
@@ -337,7 +334,7 @@ impl Value<'_> {
                 Self::Constant(Variable::Float(j)) => Ok(i <= j),
                 Self::Boolean(true) => Ok(i <= &1.0),
                 Self::Boolean(false) => Ok(i <= &0.0),
-                _ => Err(self.value_error(other)),
+                _ => return value_error!("Can't compare {self} and {other}"),
             },
             Self::Constant(Variable::Integer(i)) => match other {
                 Self::Integer(j) => Ok(i <= j),
@@ -347,7 +344,7 @@ impl Value<'_> {
                 Self::Constant(Variable::Float(j)) => Ok((*i as f64) <= *j),
                 Self::Boolean(true) => Ok(i <= &1),
                 Self::Boolean(false) => Ok(i <= &0),
-                _ => Err(self.value_error(other)),
+                _ => return value_error!("Can't compare {self} and {other}"),
             },
             Self::Constant(Variable::Float(i)) => match other {
                 Self::Integer(j) => Ok(*i <= (*j as f64)),
@@ -357,7 +354,7 @@ impl Value<'_> {
                 Self::Constant(Variable::Float(j)) => Ok((*i as f64) <= *j),
                 Self::Boolean(true) => Ok(i <= &1.0),
                 Self::Boolean(false) => Ok(i <= &0.0),
-                _ => Err(self.value_error(other)),
+                _ => return value_error!("Can't compare {self} and {other}"),
             },
             Self::Boolean(i) => match other {
                 Self::Boolean(j) => Ok(i <= j),
@@ -366,13 +363,13 @@ impl Value<'_> {
                 Self::Float(j) => Ok(&1.0 <= j),
                 Self::Constant(Variable::Integer(j)) => Ok(&1 <= j),
                 Self::Constant(Variable::Float(j)) => Ok(&1.0 <= j),
-                _ => Err(self.value_error(other)),
+                _ => return value_error!("Can't compare {self} and {other}"),
             },
-            _ => Err(self.value_error(other)),
+            _ => return value_error!("Can't compare {self} and {other}"),
         }
     }
 
-    pub fn gt(&self, other: &Self) -> Result<bool, InterpreterError> {
+    pub fn gt(&self, other: &Self) -> Result<bool, ValueError> {
         match self {
             Self::Integer(i) => match other {
                 Self::Integer(j) => Ok(i > j),
@@ -382,7 +379,7 @@ impl Value<'_> {
                 Self::Constant(Variable::Float(j)) => Ok((*i as f64) > *j),
                 Self::Boolean(true) => Ok(i > &1),
                 Self::Boolean(false) => Ok(i > &0),
-                _ => Err(self.value_error(other)),
+                _ => return value_error!("Can't compare {self} and {other}"),
             },
             Self::Index(i) => match other {
                 Self::Integer(j) => Ok(i > j),
@@ -392,7 +389,7 @@ impl Value<'_> {
                 Self::Constant(Variable::Float(j)) => Ok((*i as f64) > *j),
                 Self::Boolean(true) => Ok(i > &1),
                 Self::Boolean(false) => Ok(i > &0),
-                _ => Err(self.value_error(other)),
+                _ => return value_error!("Can't compare {self} and {other}"),
             },
             Self::Float(i) => match other {
                 Self::Integer(j) => Ok(*i > *j as f64),
@@ -402,7 +399,7 @@ impl Value<'_> {
                 Self::Constant(Variable::Float(j)) => Ok(i > j),
                 Self::Boolean(true) => Ok(i > &1.0),
                 Self::Boolean(false) => Ok(i > &0.0),
-                _ => Err(self.value_error(other)),
+                _ => return value_error!("Can't compare {self} and {other}"),
             },
             Self::Constant(Variable::Integer(i)) => match other {
                 Self::Integer(j) => Ok(i > j),
@@ -412,7 +409,7 @@ impl Value<'_> {
                 Self::Constant(Variable::Float(j)) => Ok((*i as f64) > *j),
                 Self::Boolean(true) => Ok(i > &1),
                 Self::Boolean(false) => Ok(i > &0),
-                _ => Err(self.value_error(other)),
+                _ => return value_error!("Can't compare {self} and {other}"),
             },
             Self::Constant(Variable::Float(i)) => match other {
                 Self::Integer(j) => Ok(*i > (*j as f64)),
@@ -422,7 +419,7 @@ impl Value<'_> {
                 Self::Constant(Variable::Float(j)) => Ok((*i as f64) > *j),
                 Self::Boolean(true) => Ok(i > &1.0),
                 Self::Boolean(false) => Ok(i > &0.0),
-                _ => Err(self.value_error(other)),
+                _ => return value_error!("Can't compare {self} and {other}"),
             },
             Self::Boolean(i) => match other {
                 Self::Boolean(j) => Ok(i > j),
@@ -431,13 +428,13 @@ impl Value<'_> {
                 Self::Float(j) => Ok(&1.0 > j),
                 Self::Constant(Variable::Integer(j)) => Ok(&1 > j),
                 Self::Constant(Variable::Float(j)) => Ok(&1.0 > j),
-                _ => Err(self.value_error(other)),
+                _ => return value_error!("Can't compare {self} and {other}"),
             },
-            _ => Err(self.value_error(other)),
+            _ => return value_error!("Can't compare {self} and {other}"),
         }
     }
 
-    pub fn gte(&self, other: &Self) -> Result<bool, InterpreterError> {
+    pub fn gte(&self, other: &Self) -> Result<bool, ValueError> {
         match self {
             Self::Integer(i) => match other {
                 Self::Integer(j) => Ok(i >= j),
@@ -447,7 +444,7 @@ impl Value<'_> {
                 Self::Constant(Variable::Float(j)) => Ok((*i as f64) >= *j),
                 Self::Boolean(true) => Ok(i >= &1),
                 Self::Boolean(false) => Ok(i >= &0),
-                _ => Err(self.value_error(other)),
+                _ => return value_error!("Can't compare {self} and {other}"),
             },
             Self::Index(i) => match other {
                 Self::Integer(j) => Ok(i >= j),
@@ -457,7 +454,7 @@ impl Value<'_> {
                 Self::Constant(Variable::Float(j)) => Ok((*i as f64) >= *j),
                 Self::Boolean(true) => Ok(i >= &1),
                 Self::Boolean(false) => Ok(i >= &0),
-                _ => Err(self.value_error(other)),
+                _ => return value_error!("Can't compare {self} and {other}"),
             },
             Self::Float(i) => match other {
                 Self::Integer(j) => Ok(*i >= *j as f64),
@@ -467,7 +464,7 @@ impl Value<'_> {
                 Self::Constant(Variable::Float(j)) => Ok(i >= j),
                 Self::Boolean(true) => Ok(i >= &1.0),
                 Self::Boolean(false) => Ok(i >= &0.0),
-                _ => Err(self.value_error(other)),
+                _ => return value_error!("Can't compare {self} and {other}"),
             },
             Self::Constant(Variable::Integer(i)) => match other {
                 Self::Integer(j) => Ok(i >= j),
@@ -477,7 +474,7 @@ impl Value<'_> {
                 Self::Constant(Variable::Float(j)) => Ok((*i as f64) >= *j),
                 Self::Boolean(true) => Ok(i >= &1),
                 Self::Boolean(false) => Ok(i >= &0),
-                _ => Err(self.value_error(other)),
+                _ => return value_error!("Can't compare {self} and {other}"),
             },
             Self::Constant(Variable::Float(i)) => match other {
                 Self::Integer(j) => Ok(*i >= (*j as f64)),
@@ -487,7 +484,7 @@ impl Value<'_> {
                 Self::Constant(Variable::Float(j)) => Ok((*i as f64) >= *j),
                 Self::Boolean(true) => Ok(i >= &1.0),
                 Self::Boolean(false) => Ok(i >= &0.0),
-                _ => Err(self.value_error(other)),
+                _ => return value_error!("Can't compare {self} and {other}"),
             },
             Self::Boolean(i) => match other {
                 Self::Boolean(j) => Ok(i >= j),
@@ -496,13 +493,13 @@ impl Value<'_> {
                 Self::Float(j) => Ok(&1.0 >= j),
                 Self::Constant(Variable::Integer(j)) => Ok(&1 >= j),
                 Self::Constant(Variable::Float(j)) => Ok(&1.0 >= j),
-                _ => Err(self.value_error(other)),
+                _ => return value_error!("Can't compare {self} and {other}"),
             },
-            _ => Err(self.value_error(other)),
+            _ => return value_error!("Can't compare {self} and {other}"),
         }
     }
 
-    pub fn add<'a, 'b>(&'a mut self, other: Self) -> Result<Option<Value<'b>>, InterpreterError>
+    pub fn add<'a, 'b>(&'a mut self, other: Self) -> Result<Option<Value<'b>>, ValueError>
     where
         'b: 'a,
     {
@@ -584,10 +581,7 @@ impl Value<'_> {
         Ok(None)
     }
 
-    pub fn multiply<'a, 'b>(
-        &'a mut self,
-        other: Self,
-    ) -> Result<Option<Value<'b>>, InterpreterError>
+    pub fn multiply<'a, 'b>(&'a mut self, other: Self) -> Result<Option<Value<'b>>, ValueError>
     where
         'b: 'a,
     {
@@ -654,10 +648,7 @@ impl Value<'_> {
         Ok(None)
     }
 
-    pub fn substract<'a, 'b>(
-        &'a mut self,
-        other: Self,
-    ) -> Result<Option<Value<'b>>, InterpreterError>
+    pub fn substract<'a, 'b>(&'a mut self, other: Self) -> Result<Option<Value<'b>>, ValueError>
     where
         'b: 'a,
     {
@@ -724,7 +715,7 @@ impl Value<'_> {
         Ok(None)
     }
 
-    pub fn divide<'a, 'b>(&'a mut self, other: Self) -> Result<Option<Value<'b>>, InterpreterError>
+    pub fn divide<'a, 'b>(&'a mut self, other: Self) -> Result<Option<Value<'b>>, ValueError>
     where
         'b: 'a,
     {
@@ -791,7 +782,7 @@ impl Value<'_> {
         Ok(None)
     }
 
-    pub fn modulo<'a, 'b>(&'a mut self, other: Self) -> Result<Option<Value<'b>>, InterpreterError>
+    pub fn modulo<'a, 'b>(&'a mut self, other: Self) -> Result<Option<Value<'b>>, ValueError>
     where
         'b: 'a,
     {

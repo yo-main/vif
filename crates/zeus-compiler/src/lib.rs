@@ -12,6 +12,8 @@ mod variable;
 pub use crate::chunk::Chunk;
 pub use crate::error::CompilerError;
 pub use crate::function::Function;
+pub use crate::function::NativeFunction;
+pub use crate::function::NativeFunctionCallee;
 pub use crate::op_code::OpCode;
 pub use crate::variable::Variable;
 use compiler::Compiler;

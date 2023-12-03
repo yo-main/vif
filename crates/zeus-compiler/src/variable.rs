@@ -1,4 +1,5 @@
 use crate::function::Function;
+use crate::function::NativeFunction;
 
 #[derive(Debug)]
 pub enum Variable {
@@ -7,6 +8,7 @@ pub enum Variable {
     String(String),
     Identifier(String),
     Function(Function),
+    Native(NativeFunction),
 }
 
 impl std::fmt::Display for Variable {
@@ -17,6 +19,7 @@ impl std::fmt::Display for Variable {
             Self::String(i) => write!(f, "{}", i),
             Self::Identifier(i) => write!(f, "{}", i),
             Self::Function(func) => write!(f, "{}", func.name),
+            Self::Native(func) => write!(f, "{}", func.name),
         }
     }
 }
