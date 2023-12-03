@@ -23,7 +23,8 @@ pub fn interpret(content: String) -> Result<(), InterpreterError> {
         globals: &globals,
         stack: &mut stack,
         variables: &mut variables,
-        call_frames: vec![CallFrame::new(&function, 0, 0)],
+        frame: CallFrame::new(&function, 0, 0),
+        previous_frames: Vec::new(),
     };
 
     vm.interpret_loop()?;

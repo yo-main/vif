@@ -17,7 +17,8 @@ where
     pub stack: &'stack mut Vec<Value<'value>>,
     pub variables: &'variables mut HashMap<String, Value<'value>>,
     pub globals: &'globals Vec<Variable>,
-    pub call_frames: Vec<CallFrame<'stack, 'function>>,
+    pub frame: CallFrame<'stack, 'function>,
+    pub previous_frames: Vec<CallFrame<'stack, 'function>>,
 }
 
 impl<'function, 'stack, 'value, 'variables, 'globals>
@@ -42,12 +43,10 @@ where
 
     pub fn interpret_loop(&mut self) -> Result<(), InterpreterError> {
         loop {
-            // println!("{:?}", self.stack);
-            let frame = self.call_frames.last_mut().unwrap();
-            match frame.ip.next() {
+            match self.frame.ip.next() {
                 None => {
-                    if self.call_frames.len() > 1 {
-                        self.call_frames.pop();
+                    if self.previous_frames.len() > 0 {
+                        self.frame = self.previous_frames.pop().unwrap();
                     } else {
                         break;
                     }
@@ -79,14 +78,13 @@ where
                     .ok_or(InterpreterError::CompileError(format!("Nothing to return")))
                     .unwrap();
 
-                if self.call_frames.len() == 1 {
+                if self.previous_frames.len() == 0 {
                     self.stack.pop();
                     return Ok(());
                 }
 
-                let old_frame = self.call_frames.pop().unwrap();
-                self.stack.drain(old_frame.stack_position..);
-
+                self.stack.drain(self.frame.stack_position..);
+                self.frame = self.previous_frames.pop().unwrap();
                 self.stack.push(result);
             }
             OpCode::GlobalVariable(i) => {
@@ -110,11 +108,14 @@ where
                             )),
                         ));
                     }
-                    self.call_frames.push(CallFrame {
+
+                    let mut new_frame = CallFrame {
                         function: func,
                         ip: func.chunk.iter(0),
                         stack_position: self.stack.len() - arg_count - 1,
-                    });
+                    };
+                    std::mem::swap(&mut new_frame, &mut self.frame);
+                    self.previous_frames.push(new_frame);
                 }
                 Value::Native(func) => {
                     if func.arity != *arg_count {
@@ -140,40 +141,33 @@ where
                     )))
                 }
             },
-            OpCode::Goto(i) => self.call_frames.last_mut().unwrap().reset_ip(*i),
-            OpCode::Jump(i) => self
-                .call_frames
-                .last_mut()
-                .unwrap()
-                .ip
-                .advance_by(*i)
-                .unwrap(),
+            OpCode::Goto(i) => self.frame.reset_ip(*i),
+            OpCode::Jump(i) => self.frame.ip.advance_by(*i).unwrap(),
             OpCode::JumpIfFalse(i) => {
-                let frame = self.call_frames.last_mut().unwrap();
                 let value = self.stack.last().ok_or(InterpreterError::EmptyStack)?;
 
                 match value {
-                    Value::Boolean(false) => frame.ip.advance_by(*i).unwrap(),
-                    Value::Integer(0) => frame.ip.advance_by(*i).unwrap(),
-                    Value::Float(v) if v == &0.0 => frame.ip.advance_by(*i).unwrap(),
-                    Value::Constant(Variable::Integer(0)) => frame.ip.advance_by(*i).unwrap(),
+                    Value::Boolean(false) => self.frame.ip.advance_by(*i).unwrap(),
+                    Value::Integer(0) => self.frame.ip.advance_by(*i).unwrap(),
+                    Value::Float(v) if v == &0.0 => self.frame.ip.advance_by(*i).unwrap(),
+                    Value::Constant(Variable::Integer(0)) => self.frame.ip.advance_by(*i).unwrap(),
                     Value::Constant(Variable::Float(v)) if v == &0.0 => {
-                        frame.ip.advance_by(*i).unwrap()
+                        self.frame.ip.advance_by(*i).unwrap()
                     }
-                    Value::String(s) if s.is_empty() => frame.ip.advance_by(*i).unwrap(),
-                    Value::None => frame.ip.advance_by(*i).unwrap(),
+                    Value::String(s) if s.is_empty() => self.frame.ip.advance_by(*i).unwrap(),
+                    Value::None => self.frame.ip.advance_by(*i).unwrap(),
                     _ => (),
                 }
             }
             // WTF is that ?? It's working though but wow. I'll need to spend more time studying how
-            OpCode::GetLocal(i) => {
-                let frame = self.call_frames.last().unwrap();
+            OpCode::GetLocal(i) => self.stack.push(
                 self.stack
-                    .push(self.stack.get(*i + frame.stack_position).unwrap().clone())
-            }
+                    .get(*i + self.frame.stack_position)
+                    .unwrap()
+                    .clone(),
+            ),
             OpCode::SetLocal(i) => {
-                let frame = self.call_frames.last().unwrap();
-                self.stack[*i + frame.stack_position] = self.stack.last().unwrap().clone()
+                self.stack[*i + self.frame.stack_position] = self.stack.last().unwrap().clone()
             }
             OpCode::GetGlobal(i) => match self.globals.get(*i) {
                 Some(Variable::Identifier(s)) => match self.variables.get(s) {
