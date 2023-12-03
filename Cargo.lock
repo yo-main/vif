@@ -465,6 +465,7 @@ dependencies = [
 name = "zeus-native"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "zeus-compiler",
  "zeus-values",
 ]

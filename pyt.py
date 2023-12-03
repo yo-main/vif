@@ -11,9 +11,9 @@ i = 0
 while True:
     start = time.time()
     value = fib(i)
-    duration = (time.time() - start) / 1000000
+    duration = round(time.time() - start)
 
-    print(value)
+    print("Got", value, "after", duration, "seconds")
 
     i = i + 1
 
