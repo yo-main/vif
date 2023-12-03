@@ -277,7 +277,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
 
     fn function_statement(&mut self) -> Result<(), CompilerError> {
         log::debug!("Starting function statement");
-        let mut function = Function::new(0, "function".to_owned());
+        let mut function = Function::new(crate::function::Arity::None, "function".to_owned());
         let mut compiler = Compiler::new(self.scanner, &mut function);
         std::mem::swap(&mut compiler.globals, &mut self.globals);
 

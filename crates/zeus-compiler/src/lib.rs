@@ -20,7 +20,7 @@ use compiler::Compiler;
 use zeus_scanner::Scanner;
 
 pub fn compile(content: String) -> Result<(Function, Vec<Variable>), CompilerError> {
-    let mut function = Function::new(0, "Main".to_owned());
+    let mut function = Function::new(function::Arity::None, "Main".to_owned());
     let mut scanner = Scanner::new(content.as_str());
     let mut compiler = Compiler::new(&mut scanner, &mut function);
     let mut errors = Vec::new();

@@ -1,20 +1,62 @@
 use crate::local::Local;
 use crate::Chunk;
 
+#[derive(Clone)]
 pub enum Arity {
     Fixed(usize),
     Infinite,
     None,
 }
+
+impl std::ops::AddAssign<usize> for Arity {
+    fn add_assign(&mut self, rhs: usize) {
+        match self {
+            Arity::None => *self = Arity::Fixed(rhs),
+            Arity::Fixed(ref mut i) => *i += rhs,
+            Arity::Infinite => (),
+        }
+    }
+}
+
+impl PartialEq<usize> for Arity {
+    fn eq(&self, other: &usize) -> bool {
+        match self {
+            Self::Fixed(i) => i == other,
+            Self::Infinite => true,
+            Self::None => other == &0,
+        }
+    }
+}
+
+impl std::fmt::Display for Arity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Fixed(i) => write!(f, "{i}"),
+            Self::Infinite => write!(f, "Infinite"),
+            Self::None => write!(f, "None"),
+        }
+    }
+}
+
+impl std::fmt::Debug for Arity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Fixed(i) => write!(f, "{i}"),
+            Self::Infinite => write!(f, "Infinite"),
+            Self::None => write!(f, "None"),
+        }
+    }
+}
+
 pub struct Function {
-    pub arity: usize,
+    pub arity: Arity,
     pub chunk: Chunk,
     pub name: String,
     pub locals: Vec<Local>,
 }
 
 impl Function {
-    pub fn new(arity: usize, name: String) -> Self {
+    pub fn new(arity: Arity, name: String) -> Self {
         Self {
             arity,
             name,
@@ -48,7 +90,7 @@ pub enum NativeFunctionCallee {
 
 #[derive(Clone)]
 pub struct NativeFunction {
-    pub arity: usize,
+    pub arity: Arity,
     pub name: String,
     pub function: NativeFunctionCallee,
 }
@@ -57,12 +99,12 @@ impl NativeFunction {
     pub fn new(callee: NativeFunctionCallee) -> Self {
         match callee {
             NativeFunctionCallee::GetTime => Self {
-                arity: 0,
+                arity: Arity::None,
                 name: "get_time".to_owned(),
                 function: callee,
             },
             NativeFunctionCallee::Print => Self {
-                arity: usize::MAX,
+                arity: Arity::Infinite,
                 name: "print".to_owned(),
                 function: callee,
             },

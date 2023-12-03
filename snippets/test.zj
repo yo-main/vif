@@ -5,4 +5,4 @@ def test(a, b):
 	@ b
 	return a+b
 
-print(test(9, 2))
+print(test(9, 2), 3, 4)
