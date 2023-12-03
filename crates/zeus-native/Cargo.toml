@@ -1,0 +1,10 @@
+[package]
+name = "zeus-native"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+zeus-compiler = { version = "0.1.0", path = "../zeus-compiler" }
+zeus-values = { version = "0.1.0", path = "../zeus-values" }
