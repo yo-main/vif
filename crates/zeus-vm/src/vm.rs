@@ -4,7 +4,6 @@ use crate::callframe::CallFrame;
 use crate::error::InterpreterError;
 use crate::error::RuntimeErrorType;
 use crate::value_error;
-use zeus_compiler::NativeFunctionCallee;
 use zeus_compiler::Variable;
 use zeus_native::execute_native_call;
 use zeus_objects::op_code::OpCode;
@@ -15,7 +14,7 @@ where
     'globals: 'value,
 {
     pub stack: &'stack mut Vec<Value<'value>>,
-    pub variables: &'variables mut HashMap<String, Value<'value>>,
+    pub variables: &'variables mut HashMap<&'globals str, Value<'value>>,
     pub globals: &'globals Vec<Variable>,
     pub frame: CallFrame<'stack, 'function>,
     pub previous_frames: Vec<CallFrame<'stack, 'function>>,
@@ -29,7 +28,7 @@ where
 {
     pub fn new(
         stack: &'stack mut Vec<Value<'value>>,
-        variables: &'variables mut HashMap<String, Value<'value>>,
+        variables: &'variables mut HashMap<&'globals str, Value<'value>>,
         globals: &'globals Vec<Variable>,
         frame: CallFrame<'stack, 'function>,
     ) -> Self {
@@ -95,7 +94,7 @@ where
                 };
 
                 self.variables.insert(
-                    var_name.clone(),
+                    var_name,
                     self.stack.pop().ok_or(InterpreterError::Impossible)?,
                 );
             }
@@ -171,7 +170,7 @@ where
                 self.stack[*i + self.frame.stack_position] = self.stack.last().unwrap().clone()
             }
             OpCode::GetGlobal(i) => match self.globals.get(*i) {
-                Some(Variable::Identifier(s)) => match self.variables.get(s) {
+                Some(Variable::Identifier(s)) => match self.variables.get(s.as_str()) {
                     Some(value) => self.stack.push(value.clone()),
                     _ => {
                         return Err(InterpreterError::RuntimeError(
@@ -191,7 +190,7 @@ where
                 };
 
                 match self.variables.insert(
-                    var_name.clone(),
+                    var_name,
                     self.stack
                         .last()
                         .cloned()

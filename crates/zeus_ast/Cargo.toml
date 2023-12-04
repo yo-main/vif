@@ -1,5 +1,5 @@
 [package]
-name = "zeus"
+name = "zeus-ast"
 version = "0.1.0"
 edition = "2021"
 
