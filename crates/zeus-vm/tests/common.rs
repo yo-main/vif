@@ -1,16 +1,12 @@
-#![feature(iter_advance_by)]
-
-mod callframe;
-mod error;
-pub mod vm;
-
 use std::collections::HashMap;
 
-pub use callframe::CallFrame;
-pub use error::InterpreterError;
 use zeus_compiler::compile;
+use zeus_objects::op_code::OpCode;
+use zeus_vm::vm::VM;
+use zeus_vm::CallFrame;
+use zeus_vm::InterpreterError;
 
-pub fn interpret(content: String) -> Result<(), InterpreterError> {
+pub fn interpret(content: String, bytes: Vec<OpCode>) -> Result<(), InterpreterError> {
     let mut stack = Vec::new();
     let mut variables = HashMap::new();
 
@@ -19,7 +15,7 @@ pub fn interpret(content: String) -> Result<(), InterpreterError> {
         Err(e) => return Err(InterpreterError::CompileError(format!("{}", e))),
     };
 
-    let mut vm = vm::VM::new(
+    let mut vm = VM::new(
         &mut stack,
         &mut variables,
         &globals,
@@ -27,6 +23,9 @@ pub fn interpret(content: String) -> Result<(), InterpreterError> {
     );
 
     vm.interpret_loop()?;
+
+    assert!(stack.is_empty(), "stack is not empty: {:?}", stack);
+    assert_eq!(function.chunk.code, bytes);
 
     Ok(())
 }

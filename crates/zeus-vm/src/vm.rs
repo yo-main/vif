@@ -132,6 +132,7 @@ where
                             "{e}"
                         )))
                     })?;
+                    self.stack.drain(self.stack.len() - arg_count - 1..);
 
                     self.stack.push(res);
                 }
