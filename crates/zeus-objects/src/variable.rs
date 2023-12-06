@@ -1,7 +1,7 @@
 use crate::function::Function;
 use crate::function::NativeFunction;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Variable {
     Integer(i64),
     Float(f64),

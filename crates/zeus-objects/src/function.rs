@@ -55,6 +55,12 @@ pub struct Function {
     pub locals: Vec<Local>,
 }
 
+impl PartialEq for Function {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name // TODO: this will have to be reworked
+    }
+}
+
 impl Function {
     pub fn new(arity: Arity, name: String) -> Self {
         Self {
@@ -93,6 +99,12 @@ pub struct NativeFunction {
     pub arity: Arity,
     pub name: String,
     pub function: NativeFunctionCallee,
+}
+
+impl PartialEq for NativeFunction {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
 }
 
 impl NativeFunction {

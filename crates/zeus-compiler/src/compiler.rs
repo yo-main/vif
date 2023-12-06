@@ -419,8 +419,13 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
     }
 
     fn make_constant(&mut self, variable: Variable) -> usize {
-        self.globals.push(variable);
-        self.globals.len() - 1
+        match self.globals.iter().position(|v| v == &variable) {
+            Some(index) => return index,
+            None => {
+                self.globals.push(variable);
+                return self.globals.len() - 1;
+            }
+        }
     }
 
     fn expression_statement(&mut self) -> Result<(), CompilerError> {

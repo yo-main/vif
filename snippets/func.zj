@@ -1,21 +1,13 @@
 var pl = 1
 
 def test():
-	@ 123
-	pl = pl + 1
+	var pl = 4
+	pl = pl +1
+	print(pl)
 
-	if pl < 8:
-		test()
+pl = pl
+print(pl)
 
+test()
 
-def coucou():
-	var aok = 4
-	var abc = 1 + 1
-	@ "MYSTRING"
-	@ abc
-	@ aok
-	@ pl
-
-	test()
-
-coucou()
+print(pl)

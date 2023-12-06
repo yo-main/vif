@@ -12,7 +12,7 @@ fn test_variable_declaration() {
         OpCode::Constant(1),       // constant 1
         OpCode::GlobalVariable(0), // save 1 in a variable named i
         OpCode::GetGlobal(2),      // get print
-        OpCode::GetGlobal(3),      // get i
+        OpCode::GetGlobal(0),      // get i
         OpCode::Call(1),           // call print
         OpCode::Pop,               // pop print function
         OpCode::None,              // implicit None
@@ -36,19 +36,19 @@ fn test_simple() {
     let bytes = vec![
         OpCode::Constant(1),       // constant 1
         OpCode::GlobalVariable(0), // save 1 in a variable named i
-        OpCode::GetGlobal(2),      // get i
-        OpCode::Constant(3),       // get constant 5
+        OpCode::GetGlobal(0),      // get i
+        OpCode::Constant(2),       // get constant 5
         OpCode::Less,              // substract them
         OpCode::JumpIfFalse(11),   // if branch
         OpCode::Pop,               // pop jump op (if is true)
-        OpCode::GetGlobal(4),      // get print
-        OpCode::GetGlobal(5),      // get i
+        OpCode::GetGlobal(3),      // get print
+        OpCode::GetGlobal(0),      // get i
         OpCode::Call(1),           // call print
         OpCode::Pop,               // pop print op
-        OpCode::GetGlobal(7),      // get i
-        OpCode::Constant(8),       // get constant 1
+        OpCode::GetGlobal(0),      // get i
+        OpCode::Constant(4),       // get constant 1
         OpCode::Add,               // add them
-        OpCode::SetGlobal(6),      // store them in a new global
+        OpCode::SetGlobal(0),      // store them in a new global
         OpCode::Pop,               // pop set op
         OpCode::Goto(2),           // while loop
         OpCode::Pop,               // pop while cond value
