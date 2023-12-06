@@ -16,8 +16,8 @@ where
     pub stack: &'stack mut Vec<Value<'value>>,
     pub variables: &'variables mut HashMap<&'globals str, Value<'value>>,
     pub globals: &'globals Vec<Variable>,
-    pub frame: CallFrame<'stack, 'function>,
-    pub previous_frames: Vec<CallFrame<'stack, 'function>>,
+    pub frame: CallFrame<'function>,
+    pub previous_frames: Vec<CallFrame<'function>>,
 }
 
 impl<'function, 'stack, 'value, 'variables, 'globals>
@@ -30,7 +30,7 @@ where
         stack: &'stack mut Vec<Value<'value>>,
         variables: &'variables mut HashMap<&'globals str, Value<'value>>,
         globals: &'globals Vec<Variable>,
-        frame: CallFrame<'stack, 'function>,
+        frame: CallFrame<'function>,
     ) -> Self {
         VM {
             stack,
@@ -43,35 +43,40 @@ where
 
     pub fn interpret_loop(&mut self) -> Result<(), InterpreterError> {
         loop {
-            match self.frame.ip.next() {
-                None => {
-                    if self.previous_frames.len() > 0 {
-                        self.frame = self.previous_frames.pop().unwrap();
-                    } else {
+            match self.interpret()? {
+                false => {
+                    if self.previous_frames.is_empty() {
                         break;
                     }
+                    self.frame = self.previous_frames.pop().unwrap();
+                    self.frame.next();
                 }
-                Some(byte) => self.interpret(byte)?,
+                _ => (),
             }
         }
 
         Ok(())
     }
 
-    pub fn interpret(&mut self, op_code: &OpCode) -> Result<(), InterpreterError> {
-        log::debug!("op {}, stack: {:?}", op_code, self.stack);
-
-        match op_code {
-            OpCode::Print => {
+    pub fn interpret(&mut self) -> Result<bool, InterpreterError> {
+        log::debug!(
+            "{} {:?} {:?} ",
+            self.frame.ip,
+            self.frame.peek(),
+            self.stack
+        );
+        match self.frame.peek() {
+            None => return Ok(false),
+            Some(OpCode::Print) => {
                 println!(
                     "printing {}",
                     self.stack.pop().ok_or(InterpreterError::Impossible)?
                 );
             }
-            OpCode::Pop => {
+            Some(OpCode::Pop) => {
                 self.stack.pop().ok_or(InterpreterError::Impossible)?;
             }
-            OpCode::Return => {
+            Some(OpCode::Return) => {
                 let result = self
                     .stack
                     .pop()
@@ -80,14 +85,15 @@ where
 
                 if self.previous_frames.len() == 0 {
                     self.stack.pop();
-                    return Ok(());
+                    self.frame.next();
+                    return Ok(true);
                 }
 
                 self.stack.drain(self.frame.stack_position..);
                 self.frame = self.previous_frames.pop().unwrap();
                 self.stack.push(result);
             }
-            OpCode::GlobalVariable(i) => {
+            Some(OpCode::GlobalVariable(i)) => {
                 let var_name = match self.globals.get(*i) {
                     Some(Variable::Identifier(s)) => s,
                     _ => return Err(InterpreterError::Impossible),
@@ -98,7 +104,7 @@ where
                     self.stack.pop().ok_or(InterpreterError::Impossible)?,
                 );
             }
-            OpCode::Call(arg_count) => match &self.stack[self.stack.len() - arg_count - 1] {
+            Some(OpCode::Call(arg_count)) => match &self.stack[self.stack.len() - arg_count - 1] {
                 Value::Constant(Variable::Function(func)) => {
                     if func.arity != *arg_count {
                         return Err(InterpreterError::RuntimeError(
@@ -111,11 +117,12 @@ where
 
                     let mut new_frame = CallFrame {
                         function: func,
-                        ip: func.chunk.iter(0),
+                        ip: 0,
                         stack_position: self.stack.len() - arg_count - 1,
                     };
                     std::mem::swap(&mut new_frame, &mut self.frame);
                     self.previous_frames.push(new_frame);
+                    return Ok(true);
                 }
                 Value::Native(func) => {
                     if func.arity != *arg_count {
@@ -142,35 +149,39 @@ where
                     )))
                 }
             },
-            OpCode::Goto(i) => self.frame.reset_ip(*i),
-            OpCode::Jump(i) => self.frame.ip.advance_by(*i).unwrap(),
-            OpCode::JumpIfFalse(i) => {
+            Some(OpCode::Goto(i)) => {
+                self.frame.reset_ip(*i);
+                return Ok(true);
+            }
+            Some(OpCode::Jump(i)) => {
+                self.frame.advance_by(*i);
+                return Ok(true);
+            }
+            Some(OpCode::JumpIfFalse(i)) => {
                 let value = self.stack.last().ok_or(InterpreterError::EmptyStack)?;
 
                 match value {
-                    Value::Boolean(false) => self.frame.ip.advance_by(*i).unwrap(),
-                    Value::Integer(0) => self.frame.ip.advance_by(*i).unwrap(),
-                    Value::Float(v) if v == &0.0 => self.frame.ip.advance_by(*i).unwrap(),
-                    Value::Constant(Variable::Integer(0)) => self.frame.ip.advance_by(*i).unwrap(),
-                    Value::Constant(Variable::Float(v)) if v == &0.0 => {
-                        self.frame.ip.advance_by(*i).unwrap()
-                    }
-                    Value::String(s) if s.is_empty() => self.frame.ip.advance_by(*i).unwrap(),
-                    Value::None => self.frame.ip.advance_by(*i).unwrap(),
+                    Value::Boolean(false) => self.frame.advance_by(*i),
+                    Value::Integer(0) => self.frame.advance_by(*i),
+                    Value::Float(v) if v == &0.0 => self.frame.advance_by(*i),
+                    Value::Constant(Variable::Integer(0)) => self.frame.advance_by(*i),
+                    Value::Constant(Variable::Float(v)) if v == &0.0 => self.frame.advance_by(*i),
+                    Value::String(s) if s.is_empty() => self.frame.advance_by(*i),
+                    Value::None => self.frame.advance_by(*i),
                     _ => (),
                 }
             }
             // WTF is that ?? It's working though but wow. I'll need to spend more time studying how
-            OpCode::GetLocal(i) => self.stack.push(
+            Some(OpCode::GetLocal(i)) => self.stack.push(
                 self.stack
                     .get(*i + self.frame.stack_position)
                     .unwrap()
                     .clone(),
             ),
-            OpCode::SetLocal(i) => {
+            Some(OpCode::SetLocal(i)) => {
                 self.stack[*i + self.frame.stack_position] = self.stack.last().unwrap().clone()
             }
-            OpCode::GetGlobal(i) => match self.globals.get(*i) {
+            Some(OpCode::GetGlobal(i)) => match self.globals.get(*i) {
                 Some(Variable::Identifier(s)) => match self.variables.get(s.as_str()) {
                     Some(value) => self.stack.push(value.clone()),
                     _ => {
@@ -184,7 +195,7 @@ where
                 Some(Variable::Native(f)) => self.stack.push(Value::Native(f.clone())),
                 _ => return Err(InterpreterError::Impossible),
             },
-            OpCode::SetGlobal(i) => {
+            Some(OpCode::SetGlobal(i)) => {
                 let var_name = match self.globals.get(*i) {
                     Some(Variable::Identifier(s)) => s,
                     _ => return Err(InterpreterError::Impossible),
@@ -209,14 +220,14 @@ where
                     _ => (),
                 }
             }
-            OpCode::Constant(i) => {
+            Some(OpCode::Constant(i)) => {
                 let i = *i;
                 match self.globals.get(i) {
                     Some(ref c) => self.stack.push(Value::Constant(c)),
                     _ => return Err(InterpreterError::ConstantNotFound),
                 };
             }
-            OpCode::Not => {
+            Some(OpCode::Not) => {
                 let value = self.stack.last_mut().ok_or(InterpreterError::EmptyStack)?;
                 match value {
                     Value::Integer(_) => {
@@ -264,7 +275,7 @@ where
                     _ => return value_error!("Can't negate {value}"),
                 };
             }
-            OpCode::Negate => {
+            Some(OpCode::Negate) => {
                 let value = self.stack.last_mut().ok_or(InterpreterError::EmptyStack)?;
                 match value {
                     Value::Integer(ref mut i) => *i *= -1,
@@ -298,40 +309,40 @@ where
                     _ => return value_error!("Can't negate {value}"),
                 };
             }
-            OpCode::True => self.stack.push(Value::Boolean(true)),
-            OpCode::False => self.stack.push(Value::Boolean(false)),
-            OpCode::None => self.stack.push(Value::None),
-            OpCode::Equal => {
+            Some(OpCode::True) => self.stack.push(Value::Boolean(true)),
+            Some(OpCode::False) => self.stack.push(Value::Boolean(false)),
+            Some(OpCode::None) => self.stack.push(Value::None),
+            Some(OpCode::Equal) => {
                 let a = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 let b = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 self.stack.push(Value::Boolean(a.eq(&b)))
             }
-            OpCode::NotEqual => {
+            Some(OpCode::NotEqual) => {
                 let a = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 let b = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 self.stack.push(Value::Boolean(a.neq(&b)))
             }
-            OpCode::Greater => {
+            Some(OpCode::Greater) => {
                 let a = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 let b = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 self.stack.push(Value::Boolean(b.gt(&a)?))
             }
-            OpCode::GreaterOrEqual => {
+            Some(OpCode::GreaterOrEqual) => {
                 let a = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 let b = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 self.stack.push(Value::Boolean(b.gte(&a)?))
             }
-            OpCode::Less => {
+            Some(OpCode::Less) => {
                 let a = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 let b = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 self.stack.push(Value::Boolean(b.lt(&a)?))
             }
-            OpCode::LessOrEqual => {
+            Some(OpCode::LessOrEqual) => {
                 let a = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 let b = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 self.stack.push(Value::Boolean(b.lte(&a)?))
             }
-            OpCode::Add => {
+            Some(OpCode::Add) => {
                 let other = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 match self.stack.last_mut() {
                     Some(ptr) => match ptr.add(other) {
@@ -345,7 +356,7 @@ where
                     None => return Err(InterpreterError::EmptyStack),
                 }
             }
-            OpCode::Substract => {
+            Some(OpCode::Substract) => {
                 let other = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 match self.stack.last_mut() {
                     Some(ptr) => match ptr.substract(other) {
@@ -359,7 +370,7 @@ where
                     None => return Err(InterpreterError::EmptyStack),
                 }
             }
-            OpCode::Multiply => {
+            Some(OpCode::Multiply) => {
                 let other = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 match self.stack.last_mut() {
                     Some(ptr) => match ptr.multiply(other) {
@@ -373,7 +384,7 @@ where
                     None => return Err(InterpreterError::EmptyStack),
                 }
             }
-            OpCode::Divide => {
+            Some(OpCode::Divide) => {
                 let other = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 match self.stack.last_mut() {
                     Some(ptr) => match ptr.divide(other) {
@@ -387,7 +398,7 @@ where
                     None => return Err(InterpreterError::EmptyStack),
                 }
             }
-            OpCode::Modulo => {
+            Some(OpCode::Modulo) => {
                 let other = self.stack.pop().ok_or(InterpreterError::EmptyStack)?;
                 match self.stack.last_mut() {
                     Some(ptr) => match ptr.modulo(other) {
@@ -407,6 +418,7 @@ where
             }
         };
 
-        Ok(())
+        self.frame.next();
+        Ok(true)
     }
 }
