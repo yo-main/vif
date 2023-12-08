@@ -1,5 +1,4 @@
 use crate::value::Value;
-use std::collections::HashMap;
 
 pub struct VariableStore<'globals, 'value> {
     // storage: HashMap<&'globals str, Value<'value>>,
@@ -30,9 +29,6 @@ impl<'globals, 'value, 'variables> VariableStore<'globals, 'value> {
 
     pub fn get(&self, key: &'globals str) -> &Value<'value> {
         // &self.storage[key]
-        match self.storage.iter().find(|v| v.0 == key) {
-            Some(v) => &v.1,
-            None => panic!("No"),
-        }
+        &self.storage.iter().find(|v| v.0 == key).unwrap().1
     }
 }
