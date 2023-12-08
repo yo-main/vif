@@ -1,8 +1,8 @@
 use zeus_objects::chunk::Chunk;
+use zeus_objects::global::Global;
 use zeus_objects::op_code::OpCode;
-use zeus_objects::variable::Variable;
 
-pub fn disassemble_chunk(chunk: &Chunk, name: &str, globals: &Vec<Variable>) {
+pub fn disassemble_chunk(chunk: &Chunk, name: &str, globals: &Global) {
     println!("== {} ==", name);
     chunk
         .iter(0)
@@ -10,12 +10,7 @@ pub fn disassemble_chunk(chunk: &Chunk, name: &str, globals: &Vec<Variable>) {
         .for_each(|(i, c)| disassemble_instruction(i, c, chunk, globals))
 }
 
-pub fn disassemble_instruction(
-    offset: usize,
-    op_code: &OpCode,
-    chunk: &Chunk,
-    globals: &Vec<Variable>,
-) {
+pub fn disassemble_instruction(offset: usize, op_code: &OpCode, chunk: &Chunk, globals: &Global) {
     print!("{:0>4} ", offset);
     if offset > 0 && chunk.get_line(offset - 1) == chunk.get_line(offset) {
         print!("{char:>4} ", char = "|",);
@@ -65,6 +60,6 @@ fn jump_instruction(name: &str, jump: &usize) {
     println!("{} {}", name, jump);
 }
 
-fn constant_instruction(name: &str, _chunk: &Chunk, index: usize, globals: &Vec<Variable>) {
-    println!("{} {}", name, globals.get(index).unwrap());
+fn constant_instruction(name: &str, _chunk: &Chunk, index: usize, globals: &Global) {
+    println!("{} {}", name, globals.get(index));
 }

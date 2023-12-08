@@ -11,11 +11,12 @@ pub use zeus_objects::function::Arity;
 pub use zeus_objects::function::Function;
 pub use zeus_objects::function::NativeFunction;
 pub use zeus_objects::function::NativeFunctionCallee;
+use zeus_objects::global::Global;
 pub use zeus_objects::op_code::OpCode;
 pub use zeus_objects::variable::Variable;
 use zeus_scanner::Scanner;
 
-pub fn compile(content: String) -> Result<(Function, Vec<Variable>), CompilerError> {
+pub fn compile(content: String) -> Result<(Function, Global), CompilerError> {
     let mut function = Function::new(Arity::None, "Main".to_owned());
     let mut scanner = Scanner::new(content.as_str());
     let mut compiler = Compiler::new(&mut scanner, &mut function);

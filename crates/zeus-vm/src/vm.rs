@@ -6,17 +6,19 @@ use crate::error::RuntimeErrorType;
 use crate::value_error;
 use zeus_compiler::Variable;
 use zeus_native::execute_native_call;
+use zeus_objects::global::Global;
 use zeus_objects::op_code::OpCode;
 use zeus_objects::stack::Stack;
 use zeus_objects::value::Value;
+use zeus_objects::variable_storage::VariableStore;
 
 pub struct VM<'function, 'stack, 'value, 'variables, 'globals>
 where
     'globals: 'value,
 {
     pub stack: &'stack mut Stack<'value>,
-    pub variables: &'variables mut HashMap<&'globals str, Value<'value>>,
-    pub globals: &'globals Vec<Variable>,
+    pub variables: &'variables mut VariableStore<'globals, 'value>,
+    pub globals: &'globals Global,
     pub frame: CallFrame<'stack, 'function>,
     pub previous_frames: Vec<CallFrame<'stack, 'function>>,
 }
@@ -29,8 +31,8 @@ where
 {
     pub fn new(
         stack: &'stack mut Stack<'value>,
-        variables: &'variables mut HashMap<&'globals str, Value<'value>>,
-        globals: &'globals Vec<Variable>,
+        variables: &'variables mut VariableStore<'globals, 'value>,
+        globals: &'globals Global,
         frame: CallFrame<'stack, 'function>,
     ) -> Self {
         VM {
@@ -82,7 +84,7 @@ where
             }
             OpCode::GlobalVariable(i) => {
                 let var_name = match self.globals.get(*i) {
-                    Some(Variable::Identifier(s)) => s,
+                    Variable::Identifier(s) => s,
                     _ => return Err(InterpreterError::Impossible),
                 };
 
@@ -159,7 +161,7 @@ where
                 self.stack.peek_last().clone(),
             ),
             OpCode::GetGlobal(i) => match self.globals.get(*i) {
-                Some(Variable::Identifier(s)) => match self.variables.get(s.as_str()) {
+                Variable::Identifier(s) => match self.variables.get(s.as_str()) {
                     Some(value) => self.stack.push(value.clone()),
                     _ => {
                         return Err(InterpreterError::RuntimeError(
@@ -169,12 +171,12 @@ where
                         ));
                     }
                 },
-                Some(Variable::Native(f)) => self.stack.push(Value::Native(f.clone())),
+                Variable::Native(f) => self.stack.push(Value::Native(f.clone())),
                 _ => return Err(InterpreterError::Impossible),
             },
             OpCode::SetGlobal(i) => {
                 let var_name = match self.globals.get(*i) {
-                    Some(Variable::Identifier(s)) => s,
+                    Variable::Identifier(s) => s,
                     _ => return Err(InterpreterError::Impossible),
                 };
 
@@ -194,11 +196,7 @@ where
                 }
             }
             OpCode::Constant(i) => {
-                let i = *i;
-                match self.globals.get(i) {
-                    Some(ref c) => self.stack.push(Value::Constant(c)),
-                    _ => return Err(InterpreterError::ConstantNotFound),
-                };
+                self.stack.push(Value::Constant(self.globals.get(*i)));
             }
             OpCode::AssertTrue => {
                 let value = self.stack.peek_last();

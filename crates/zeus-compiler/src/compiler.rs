@@ -13,6 +13,7 @@ use crate::OpCode;
 use crate::Variable;
 use zeus_objects::function::Arity;
 use zeus_objects::function::Function;
+use zeus_objects::global::Global;
 use zeus_objects::local::Local;
 
 pub struct Compiler<'scanner, 'function, 'a> {
@@ -20,7 +21,7 @@ pub struct Compiler<'scanner, 'function, 'a> {
     pending: Option<Token>,
     scope_depth: usize,
     loop_details: Vec<(usize, usize)>,
-    globals: Vec<Variable>,
+    globals: Global,
     function: &'function mut Function,
 }
 
@@ -35,7 +36,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
             pending: None,
             scope_depth: 0,
             loop_details: Vec::new(),
-            globals: Vec::new(),
+            globals: Global::new(),
         }
     }
 
@@ -430,7 +431,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
     }
 
     fn make_constant(&mut self, variable: Variable) -> usize {
-        match self.globals.iter().position(|v| v == &variable) {
+        match self.globals.find(&variable) {
             Some(index) => return index,
             None => {
                 self.globals.push(variable);
@@ -700,7 +701,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
         Ok(())
     }
 
-    pub fn end(mut self) -> Vec<Variable> {
+    pub fn end(mut self) -> Global {
         match self.function.chunk.code.last() {
             Some(OpCode::Return) => (),
             _ => {

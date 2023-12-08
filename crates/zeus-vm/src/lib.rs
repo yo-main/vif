@@ -4,16 +4,15 @@ mod callframe;
 mod error;
 pub mod vm;
 
-use std::collections::HashMap;
-
 pub use callframe::CallFrame;
 pub use error::InterpreterError;
 use zeus_compiler::compile;
 use zeus_objects::stack::Stack;
+use zeus_objects::variable_storage::VariableStore;
 
 pub fn interpret(content: String) -> Result<(), InterpreterError> {
     let mut stack = Stack::new();
-    let mut variables = HashMap::new();
+    let mut variables = VariableStore::new();
 
     let (function, globals) = match compile(content) {
         Ok(c) => c,
