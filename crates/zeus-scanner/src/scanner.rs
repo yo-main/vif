@@ -245,6 +245,7 @@ impl<'a> Scanner<'a> {
             "@" => TokenType::At,
             "break" => TokenType::Break,
             "continue" => TokenType::Continue,
+            "assert" => TokenType::Assert,
             _ => TokenType::Identifier(str),
         }
     }
@@ -347,7 +348,7 @@ mod tests {
 
     #[test]
     fn all_keywords() {
-        let string = "not and or def class if else elif for while var const self return True False None @ break continue\n";
+        let string = "not and or def class if else elif for while var const self return True False None @ break continue assert\n";
         let mut scanner = Scanner::new(string);
 
         assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::Not);
@@ -370,6 +371,7 @@ mod tests {
         assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::At);
         assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::Break);
         assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::Continue);
+        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::Assert);
         assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::NewLine);
     }
 

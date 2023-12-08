@@ -16,6 +16,7 @@ pub enum RuntimeErrorType {
     UndeclaredVariable(String),
     FunctionCall(String),
     FunctionFailed(String),
+    AssertFail(String),
 }
 
 #[macro_export]
@@ -35,6 +36,7 @@ impl std::fmt::Display for RuntimeErrorType {
             Self::UndeclaredVariable(s) => write!(f, "Undeclared variable: {s}"),
             Self::FunctionCall(s) => write!(f, "Function call error: {s}"),
             Self::FunctionFailed(s) => write!(f, "Function failed: {s}"),
+            Self::AssertFail(s) => write!(f, "Assert failed: {s}"),
         }
     }
 }

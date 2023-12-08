@@ -65,6 +65,7 @@ pub enum TokenType {
     While,
     Break,
     Continue,
+    Assert,
 
     // indents
     Indent,
@@ -135,6 +136,7 @@ impl Hash for TokenType {
             Self::Break => state.write_u8(55),
             Self::Continue => state.write_u8(56),
             Self::EOF => state.write_u8(57),
+            Self::Assert => state.write_u8(58),
         }
     }
 }
@@ -223,6 +225,7 @@ impl Display for TokenType {
             TokenType::Continue => write!(f, "continue"),
             TokenType::EOF => write!(f, "EOF"),
             TokenType::Not => write!(f, "not"),
+            TokenType::Assert => write!(f, "assert"),
         }
     }
 }

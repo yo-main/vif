@@ -216,6 +216,52 @@ where
                     _ => return Err(InterpreterError::ConstantNotFound),
                 };
             }
+            OpCode::AssertTrue => {
+                let value = self.stack.last().ok_or(InterpreterError::EmptyStack)?;
+                match value {
+                    Value::Integer(0) => {
+                        return Err(InterpreterError::RuntimeError(
+                            RuntimeErrorType::AssertFail(format!("0 is not true")),
+                        ))
+                    }
+                    Value::Float(0.0) => {
+                        return Err(InterpreterError::RuntimeError(
+                            RuntimeErrorType::AssertFail(format!("0.0 is not true")),
+                        ))
+                    }
+                    Value::String(s) if s.is_empty() => {
+                        return Err(InterpreterError::RuntimeError(
+                            RuntimeErrorType::AssertFail(format!("Empty string is not true")),
+                        ))
+                    }
+                    Value::Boolean(false) => {
+                        return Err(InterpreterError::RuntimeError(
+                            RuntimeErrorType::AssertFail(format!("False")),
+                        ))
+                    }
+                    Value::None => {
+                        return Err(InterpreterError::RuntimeError(
+                            RuntimeErrorType::AssertFail(format!("None")),
+                        ))
+                    }
+                    Value::Constant(Variable::Integer(0)) => {
+                        return Err(InterpreterError::RuntimeError(
+                            RuntimeErrorType::AssertFail(format!("0 is not true")),
+                        ))
+                    }
+                    Value::Constant(Variable::Float(0.0)) => {
+                        return Err(InterpreterError::RuntimeError(
+                            RuntimeErrorType::AssertFail(format!("0.0 is not true")),
+                        ))
+                    }
+                    Value::Constant(Variable::String(s)) if s.is_empty() => {
+                        return Err(InterpreterError::RuntimeError(
+                            RuntimeErrorType::AssertFail(format!("Empty string is not true")),
+                        ))
+                    }
+                    _ => (),
+                }
+            }
             OpCode::Not => {
                 let value = self.stack.last_mut().ok_or(InterpreterError::EmptyStack)?;
                 match value {

@@ -125,6 +125,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
             }
             t if t.r#type == TokenType::If => self.if_statement(),
             t if t.r#type == TokenType::While => self.while_statement(),
+            t if t.r#type == TokenType::Assert => self.assert_statement(),
             t if t.r#type == TokenType::Return => self.return_statement(),
             t if t.r#type == TokenType::Indent => {
                 let res = self.block();
@@ -218,6 +219,16 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
         self.patch_jump(else_jump);
 
         res
+    }
+
+    fn assert_statement(&mut self) -> Result<(), CompilerError> {
+        log::debug!("Starting assert statement");
+        self.expression()?;
+
+        self.consume(TokenType::NewLine, "Expects \\n after assert statement")?;
+        self.emit_op_code(OpCode::AssertTrue);
+        self.emit_op_code(OpCode::Pop);
+        Ok(())
     }
 
     fn while_statement(&mut self) -> Result<(), CompilerError> {

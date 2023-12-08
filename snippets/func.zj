@@ -3,6 +3,7 @@ var pl = 1
 def test():
 	var pl = 4
 	pl = pl +1
+	assert False
 	print(pl)
 
 pl = pl
