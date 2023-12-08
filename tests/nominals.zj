@@ -1,0 +1,30 @@
+assert True
+assert not False
+assert not None
+assert 1
+assert not 0
+
+assert 1+1 == 2
+assert 1+1 != 1
+assert not (1+1 == 1)
+
+assert "coucou"
+assert "coucou" == "coucou"
+assert "cou" + "cou" == "coucou"
+assert "cou" != "coucou"
+assert not ("coucou" != "coucou")
+assert not not ("cou" != "coucou")
+
+assert not ("coucou" == 1)
+
+var hello = 1
+assert hello == 1
+
+hello = hello + 3
+assert hello == 4
+
+hello = 2
+assert hello == 2
+
+var hello = 8
+assert hello == 8

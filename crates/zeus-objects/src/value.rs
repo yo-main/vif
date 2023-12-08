@@ -163,6 +163,16 @@ impl Value<'_> {
                 Self::Constant(Variable::Float(v)) if v == &0.0 => *i == false,
                 _ => false,
             },
+            Self::String(s1) => match other {
+                Self::String(s2) => s1 == s2,
+                Self::Constant(Variable::String(s2)) => s1 == s2,
+                _ => false,
+            },
+            Self::Constant(Variable::String(s1)) => match other {
+                Self::String(s2) => s1 == s2,
+                Self::Constant(Variable::String(s2)) => s1 == s2,
+                _ => false,
+            },
             _ => false,
         }
     }
@@ -233,6 +243,16 @@ impl Value<'_> {
                 Self::Constant(Variable::Float(v)) if v == &0.0 => *i != true,
                 Self::Constant(Variable::Integer(0)) => *i != false,
                 Self::Constant(Variable::Float(v)) if v == &1.0 => *i != false,
+                _ => false,
+            },
+            Self::String(s1) => match other {
+                Self::String(s2) => s1 != s2,
+                Self::Constant(Variable::String(s2)) => s1 != s2,
+                _ => false,
+            },
+            Self::Constant(Variable::String(s1)) => match other {
+                Self::String(s2) => s1 != s2,
+                Self::Constant(Variable::String(s2)) => s1 != s2,
                 _ => false,
             },
             _ => false,
