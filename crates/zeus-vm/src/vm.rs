@@ -161,16 +161,7 @@ where
                 self.stack.peek_last().clone(),
             ),
             OpCode::GetGlobal(i) => match self.globals.get(*i) {
-                Variable::Identifier(s) => match self.variables.get(s.as_str()) {
-                    Some(value) => self.stack.push(value.clone()),
-                    _ => {
-                        return Err(InterpreterError::RuntimeError(
-                            RuntimeErrorType::UndeclaredVariable(format!(
-                                "Undeclared variable: {s}"
-                            )),
-                        ));
-                    }
-                },
+                Variable::Identifier(s) => self.stack.push(self.variables.get(s.as_str()).clone()),
                 Variable::Native(f) => self.stack.push(Value::Native(f.clone())),
                 _ => return Err(InterpreterError::Impossible),
             },
@@ -185,7 +176,7 @@ where
                     self.stack.peek_last().clone(), // here we clone because the assignement might be part of a larger expression
                                                     // the value must stay on the stack
                 ) {
-                    None => {
+                    false => {
                         return Err(InterpreterError::RuntimeError(
                             RuntimeErrorType::UndeclaredVariable(format!(
                                 "Can't assign to undeclared variable: {var_name}"
