@@ -101,13 +101,13 @@ where
                         ));
                     }
 
-                    let mut new_frame = CallFrame {
+                    let new_frame = CallFrame {
                         function: func,
                         ip: func.chunk.iter(0),
                         stack_position: self.stack.len() - arg_count - 1,
                     };
-                    std::mem::swap(&mut new_frame, &mut self.frame);
-                    self.previous_frames.push(new_frame);
+                    self.previous_frames
+                        .push(std::mem::replace(&mut self.frame, new_frame));
                 }
                 Value::Native(func) => {
                     if func.arity != *arg_count {

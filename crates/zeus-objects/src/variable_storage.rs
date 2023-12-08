@@ -8,7 +8,7 @@ pub struct VariableStore<'globals, 'value> {
 impl<'globals, 'value, 'variables> VariableStore<'globals, 'value> {
     pub fn new() -> Self {
         Self {
-            storage: HashMap::new(),
+            storage: HashMap::with_capacity(1000),
         }
     }
 
