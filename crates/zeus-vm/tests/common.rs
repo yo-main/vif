@@ -2,12 +2,13 @@ use std::collections::HashMap;
 
 use zeus_compiler::compile;
 use zeus_objects::op_code::OpCode;
+use zeus_objects::stack::Stack;
 use zeus_vm::vm::VM;
 use zeus_vm::CallFrame;
 use zeus_vm::InterpreterError;
 
 pub fn interpret(content: String, bytes: Vec<OpCode>) -> Result<(), InterpreterError> {
-    let mut stack = Vec::new();
+    let mut stack = Stack::new();
     let mut variables = HashMap::new();
 
     let (function, globals) = match compile(content) {

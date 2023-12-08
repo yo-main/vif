@@ -9,9 +9,10 @@ use std::collections::HashMap;
 pub use callframe::CallFrame;
 pub use error::InterpreterError;
 use zeus_compiler::compile;
+use zeus_objects::stack::Stack;
 
 pub fn interpret(content: String) -> Result<(), InterpreterError> {
-    let mut stack = Vec::new();
+    let mut stack = Stack::new();
     let mut variables = HashMap::new();
 
     let (function, globals) = match compile(content) {

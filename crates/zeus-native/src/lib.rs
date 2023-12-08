@@ -3,10 +3,11 @@ pub mod io;
 pub mod time;
 use zeus_compiler::NativeFunction;
 use zeus_compiler::NativeFunctionCallee;
+use zeus_objects::stack::Stack;
 use zeus_objects::value::Value;
 
 pub fn execute_native_call<'v>(
-    stack: &Vec<Value<'v>>,
+    stack: &Stack<'v>,
     arg_count: usize,
     func: &NativeFunction,
 ) -> Result<Value<'v>, errors::NativeError> {
@@ -15,7 +16,7 @@ pub fn execute_native_call<'v>(
     let res = match func.function {
         NativeFunctionCallee::GetTime => Value::Integer(time::get_time()?),
         NativeFunctionCallee::Print => {
-            io::print(&stack[stack_start + 1..])?;
+            io::print(stack.get_slice(stack_start + 1..))?;
             Value::None
         }
     };

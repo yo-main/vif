@@ -11,13 +11,12 @@ impl<'value> Stack<'value> {
         Self { stack: Vec::new() }
     }
 
-    pub fn pop(&mut self) -> Option<Value<'value>> {
-        self.stack.pop()
+    pub fn pop(&mut self) -> Value<'value> {
+        self.stack.pop().unwrap()
     }
 
     pub fn drop_last(&mut self) {
-        self.stack.pop();
-        // unsafe { self.stack.set_len(self.stack.len() - 1) }
+        unsafe { self.stack.set_len(self.stack.len() - 1) }
     }
 
     pub fn push(&mut self, value: Value<'value>) {
@@ -25,7 +24,7 @@ impl<'value> Stack<'value> {
     }
 
     pub fn set(&mut self, n: usize, value: Value<'value>) {
-        self.stack.push(value)
+        self.stack[n] = value
     }
 
     pub fn len(&self) -> usize {
