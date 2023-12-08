@@ -28,3 +28,10 @@ assert hello == 2
 
 var hello = 8
 assert hello == 8
+
+assert True and True
+assert not (True and False)
+assert False or True
+assert True or False
+assert False or False or True
+assert not (False or False)

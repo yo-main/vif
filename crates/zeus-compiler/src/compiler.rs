@@ -527,7 +527,6 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
 
         let res = self.parse_precedence(Precedence::Or);
         self.patch_jump(end_jump);
-        self.emit_op_code(OpCode::Pop);
         res
     }
 
