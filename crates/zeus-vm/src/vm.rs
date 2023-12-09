@@ -40,7 +40,7 @@ where
             variables,
             globals,
             frame,
-            previous_frames: Vec::new(),
+            previous_frames: Vec::with_capacity(100),
         }
     }
 

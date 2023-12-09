@@ -9,7 +9,7 @@ impl<'globals, 'value, 'variables> VariableStore<'globals, 'value> {
     pub fn new() -> Self {
         Self {
             // storage: HashMap::with_capacity(1000),
-            storage: Vec::new(),
+            storage: Vec::with_capacity(1000),
         }
     }
 

@@ -1,7 +1,7 @@
 use crate::chunk::Chunk;
 use crate::local::Local;
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum Arity {
     Fixed(usize),
     Infinite,
@@ -88,16 +88,16 @@ impl std::fmt::Debug for Function {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum NativeFunctionCallee {
     GetTime,
     Print,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct NativeFunction {
     pub arity: Arity,
-    pub name: String,
+    pub name: &'static str,
     pub function: NativeFunctionCallee,
 }
 
@@ -112,12 +112,12 @@ impl NativeFunction {
         match callee {
             NativeFunctionCallee::GetTime => Self {
                 arity: Arity::None,
-                name: "get_time".to_owned(),
+                name: "get_time",
                 function: callee,
             },
             NativeFunctionCallee::Print => Self {
                 arity: Arity::Infinite,
-                name: "print".to_owned(),
+                name: "print",
                 function: callee,
             },
         }

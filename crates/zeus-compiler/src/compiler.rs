@@ -590,7 +590,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
         log::debug!("Resolve variable {}", variable);
         let var_name = match variable {
             Variable::Identifier(s) => s,
-            Variable::Native(f) => &f.name,
+            Variable::Native(f) => f.name,
             _ => return Ok(None), // TODO: I beg you to change that
         };
 

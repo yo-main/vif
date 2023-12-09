@@ -18,7 +18,7 @@ pub enum Value<'c> {
     None,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum BinaryOp {
     Add,
     Substract,
@@ -165,11 +165,11 @@ impl Value<'_> {
             },
             Self::String(s1) => match other {
                 Self::String(s2) => s1 == s2,
-                Self::Constant(Variable::String(s2)) => s1 == s2,
+                Self::Constant(Variable::String(s2)) => s1.as_str() == s2.as_str(),
                 _ => false,
             },
             Self::Constant(Variable::String(s1)) => match other {
-                Self::String(s2) => s1 == s2,
+                Self::String(s2) => s1.as_str() == s2.as_str(),
                 Self::Constant(Variable::String(s2)) => s1 == s2,
                 _ => false,
             },
@@ -247,11 +247,11 @@ impl Value<'_> {
             },
             Self::String(s1) => match other {
                 Self::String(s2) => s1 != s2,
-                Self::Constant(Variable::String(s2)) => s1 != s2,
+                Self::Constant(Variable::String(s2)) => s1.as_str() != s2.as_str(),
                 _ => false,
             },
             Self::Constant(Variable::String(s1)) => match other {
-                Self::String(s2) => s1 != s2,
+                Self::String(s2) => s1.as_str() != s2.as_str(),
                 Self::Constant(Variable::String(s2)) => s1 != s2,
                 _ => false,
             },

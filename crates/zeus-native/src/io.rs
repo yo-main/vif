@@ -1,7 +1,7 @@
 use crate::errors::NativeError;
 use zeus_objects::value::Value;
 
-pub fn print(iter: &[Value<'_>]) -> Result<(), NativeError> {
+pub fn print(iter: Vec<&Value<'_>>) -> Result<(), NativeError> {
     println!(
         "{}",
         iter.iter()
