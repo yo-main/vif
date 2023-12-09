@@ -1,12 +1,11 @@
-use std::{collections::btree_map::Values, ops::RangeFrom};
-
 use crate::value::Value;
 
 pub struct Stack<'value> {
-    stack: [Option<Value<'value>>; 1000], // stack: Vec<Value<'value>>,
+    stack: [Option<Value<'value>>; 1000],
     top: usize,
 }
 
+// don't laugh at me, I was desperate
 macro_rules! create_array {
     () => {
         [
@@ -104,12 +103,12 @@ impl<'value> Stack<'value> {
     }
 
     pub fn push(&mut self, value: Value<'value>) {
-        self.stack[self.top] = Some(value);
+        let _ = self.stack[self.top].insert(value);
         self.top += 1;
     }
 
     pub fn set(&mut self, n: usize, value: Value<'value>) {
-        self.stack[n] = Some(value)
+        let _ = self.stack[n].insert(value);
     }
 
     pub fn len(&self) -> usize {
@@ -121,15 +120,15 @@ impl<'value> Stack<'value> {
     }
 
     pub fn peek(&self, n: usize) -> &Value<'value> {
-        self.stack[n].as_ref().unwrap()
+        unsafe { self.stack.get_unchecked(n).as_ref().unwrap() }
     }
 
     pub fn peek_last(&self) -> &Value<'value> {
-        self.stack[self.top - 1].as_ref().unwrap()
+        unsafe { self.stack.get_unchecked(self.top - 1).as_ref().unwrap() }
     }
 
     pub fn peek_last_mut(&mut self) -> &mut Value<'value> {
-        self.stack[self.top - 1].as_mut().unwrap()
+        unsafe { self.stack.get_unchecked_mut(self.top - 1).as_mut().unwrap() }
     }
 
     pub fn get_slice(&self, start: usize) -> Vec<&Value<'value>> {
