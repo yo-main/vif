@@ -32,4 +32,5 @@ while True:
 
 this one is probably because the benchmark don't use a lot of variable. I guess perf get worse as we get more variables
 2023-12-07 - 24157817   - 9 seconds  - 4fb81204da5895d3e6a3e783e0c10265e8dcbf08 (1.14 ± 0.02 times faster)
+2023-12-07 - 24157817   - 7 seconds  - 623c2c21f283d67a30445205c5c9db793175474a (1.28 ± 0.04 times faster)
 ```
