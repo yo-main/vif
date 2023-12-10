@@ -46,15 +46,14 @@ where
 
     pub fn interpret_loop(&mut self) -> Result<(), InterpreterError> {
         loop {
-            match self.frame.ip.next() {
-                None => {
-                    if self.previous_frames.len() > 0 {
-                        self.frame = self.previous_frames.pop().unwrap();
-                    } else {
-                        break;
-                    }
+            if let Some(byte) = self.frame.next() {
+                self.interpret(byte)?;
+            } else {
+                if self.previous_frames.len() > 0 {
+                    self.frame = self.previous_frames.pop().unwrap();
+                } else {
+                    break;
                 }
-                Some(byte) => self.interpret(byte)?,
             }
         }
 
@@ -78,7 +77,7 @@ where
                     return Ok(());
                 }
 
-                self.stack.truncate(self.frame.stack_position);
+                self.stack.truncate(self.frame.get_position());
                 self.frame = self.previous_frames.pop().unwrap();
                 self.stack.push(result);
             }
@@ -101,11 +100,7 @@ where
                         ));
                     }
 
-                    let new_frame = CallFrame {
-                        function: func,
-                        ip: func.chunk.iter(0),
-                        stack_position: self.stack.len() - arg_count - 1,
-                    };
+                    let new_frame = self.frame.start_new(func, self.stack.len() - arg_count - 1);
                     self.previous_frames
                         .push(std::mem::replace(&mut self.frame, new_frame));
                 }
@@ -135,29 +130,27 @@ where
                 }
             },
             OpCode::Goto(i) => self.frame.reset_ip(*i),
-            OpCode::Jump(i) => self.frame.ip.advance_by(*i).unwrap(),
+            OpCode::Jump(i) => self.frame.advance_by(*i),
             OpCode::JumpIfFalse(i) => {
                 let value = self.stack.peek_last();
 
                 match value {
-                    Value::Boolean(false) => self.frame.ip.advance_by(*i).unwrap(),
-                    Value::Integer(0) => self.frame.ip.advance_by(*i).unwrap(),
-                    Value::Float(v) if v == &0.0 => self.frame.ip.advance_by(*i).unwrap(),
-                    Value::Constant(Variable::Integer(0)) => self.frame.ip.advance_by(*i).unwrap(),
-                    Value::Constant(Variable::Float(v)) if v == &0.0 => {
-                        self.frame.ip.advance_by(*i).unwrap()
-                    }
-                    Value::String(s) if s.is_empty() => self.frame.ip.advance_by(*i).unwrap(),
-                    Value::None => self.frame.ip.advance_by(*i).unwrap(),
+                    Value::Boolean(false) => self.frame.advance_by(*i),
+                    Value::Integer(0) => self.frame.advance_by(*i),
+                    Value::Float(v) if v == &0.0 => self.frame.advance_by(*i),
+                    Value::Constant(Variable::Integer(0)) => self.frame.advance_by(*i),
+                    Value::Constant(Variable::Float(v)) if v == &0.0 => self.frame.advance_by(*i),
+                    Value::String(s) if s.is_empty() => self.frame.advance_by(*i),
+                    Value::None => self.frame.advance_by(*i),
                     _ => (),
                 }
             }
             // WTF is that ?? It's working though but wow. I'll need to spend more time studying how
             OpCode::GetLocal(i) => self
                 .stack
-                .push(self.stack.peek(*i + self.frame.stack_position).clone()),
+                .push(self.stack.peek(*i + self.frame.get_position()).clone()),
             OpCode::SetLocal(i) => self.stack.set(
-                *i + self.frame.stack_position,
+                *i + self.frame.get_position(),
                 self.stack.peek_last().clone(),
             ),
             OpCode::GetGlobal(i) => match self.globals.get(*i) {
