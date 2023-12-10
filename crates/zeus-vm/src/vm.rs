@@ -48,12 +48,10 @@ where
         loop {
             if let Some(byte) = self.frame.next() {
                 self.interpret(byte)?;
+            } else if self.previous_frames.len() > 0 {
+                self.frame = self.previous_frames.pop().unwrap();
             } else {
-                if self.previous_frames.len() > 0 {
-                    self.frame = self.previous_frames.pop().unwrap();
-                } else {
-                    break;
-                }
+                break;
             }
         }
 
@@ -82,12 +80,11 @@ where
                 self.stack.push(result);
             }
             OpCode::GlobalVariable(i) => {
-                let var_name = match self.globals.get(*i) {
-                    Variable::Identifier(s) => s,
-                    _ => return Err(InterpreterError::Impossible),
-                };
-
-                self.variables.insert(var_name, self.stack.pop());
+                if let Variable::Identifier(var_name) = self.globals.get(*i) {
+                    self.variables.insert(var_name, self.stack.pop());
+                } else {
+                    return Err(InterpreterError::Impossible);
+                }
             }
             OpCode::Call(arg_count) => match self.stack.peek(self.stack.len() - arg_count - 1) {
                 Value::Constant(Variable::Function(func)) => {
@@ -159,25 +156,21 @@ where
                 _ => return Err(InterpreterError::Impossible),
             },
             OpCode::SetGlobal(i) => {
-                let var_name = match self.globals.get(*i) {
-                    Variable::Identifier(s) => s,
-                    _ => return Err(InterpreterError::Impossible),
-                };
-
-                match self.variables.insert(
-                    var_name,
-                    self.stack.peek_last().clone(), // here we clone because the assignement might be part of a larger expression
-                                                    // the value must stay on the stack
-                ) {
-                    false => {
+                if let Variable::Identifier(var_name) = self.globals.get(*i) {
+                    if !self.variables.insert(
+                        var_name,
+                        self.stack.peek_last().clone(), // here we clone because the assignement might be part of a larger expression
+                                                        // the value must stay on the stack
+                    ) {
                         return Err(InterpreterError::RuntimeError(
                             RuntimeErrorType::UndeclaredVariable(format!(
                                 "Can't assign to undeclared variable: {var_name}"
                             )),
                         ));
                     }
-                    _ => (),
-                }
+                } else {
+                    return Err(InterpreterError::Impossible);
+                };
             }
             OpCode::Constant(i) => {
                 self.stack.push(Value::Constant(self.globals.get(*i)));
