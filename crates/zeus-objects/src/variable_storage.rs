@@ -1,7 +1,7 @@
 use crate::value::Value;
 
 pub struct VariableStore<'globals, 'value> {
-    storage: Vec<(&'globals str, Value<'value>)>,
+    storage: Vec<(&'globals str, Box<Value<'value>>)>,
 }
 
 impl<'globals, 'value, 'variables> VariableStore<'globals, 'value> {
@@ -14,17 +14,23 @@ impl<'globals, 'value, 'variables> VariableStore<'globals, 'value> {
     pub fn insert(&mut self, key: &'globals str, value: Value<'value>) -> bool {
         match self.storage.iter_mut().find(|v| v.0 == key) {
             Some(v) => {
-                *v = (key, value);
+                *v = (key, Box::new(value));
                 return true;
             }
             None => {
-                self.storage.push((key, value));
+                self.storage.push((key, Box::new(value)));
                 return false;
             }
         }
     }
 
     pub fn get(&self, key: &'globals str) -> &Value<'value> {
-        &self.storage.iter().find(|v| v.0 == key).unwrap().1
+        &self
+            .storage
+            .iter()
+            .rev()
+            .find(|(v, _)| v == &key)
+            .unwrap()
+            .1
     }
 }
