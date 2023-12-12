@@ -102,6 +102,10 @@ impl<'value> Stack<'value> {
         self.top -= 1;
     }
 
+    pub fn set_last(&mut self, value: Value<'value>) {
+        self.stack[self.top - 1] = Some(value);
+    }
+
     pub fn push(&mut self, value: Value<'value>) {
         let _ = self.stack[self.top].insert(value);
         self.top += 1;

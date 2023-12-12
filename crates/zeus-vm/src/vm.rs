@@ -236,29 +236,16 @@ where
                     },
                     Value::Boolean(ref mut b) => *b = !*b,
                     Value::None => *value = Value::Boolean(true),
-                    Value::Constant(_) => {
-                        let v = self.stack.pop();
-                        let new_value = match v {
-                            Value::Constant(c) => match c {
-                                Variable::Integer(i) => Value::Boolean(*i == 0),
-                                Variable::Float(f) => Value::Boolean(*f == 0.0),
-                                Variable::String(s) => Value::Boolean(s.is_empty()),
-                                Variable::Identifier(f) => {
-                                    return value_error!("Can't negate a variable name: {f}")
-                                }
-                                Variable::Function(f) => {
-                                    return value_error!("Can't negate a function name: {f}")
-                                }
-                                Variable::Native(f) => {
-                                    return value_error!("Can't negate a function name: {f}")
-                                }
-                            },
-                            _ => return Err(InterpreterError::Impossible), // impossible
-                        };
-
-                        self.stack.push(new_value);
+                    Value::Constant(Variable::Integer(i)) => {
+                        self.stack.set_last(Value::Boolean(*i == 0))
                     }
-                    _ => return value_error!("Can't negate {value}"),
+                    Value::Constant(Variable::Float(f)) => {
+                        self.stack.set_last(Value::Boolean(*f == 0.0))
+                    }
+                    Value::Constant(Variable::String(s)) => {
+                        self.stack.set_last(Value::Boolean(s.is_empty()))
+                    }
+                    _ => return value_error!("Can't compare {value}"),
                 };
             }
             OpCode::Negate => {
@@ -268,29 +255,11 @@ where
                     Value::Float(ref mut f) => *f *= -1.0,
                     Value::Index(_) => return value_error!("Can't negate index {value}"),
                     Value::Boolean(ref mut b) => *b = b == &false,
-                    Value::Constant(_) => {
-                        let v = self.stack.pop();
-                        let new_value = match v {
-                            Value::Constant(c) => match c {
-                                Variable::Integer(i) => Value::Integer(i * -1),
-                                Variable::Float(f) => Value::Float(f * -1.0),
-                                Variable::Identifier(f) => {
-                                    return value_error!("Can't negate a variable name {f}")
-                                }
-                                Variable::String(_) => {
-                                    return value_error!("Can't negate a string")
-                                }
-                                Variable::Function(f) => {
-                                    return value_error!("Can't negate a function name: {f}")
-                                }
-                                Variable::Native(f) => {
-                                    return value_error!("Can't negate a function name: {f}")
-                                }
-                            },
-                            _ => return Err(InterpreterError::Impossible),
-                        };
-
-                        self.stack.push(new_value);
+                    Value::Constant(Variable::Integer(i)) => {
+                        self.stack.set_last(Value::Integer(i * -1))
+                    }
+                    Value::Constant(Variable::Float(f)) => {
+                        self.stack.set_last(Value::Float(f * -1.0))
                     }
                     _ => return value_error!("Can't negate {value}"),
                 };
@@ -300,42 +269,39 @@ where
             OpCode::None => self.stack.push(Value::None),
             OpCode::Equal => {
                 let a = self.stack.pop();
-                let b = self.stack.pop();
-                self.stack.push(Value::Boolean(a.eq(&b)))
+                let b = self.stack.peek_last();
+                self.stack.set_last(Value::Boolean(a.eq(&b)))
             }
             OpCode::NotEqual => {
                 let a = self.stack.pop();
-                let b = self.stack.pop();
-                self.stack.push(Value::Boolean(a.neq(&b)))
+                let b = self.stack.peek_last();
+                self.stack.set_last(Value::Boolean(a.neq(&b)))
             }
             OpCode::Greater => {
                 let a = self.stack.pop();
-                let b = self.stack.pop();
-                self.stack.push(Value::Boolean(b.gt(&a)?))
+                let b = self.stack.peek_last();
+                self.stack.set_last(Value::Boolean(b.gt(&a)?))
             }
             OpCode::GreaterOrEqual => {
                 let a = self.stack.pop();
-                let b = self.stack.pop();
-                self.stack.push(Value::Boolean(b.gte(&a)?))
+                let b = self.stack.peek_last();
+                self.stack.set_last(Value::Boolean(b.gte(&a)?))
             }
             OpCode::Less => {
                 let a = self.stack.pop();
-                let b = self.stack.pop();
-                self.stack.push(Value::Boolean(b.lt(&a)?))
+                let b = self.stack.peek_last();
+                self.stack.set_last(Value::Boolean(b.lt(&a)?))
             }
             OpCode::LessOrEqual => {
                 let a = self.stack.pop();
-                let b = self.stack.pop();
-                self.stack.push(Value::Boolean(b.lte(&a)?))
+                let b = self.stack.peek_last();
+                self.stack.set_last(Value::Boolean(b.lte(&a)?))
             }
             OpCode::Add => {
                 let other = self.stack.pop();
                 let ptr = self.stack.peek_last_mut();
                 match ptr.add(other) {
-                    Ok(Some(value)) => {
-                        self.stack.drop_last();
-                        self.stack.push(value);
-                    }
+                    Ok(Some(value)) => self.stack.set_last(value),
                     Ok(None) => (),
                     Err(e) => return Err(e.into()),
                 }
@@ -344,10 +310,7 @@ where
                 let other = self.stack.pop();
                 let ptr = self.stack.peek_last_mut();
                 match ptr.substract(other) {
-                    Ok(Some(value)) => {
-                        self.stack.drop_last();
-                        self.stack.push(value);
-                    }
+                    Ok(Some(value)) => self.stack.set_last(value),
                     Ok(None) => (),
                     Err(e) => return Err(e.into()),
                 }
@@ -356,10 +319,7 @@ where
                 let other = self.stack.pop();
                 let ptr = self.stack.peek_last_mut();
                 match ptr.multiply(other) {
-                    Ok(Some(value)) => {
-                        self.stack.drop_last();
-                        self.stack.push(value);
-                    }
+                    Ok(Some(value)) => self.stack.set_last(value),
                     Ok(None) => (),
                     Err(e) => return Err(e.into()),
                 }
@@ -368,10 +328,7 @@ where
                 let other = self.stack.pop();
                 let ptr = self.stack.peek_last_mut();
                 match ptr.divide(other) {
-                    Ok(Some(value)) => {
-                        self.stack.drop_last();
-                        self.stack.push(value);
-                    }
+                    Ok(Some(value)) => self.stack.set_last(value),
                     Ok(None) => (),
                     Err(e) => return Err(e.into()),
                 }
@@ -380,10 +337,7 @@ where
                 let other = self.stack.pop();
                 let ptr = self.stack.peek_last_mut();
                 match ptr.modulo(other) {
-                    Ok(Some(value)) => {
-                        self.stack.drop_last();
-                        self.stack.push(value);
-                    }
+                    Ok(Some(value)) => self.stack.set_last(value),
                     Ok(None) => (),
                     Err(e) => {
                         return Err(InterpreterError::RuntimeError(
