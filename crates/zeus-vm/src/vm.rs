@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::callframe::CallFrame;
 use crate::error::InterpreterError;
 use crate::error::RuntimeErrorType;

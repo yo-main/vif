@@ -10,7 +10,7 @@ pub enum Value<'c> {
     Integer(i64),
     Index(i64),
     Float(f64),
-    String(String),
+    String(Box<String>),
     Constant(&'c Variable),
     BinaryOp(BinaryOp),
     Boolean(bool),
@@ -564,9 +564,9 @@ impl Value<'_> {
             },
             Self::Constant(Variable::String(i)) => match other {
                 Self::Constant(Variable::String(j)) => {
-                    return Ok(Some(Value::String(format!("{i}{j}"))))
+                    return Ok(Some(Value::String(Box::new(format!("{i}{j}")))))
                 }
-                Self::String(j) => return Ok(Some(Value::String(format!("{i}{j}")))),
+                Self::String(j) => return Ok(Some(Value::String(Box::new(format!("{i}{j}"))))),
                 _ => return value_error!("Can't add {self} and {other}"),
             },
             Self::Boolean(true) => match other {
@@ -589,9 +589,9 @@ impl Value<'_> {
             },
             Self::String(i) => match other {
                 Self::Constant(Variable::String(j)) => {
-                    return Ok(Some(Value::String(format!("{i}{j}"))))
+                    return Ok(Some(Value::String(Box::new(format!("{i}{j}")))))
                 }
-                Self::String(j) => return Ok(Some(Value::String(format!("{i}{j}")))),
+                Self::String(j) => return Ok(Some(Value::String(Box::new(format!("{i}{j}"))))),
                 _ => return value_error!("Can't add {self} and {other}"),
             },
             Self::BinaryOp(_) => return value_error!("Can't add {self} and {other}"),

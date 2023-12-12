@@ -325,7 +325,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
         let mut globals = compiler.end();
         std::mem::swap(&mut globals, &mut self.globals);
         log::debug!("Function compiling terminated");
-        self.emit_constant(Variable::Function(function));
+        self.emit_constant(Variable::Function(Box::new(function)));
 
         res
     }
@@ -392,7 +392,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
         log::debug!("Parse variable {}", token);
 
         let variable = match token.r#type {
-            TokenType::Identifier(s) => Variable::Identifier(s),
+            TokenType::Identifier(s) => Variable::Identifier(Box::new(s)),
             e => {
                 return Err(CompilerError::SyntaxError(format!(
                     "Expected identifier when parsing variable, got {e}"
@@ -547,7 +547,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
                     Variable::Native(NativeFunction::new(NativeFunctionCallee::Print)),
                     can_assign,
                 ),
-                _ => self.named_variable(Variable::Identifier(s.clone()), can_assign),
+                _ => self.named_variable(Variable::Identifier(Box::new(s.clone())), can_assign),
             },
             _ => return Err(CompilerError::Unknown(format!("Impossible"))),
         }
@@ -596,7 +596,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
 
         for (i, local) in self.function.locals.iter().rev().enumerate() {
             match &local.variable {
-                Variable::Identifier(s) if s == var_name => match local.depth {
+                Variable::Identifier(s) if s.as_str() == var_name => match local.depth {
                     None => {
                         return Err(CompilerError::Unknown(format!(
                             "Can't read local variable in its own initializer"
@@ -674,7 +674,7 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
     pub fn string(&mut self, token: &TokenType) -> Result<(), CompilerError> {
         log::debug!("String starting");
         match token {
-            TokenType::String(s) => self.emit_constant(Variable::String(s.clone())),
+            TokenType::String(s) => self.emit_constant(Variable::String(Box::new(s.clone()))),
             _ => {
                 return Err(CompilerError::Unknown(
                     "Should not have been something else than number".to_owned(),

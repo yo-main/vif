@@ -5,9 +5,9 @@ use crate::function::NativeFunction;
 pub enum Variable {
     Integer(i64),
     Float(f64),
-    String(String),
-    Identifier(String),
-    Function(Function),
+    String(Box<String>),
+    Identifier(Box<String>),
+    Function(Box<Function>),
     Native(NativeFunction),
 }
 

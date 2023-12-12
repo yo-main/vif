@@ -111,14 +111,17 @@ impl<'value> Stack<'value> {
         let _ = self.stack[n].insert(value);
     }
 
+    #[inline]
     pub fn len(&self) -> usize {
         self.top
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.top == 0
     }
 
+    #[inline]
     pub fn peek(&self, n: usize) -> &Value<'value> {
         unsafe { self.stack.get_unchecked(n).as_ref().unwrap() }
     }
