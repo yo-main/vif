@@ -107,7 +107,10 @@ impl<'value> Stack<'value> {
     }
 
     pub fn push(&mut self, value: Value<'value>) {
-        let _ = self.stack[self.top].insert(value);
+        // TODO: would probably be a good idea to add a control here even if we loose perf :shrug:
+        unsafe {
+            *(self.stack.get_unchecked_mut(self.top)) = Some(value);
+        }
         self.top += 1;
     }
 

@@ -150,7 +150,7 @@ where
             ),
             OpCode::GetGlobal(i) => match self.globals.get(*i) {
                 Variable::Identifier(s) => self.stack.push(self.variables.get(s.as_str()).clone()),
-                Variable::Native(f) => self.stack.push(Value::Native(f.clone())),
+                Variable::Native(f) => self.stack.push(Value::Native(f)),
                 _ => return Err(InterpreterError::Impossible),
             },
             OpCode::SetGlobal(i) => {

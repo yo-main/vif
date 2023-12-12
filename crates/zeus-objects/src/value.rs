@@ -14,7 +14,7 @@ pub enum Value<'c> {
     Constant(&'c Variable),
     BinaryOp(BinaryOp),
     Boolean(bool),
-    Native(NativeFunction),
+    Native(&'c NativeFunction),
     None,
 }
 
