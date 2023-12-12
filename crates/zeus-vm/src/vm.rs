@@ -222,29 +222,14 @@ where
             OpCode::Not => {
                 let value = self.stack.peek_last_mut();
                 match value {
-                    Value::Integer(_) => match self.stack.pop() {
-                        Value::Integer(i) => self.stack.push(Value::Boolean(i == 0)),
-                        _ => return Err(InterpreterError::Impossible),
-                    },
-                    Value::Index(_) => match self.stack.pop() {
-                        Value::Index(i) => self.stack.push(Value::Boolean(i == 0)),
-                        _ => return Err(InterpreterError::Impossible),
-                    },
-                    Value::Float(_) => match self.stack.pop() {
-                        Value::Float(f) => self.stack.push(Value::Boolean(f == 0.0)),
-                        _ => return Err(InterpreterError::Impossible),
-                    },
+                    Value::Integer(ref mut i) => *value = Value::Boolean(i == &0),
+                    Value::Index(ref mut i) => *value = Value::Boolean(i == &0),
+                    Value::Float(ref mut f) => *value = Value::Boolean(f == &0.0),
                     Value::Boolean(ref mut b) => *b = !*b,
                     Value::None => *value = Value::Boolean(true),
-                    Value::Constant(Variable::Integer(i)) => {
-                        self.stack.set_last(Value::Boolean(*i == 0))
-                    }
-                    Value::Constant(Variable::Float(f)) => {
-                        self.stack.set_last(Value::Boolean(*f == 0.0))
-                    }
-                    Value::Constant(Variable::String(s)) => {
-                        self.stack.set_last(Value::Boolean(s.is_empty()))
-                    }
+                    Value::Constant(Variable::Integer(i)) => *value = Value::Boolean(*i == 0),
+                    Value::Constant(Variable::Float(f)) => *value = Value::Boolean(*f == 0.0),
+                    Value::Constant(Variable::String(s)) => *value = Value::Boolean(s.is_empty()),
                     _ => return value_error!("Can't compare {value}"),
                 };
             }
@@ -253,14 +238,9 @@ where
                 match value {
                     Value::Integer(ref mut i) => *i *= -1,
                     Value::Float(ref mut f) => *f *= -1.0,
-                    Value::Index(_) => return value_error!("Can't negate index {value}"),
                     Value::Boolean(ref mut b) => *b = b == &false,
-                    Value::Constant(Variable::Integer(i)) => {
-                        self.stack.set_last(Value::Integer(i * -1))
-                    }
-                    Value::Constant(Variable::Float(f)) => {
-                        self.stack.set_last(Value::Float(f * -1.0))
-                    }
+                    Value::Constant(Variable::Integer(i)) => *value = Value::Integer(i * -1),
+                    Value::Constant(Variable::Float(f)) => *value = Value::Float(f * -1.0),
                     _ => return value_error!("Can't negate {value}"),
                 };
             }
@@ -269,39 +249,39 @@ where
             OpCode::None => self.stack.push(Value::None),
             OpCode::Equal => {
                 let a = self.stack.pop();
-                let b = self.stack.peek_last();
-                self.stack.set_last(Value::Boolean(a.eq(&b)))
+                let b = self.stack.peek_last_mut();
+                *b = Value::Boolean(a.eq(&b))
             }
             OpCode::NotEqual => {
                 let a = self.stack.pop();
-                let b = self.stack.peek_last();
-                self.stack.set_last(Value::Boolean(a.neq(&b)))
+                let b = self.stack.peek_last_mut();
+                *b = Value::Boolean(a.neq(&b))
             }
             OpCode::Greater => {
                 let a = self.stack.pop();
-                let b = self.stack.peek_last();
-                self.stack.set_last(Value::Boolean(b.gt(&a)?))
+                let b = self.stack.peek_last_mut();
+                *b = Value::Boolean(b.gt(&a)?)
             }
             OpCode::GreaterOrEqual => {
                 let a = self.stack.pop();
-                let b = self.stack.peek_last();
-                self.stack.set_last(Value::Boolean(b.gte(&a)?))
+                let b = self.stack.peek_last_mut();
+                *b = Value::Boolean(b.gte(&a)?)
             }
             OpCode::Less => {
                 let a = self.stack.pop();
-                let b = self.stack.peek_last();
-                self.stack.set_last(Value::Boolean(b.lt(&a)?))
+                let b = self.stack.peek_last_mut();
+                *b = Value::Boolean(b.lt(&a)?)
             }
             OpCode::LessOrEqual => {
                 let a = self.stack.pop();
-                let b = self.stack.peek_last();
-                self.stack.set_last(Value::Boolean(b.lte(&a)?))
+                let b = self.stack.peek_last_mut();
+                *b = Value::Boolean(b.lte(&a)?)
             }
             OpCode::Add => {
                 let other = self.stack.pop();
                 let ptr = self.stack.peek_last_mut();
                 match ptr.add(other) {
-                    Ok(Some(value)) => self.stack.set_last(value),
+                    Ok(Some(value)) => *ptr = value,
                     Ok(None) => (),
                     Err(e) => return Err(e.into()),
                 }
@@ -310,7 +290,7 @@ where
                 let other = self.stack.pop();
                 let ptr = self.stack.peek_last_mut();
                 match ptr.substract(other) {
-                    Ok(Some(value)) => self.stack.set_last(value),
+                    Ok(Some(value)) => *ptr = value,
                     Ok(None) => (),
                     Err(e) => return Err(e.into()),
                 }
@@ -319,7 +299,7 @@ where
                 let other = self.stack.pop();
                 let ptr = self.stack.peek_last_mut();
                 match ptr.multiply(other) {
-                    Ok(Some(value)) => self.stack.set_last(value),
+                    Ok(Some(value)) => *ptr = value,
                     Ok(None) => (),
                     Err(e) => return Err(e.into()),
                 }
@@ -328,7 +308,7 @@ where
                 let other = self.stack.pop();
                 let ptr = self.stack.peek_last_mut();
                 match ptr.divide(other) {
-                    Ok(Some(value)) => self.stack.set_last(value),
+                    Ok(Some(value)) => *ptr = value,
                     Ok(None) => (),
                     Err(e) => return Err(e.into()),
                 }
@@ -337,7 +317,7 @@ where
                 let other = self.stack.pop();
                 let ptr = self.stack.peek_last_mut();
                 match ptr.modulo(other) {
-                    Ok(Some(value)) => self.stack.set_last(value),
+                    Ok(Some(value)) => *ptr = value,
                     Ok(None) => (),
                     Err(e) => {
                         return Err(InterpreterError::RuntimeError(
