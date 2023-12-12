@@ -279,52 +279,23 @@ where
             }
             OpCode::Add => {
                 let other = self.stack.pop();
-                let ptr = self.stack.peek_last_mut();
-                match ptr.add(other) {
-                    Ok(Some(value)) => *ptr = value,
-                    Ok(None) => (),
-                    Err(e) => return Err(e.into()),
-                }
+                self.stack.peek_last_mut().add(other)?;
             }
             OpCode::Substract => {
                 let other = self.stack.pop();
-                let ptr = self.stack.peek_last_mut();
-                match ptr.substract(other) {
-                    Ok(Some(value)) => *ptr = value,
-                    Ok(None) => (),
-                    Err(e) => return Err(e.into()),
-                }
+                self.stack.peek_last_mut().substract(other)?;
             }
             OpCode::Multiply => {
                 let other = self.stack.pop();
-                let ptr = self.stack.peek_last_mut();
-                match ptr.multiply(other) {
-                    Ok(Some(value)) => *ptr = value,
-                    Ok(None) => (),
-                    Err(e) => return Err(e.into()),
-                }
+                self.stack.peek_last_mut().multiply(other)?;
             }
             OpCode::Divide => {
                 let other = self.stack.pop();
-                let ptr = self.stack.peek_last_mut();
-                match ptr.divide(other) {
-                    Ok(Some(value)) => *ptr = value,
-                    Ok(None) => (),
-                    Err(e) => return Err(e.into()),
-                }
+                self.stack.peek_last_mut().divide(other)?;
             }
             OpCode::Modulo => {
                 let other = self.stack.pop();
-                let ptr = self.stack.peek_last_mut();
-                match ptr.modulo(other) {
-                    Ok(Some(value)) => *ptr = value,
-                    Ok(None) => (),
-                    Err(e) => {
-                        return Err(InterpreterError::RuntimeError(
-                            RuntimeErrorType::ValueError(format!("{e}")),
-                        ))
-                    }
-                }
+                self.stack.peek_last_mut().modulo(other)?;
             }
         };
 
