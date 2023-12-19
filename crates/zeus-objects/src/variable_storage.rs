@@ -64,7 +64,7 @@ impl<'globals, 'value, 'variables> VariableStore<'globals, 'value> {
 
     pub fn insert(&mut self, key: &'globals str, value: Value<'value>) -> bool {
         let new = KV::new(key, value);
-        match self.storage.iter_mut().rfind(|v| v.key.eq(new.key)) {
+        match self.storage.iter_mut().find(|v| v.key.eq(new.key)) {
             Some(v) => {
                 *v.value = *new.value;
                 return true;
@@ -77,6 +77,6 @@ impl<'globals, 'value, 'variables> VariableStore<'globals, 'value> {
     }
 
     pub fn get(&self, key: &'globals str) -> &Value<'value> {
-        &self.storage.iter().rfind(|&v| v.key.eq(key)).unwrap().value
+        &self.storage.iter().find(|&v| v.key.eq(key)).unwrap().value
     }
 }
