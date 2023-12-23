@@ -155,12 +155,30 @@ impl<'value> Stack<'value> {
 
 impl std::fmt::Display for Stack<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.stack)
+        write!(
+            f,
+            "{:?}",
+            self.stack.iter().filter(|v| match v {
+                None => false,
+                _ => true,
+            })
+        )
     }
 }
 
 impl std::fmt::Debug for Stack<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.stack)
+        write!(
+            f,
+            "{:?}",
+            self.stack
+                .iter()
+                .filter(|v| match v {
+                    None => false,
+                    _ => true,
+                })
+                .map(|v| v.as_ref().unwrap())
+                .collect::<Vec<&Value<'_>>>()
+        )
     }
 }
