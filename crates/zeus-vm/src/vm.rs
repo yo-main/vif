@@ -2,6 +2,8 @@ use crate::callframe::CallFrame;
 use crate::error::InterpreterError;
 use crate::error::RuntimeErrorType;
 use crate::value_error;
+use zeus_compiler::Function;
+use zeus_compiler::NativeFunction;
 use zeus_compiler::Variable;
 use zeus_native::execute_native_call;
 use zeus_objects::global::Global;
@@ -80,41 +82,53 @@ where
         Ok(())
     }
 
+    fn call_function(
+        &mut self,
+        func: &'function Function,
+        arg_count: usize,
+    ) -> Result<(), InterpreterError> {
+        if func.arity != arg_count {
+            return Err(InterpreterError::RuntimeError(
+                RuntimeErrorType::FunctionCall(format!(
+                    "Expected {} parameters, got {}",
+                    func.arity, arg_count
+                )),
+            ));
+        }
+
+        let new_frame = self.frame.start_new(func, self.stack.len() - arg_count - 1);
+        self.previous_frames
+            .push(std::mem::replace(&mut self.frame, new_frame));
+        Ok(())
+    }
+
+    fn call_native(
+        &mut self,
+        func: &NativeFunction,
+        arg_count: usize,
+    ) -> Result<(), InterpreterError> {
+        if func.arity != arg_count {
+            return Err(InterpreterError::RuntimeError(
+                RuntimeErrorType::FunctionCall(format!(
+                    "Expected {} parameters, got {}",
+                    func.arity, arg_count
+                )),
+            ));
+        }
+
+        let res = execute_native_call(self.stack, arg_count, func).map_err(|e| {
+            InterpreterError::RuntimeError(RuntimeErrorType::FunctionFailed(format!("{e}")))
+        })?;
+        self.stack.truncate(self.stack.len() - arg_count - 1);
+
+        self.stack.push(res);
+        Ok(())
+    }
+
     fn call(&mut self, arg_count: usize) -> Result<(), InterpreterError> {
         match self.stack.peek(self.stack.len() - arg_count - 1) {
-            Value::Constant(Variable::Function(func)) => {
-                if func.arity != arg_count {
-                    return Err(InterpreterError::RuntimeError(
-                        RuntimeErrorType::FunctionCall(format!(
-                            "Expected {} parameters, got {}",
-                            func.arity, arg_count
-                        )),
-                    ));
-                }
-
-                let new_frame = self.frame.start_new(func, self.stack.len() - arg_count - 1);
-                self.previous_frames
-                    .push(std::mem::replace(&mut self.frame, new_frame));
-                Ok(())
-            }
-            Value::Native(func) => {
-                if func.arity != arg_count {
-                    return Err(InterpreterError::RuntimeError(
-                        RuntimeErrorType::FunctionCall(format!(
-                            "Expected {} parameters, got {}",
-                            func.arity, arg_count
-                        )),
-                    ));
-                }
-
-                let res = execute_native_call(self.stack, arg_count, func).map_err(|e| {
-                    InterpreterError::RuntimeError(RuntimeErrorType::FunctionFailed(format!("{e}")))
-                })?;
-                self.stack.truncate(self.stack.len() - arg_count - 1);
-
-                self.stack.push(res);
-                Ok(())
-            }
+            Value::Constant(Variable::Function(func)) => self.call_function(func, arg_count),
+            Value::Native(func) => self.call_native(func, arg_count),
             v => {
                 return Err(InterpreterError::CompileError(format!(
                     "Expected function, got {v}"
