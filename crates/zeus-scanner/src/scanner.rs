@@ -6,13 +6,60 @@ use std::iter::Peekable;
 use std::str::Chars;
 
 pub struct Scanner<'a> {
+    next: Option<Token>,
+    tokenizer: Tokenizer<'a>,
+}
+
+impl<'a> Scanner<'a> {
+    pub fn new(source: &'a str) -> Self {
+        Self {
+            next: None,
+            tokenizer: Tokenizer::new(source),
+        }
+    }
+
+    fn advance(&mut self) -> Result<(), ScanningError> {
+        self.next = Some(self.tokenizer.scan()?);
+        Ok(())
+    }
+
+    pub fn check(&mut self, token_type: &TokenType) -> bool {
+        self.peek().is_ok_and(|t| &t.r#type == token_type)
+    }
+
+    pub fn peek(&mut self) -> Result<&Token, ScanningError> {
+        if self.next.is_none() {
+            self.advance()?;
+        };
+
+        return Ok(self.next.as_ref().unwrap());
+    }
+
+    pub fn scan(&mut self) -> Result<Token, ScanningError> {
+        if self.next.is_some() {
+            return Ok(self.next.take().unwrap());
+        };
+
+        self.tokenizer.scan()
+    }
+
+    pub fn get_line(&self) -> u64 {
+        self.tokenizer.get_line()
+    }
+
+    pub fn is_at_line_start(&self) -> bool {
+        self.next.is_none() && self.tokenizer.is_at_line_start()
+    }
+}
+
+pub struct Tokenizer<'a> {
     source: Peekable<Chars<'a>>,
     line: u64,
     line_start: bool,
     indent_stack: Vec<u8>,
 }
 
-impl<'a> Scanner<'a> {
+impl<'a> Tokenizer<'a> {
     pub fn new(source: &'a str) -> Self {
         Self {
             source: source.chars().peekable(),
@@ -22,7 +69,7 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    pub fn get_line(&self) -> u64 {
+    fn get_line(&self) -> u64 {
         self.line
     }
 
@@ -38,7 +85,7 @@ impl<'a> Scanner<'a> {
         err
     }
 
-    pub fn is_at_line_start(&self) -> bool {
+    fn is_at_line_start(&self) -> bool {
         self.line_start
     }
 
@@ -282,10 +329,13 @@ mod tests {
         let mut scanner = Scanner::new(string);
 
         assert_eq!(
-            scanner.scan_token().unwrap().r#type,
+            scanner.tokenizer.scan_token().unwrap().r#type,
             TokenType::String("This is a simple string".to_owned())
         );
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::NewLine);
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::NewLine
+        );
     }
 
     #[test]
@@ -293,8 +343,14 @@ mod tests {
         let string = "1\n";
         let mut scanner = Scanner::new(string);
 
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::Integer(1));
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::NewLine);
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::Integer(1)
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::NewLine
+        );
     }
 
     #[test]
@@ -302,9 +358,18 @@ mod tests {
         let string = "-1\n";
         let mut scanner = Scanner::new(string);
 
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::Minus);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::Integer(1));
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::NewLine);
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::Minus
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::Integer(1)
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::NewLine
+        );
     }
 
     #[test]
@@ -312,8 +377,14 @@ mod tests {
         let string = "1.1\n";
         let mut scanner = Scanner::new(string);
 
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::Float(1.1));
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::NewLine);
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::Float(1.1)
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::NewLine
+        );
     }
 
     #[test]
@@ -321,8 +392,14 @@ mod tests {
         let string = "0.\n";
         let mut scanner = Scanner::new(string);
 
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::Float(0.));
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::NewLine);
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::Float(0.)
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::NewLine
+        );
     }
 
     #[test]
@@ -331,10 +408,13 @@ mod tests {
         let mut scanner = Scanner::new(string);
 
         assert_eq!(
-            scanner.scan_token().unwrap().r#type,
+            scanner.tokenizer.scan_token().unwrap().r#type,
             TokenType::Identifier("cou".to_owned())
         );
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::NewLine);
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::NewLine
+        );
     }
 
     #[test]
@@ -342,8 +422,14 @@ mod tests {
         let string = "var\n";
         let mut scanner = Scanner::new(string);
 
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::Var);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::NewLine);
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::Var
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::NewLine
+        );
     }
 
     #[test]
@@ -351,28 +437,94 @@ mod tests {
         let string = "not and or def class if else elif for while var const self return True False None @ break continue assert\n";
         let mut scanner = Scanner::new(string);
 
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::Not);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::And);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::Or);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::Def);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::Class);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::If);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::Else);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::ElIf);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::For);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::While);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::Var);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::Const);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::Self_);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::Return);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::True);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::False);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::None);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::At);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::Break);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::Continue);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::Assert);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::NewLine);
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::Not
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::And
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::Or
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::Def
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::Class
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::If
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::Else
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::ElIf
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::For
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::While
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::Var
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::Const
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::Self_
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::Return
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::True
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::False
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::None
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::At
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::Break
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::Continue
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::Assert
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::NewLine
+        );
     }
 
     #[test]
@@ -380,17 +532,26 @@ mod tests {
         let string = "var cou = \"coucou\"\n";
         let mut scanner = Scanner::new(string);
 
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::Var);
         assert_eq!(
-            scanner.scan_token().unwrap().r#type,
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::Var
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
             TokenType::Identifier("cou".to_owned())
         );
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::Equal);
         assert_eq!(
-            scanner.scan_token().unwrap().r#type,
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::Equal
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
             TokenType::String("coucou".to_owned())
         );
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::NewLine);
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::NewLine
+        );
     }
 
     #[test]
@@ -398,22 +559,70 @@ mod tests {
         let string = "True\n    True\n        True\n\t    True\n    True\nTrue\n";
         let mut scanner = Scanner::new(string);
 
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::True);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::NewLine);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::Indent);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::True);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::NewLine);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::Indent);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::True);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::NewLine);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::True);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::NewLine);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::Dedent);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::True);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::NewLine);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::Dedent);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::True);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::NewLine);
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::True
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::NewLine
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::Indent
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::True
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::NewLine
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::Indent
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::True
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::NewLine
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::True
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::NewLine
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::Dedent
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::True
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::NewLine
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::Dedent
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::True
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::NewLine
+        );
     }
 
     #[test]
@@ -421,9 +630,21 @@ mod tests {
         let string = "True\n# this is a comment\nFalse";
         let mut scanner = Scanner::new(string);
 
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::True);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::NewLine);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::NewLine);
-        assert_eq!(scanner.scan_token().unwrap().r#type, TokenType::False);
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::True
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::NewLine
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::NewLine
+        );
+        assert_eq!(
+            scanner.tokenizer.scan_token().unwrap().r#type,
+            TokenType::False
+        );
     }
 }

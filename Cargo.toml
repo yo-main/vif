@@ -6,6 +6,7 @@ members = [
   "crates/zeus-native",
   "crates/zeus-scanner",
   "crates/zeus-compiler",
+  "crates/zeus-ast",
 ]
 default-members = ["crates/zeus-cli"]
 resolver = "2"
