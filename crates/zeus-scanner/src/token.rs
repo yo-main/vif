@@ -24,7 +24,6 @@ pub enum TokenType {
     Equal,
     Greater,
     Less,
-    Bang,
     NewLine,
     At,
 
@@ -98,7 +97,6 @@ impl Hash for TokenType {
             Self::Equal => state.write_u8(17),
             Self::Greater => state.write_u8(18),
             Self::Less => state.write_u8(19),
-            Self::Bang => state.write_u8(20),
             Self::NewLine => state.write_u8(21),
             Self::At => state.write_u8(22),
             Self::EqualEqual => state.write_u8(23),
@@ -186,7 +184,6 @@ impl Display for TokenType {
             TokenType::Equal => write!(f, "="),
             TokenType::Greater => write!(f, ">"),
             TokenType::Less => write!(f, "<"),
-            TokenType::Bang => write!(f, "!"),
             TokenType::NewLine => write!(f, "\\n"),
             TokenType::At => write!(f, "@"),
             TokenType::EqualEqual => write!(f, "=="),

@@ -238,7 +238,6 @@ impl<'function> Compiler<'function> {
     fn end_scope(&mut self) {
         // Since we adjust stack on the VM, I'm wondering if that part is still needed ?
         while let Some(variable) = self.function.locals.last() {
-            println!("{variable} {} {:?}", self.scope_depth, variable.depth);
             // TODO: maybe use a match here ?
             if variable.depth.unwrap_or(usize::MAX) >= self.scope_depth {
                 self.function.locals.pop().unwrap();
@@ -295,7 +294,6 @@ impl<'function> Compiler<'function> {
     }
 
     fn expression_statement(&mut self, token: &Box<ast::Expr>) -> Result<(), CompilerError> {
-        println!("COUCOU {:?}", token);
         log::debug!("Starting expression statement");
         self.expression(token)?;
         self.emit_op_code(OpCode::Pop);
@@ -469,7 +467,7 @@ impl<'function> Compiler<'function> {
     fn unary_operator(&mut self, token: &ast::UnaryOperator) {
         self.emit_op_code(match token {
             ast::UnaryOperator::Minus => OpCode::Negate,
-            ast::UnaryOperator::Bang => OpCode::Not,
+            ast::UnaryOperator::Not => OpCode::Not,
         })
     }
 

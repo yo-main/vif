@@ -25,7 +25,7 @@ pub enum Operator {
 #[derive(Debug, PartialEq)]
 pub enum UnaryOperator {
     Minus,
-    Bang,
+    Not,
 }
 
 #[derive(Debug, PartialEq)]
@@ -379,7 +379,7 @@ impl std::fmt::Display for UnaryOperator {
             "{}",
             match self {
                 Self::Minus => "-",
-                Self::Bang => "!",
+                Self::Not => "!",
             }
         )
     }

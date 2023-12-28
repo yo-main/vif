@@ -162,11 +162,11 @@ impl<'a> Parser<'a> {
     }
 
     fn unary(&mut self) -> Result<Box<ast::Expr>, AstError> {
-        for token in [&TokenType::Bang, &TokenType::Minus] {
+        for token in [&TokenType::Minus, &TokenType::Not] {
             if self.scanner.check(token) {
                 self.scanner.scan().unwrap();
-                let operator = if token == &TokenType::Bang {
-                    ast::UnaryOperator::Bang
+                let operator = if token == &TokenType::Not {
+                    ast::UnaryOperator::Not
                 } else {
                     ast::UnaryOperator::Minus
                 };
@@ -212,16 +212,13 @@ impl<'a> Parser<'a> {
     fn if_statement(&mut self) -> Result<ast::Condition, AstError> {
         self.scanner.scan().unwrap();
 
-        println!("NEXT {:?}", self.scanner.peek());
         let expr = self.expression()?;
         self.consume(TokenType::DoubleDot, "Expect ':' after if condition")?;
         self.consume(TokenType::NewLine, "Expect new line after :")?;
-        println!("NEXT {:?}", self.scanner.peek());
 
         let then = Box::new(self.statement()?);
 
         let r#else = if self.scanner.check(&TokenType::ElIf) {
-            println!("ELIF {:?}", expr);
             Some(Box::new(ast::Stmt::Condition(self.if_statement()?)))
         } else if self.scanner.check(&TokenType::Else) {
             self.scanner.scan().unwrap();

@@ -116,7 +116,7 @@ impl<'a> Tokenizer<'a> {
                 }
                 '!' => match self.r#match('=') {
                     true => TokenType::BangEqual,
-                    false => TokenType::Bang,
+                    false => return Err(self.report_error(ScanningErrorType::Unidentified('!'))),
                 },
                 '=' => match self.r#match('=') {
                     true => TokenType::EqualEqual,
@@ -222,7 +222,6 @@ impl<'a> Tokenizer<'a> {
             if stack == previous_stack {
                 return Ok(TokenType::Dedent);
             } else if previous_stack > stack {
-                println!("Coucou");
                 self.line_start = true;
                 self.line -= 1;
                 return Ok(TokenType::Dedent);
