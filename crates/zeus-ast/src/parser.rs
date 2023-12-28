@@ -42,6 +42,10 @@ impl<'a> Parser<'a> {
 
     fn declaration(&mut self) -> Result<ast::Stmt, AstError> {
         match self.scanner.peek()? {
+            t if t.r#type == TokenType::NewLine => {
+                self.scanner.scan().unwrap();
+                self.declaration()
+            }
             t if t.r#type == TokenType::Var => self.var_declaration(),
             t if t.r#type == TokenType::Def => self.function("function"),
             _ => self.statement(),
@@ -239,6 +243,10 @@ impl<'a> Parser<'a> {
 
         loop {
             match self.scanner.peek() {
+                Ok(t) if t.r#type == TokenType::NewLine => {
+                    self.scanner.scan().unwrap();
+                    continue;
+                }
                 Ok(t) if t.r#type == TokenType::Dedent => break,
                 Ok(t) if t.r#type == TokenType::EOF => return Ok(stmts),
                 _ => stmts.push(self.declaration()?),
@@ -471,7 +479,7 @@ impl<'a> Parser<'a> {
             TokenType::Float(f) => Box::new(ast::Expr::Value(Value::Float(f))),
             TokenType::String(s) => Box::new(ast::Expr::Value(Value::String(s))),
             TokenType::Identifier(s) => Box::new(ast::Expr::Value(Value::Variable(s))),
-            TokenType::NewLine => Box::new(ast::Expr::Value(Value::NewLine)),
+            // TokenType::NewLine => Box::new(ast::Expr::Value(Value::NewLine)),
             TokenType::Break => {
                 self.consume(TokenType::NewLine, "Expect new line after break")?;
                 Box::new(ast::Expr::Value(Value::Break))
@@ -532,16 +540,12 @@ mod tests {
         let success = parser.build();
 
         assert!(success);
-        assert_eq!(parser.ast.len(), 2);
+        assert_eq!(parser.ast.len(), 1);
         assert_eq!(
             parser.ast[0],
             Stmt::Expression(Box::new(Expr::Value(Value::String(
                 "This is a simple string".to_owned()
             ))))
-        );
-        assert_eq!(
-            parser.ast[1],
-            Stmt::Expression(Box::new(Expr::Value(Value::NewLine)))
         );
     }
 
