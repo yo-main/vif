@@ -78,7 +78,7 @@ impl<'function> Compiler<'function> {
     pub fn statement(&mut self, token: &ast::Stmt) -> Result<(), CompilerError> {
         log::debug!("Starting statement");
         match token {
-            ast::Stmt::Expression(expr) => self.expression(expr),
+            ast::Stmt::Expression(expr) => self.expression_statement(expr),
             ast::Stmt::Return(ret) => self.return_statement(ret),
             ast::Stmt::Block(blocks) => {
                 for block in blocks.iter() {
@@ -294,13 +294,13 @@ impl<'function> Compiler<'function> {
         }
     }
 
-    // fn expression_statement(&mut self) -> Result<(), CompilerError> {
-    //     log::debug!("Starting expression statement");
-    //     self.expression()?;
-    //     self.consume(TokenType::NewLine, "Expects \\n after an expression")?;
-    //     self.emit_op_code(OpCode::Pop);
-    //     Ok(())
-    // }
+    fn expression_statement(&mut self, token: &Box<ast::Expr>) -> Result<(), CompilerError> {
+        println!("COUCOU {:?}", token);
+        log::debug!("Starting expression statement");
+        self.expression(token)?;
+        self.emit_op_code(OpCode::Pop);
+        Ok(())
+    }
 
     fn expression(&mut self, token: &Box<ast::Expr>) -> Result<(), CompilerError> {
         match token.as_ref() {
