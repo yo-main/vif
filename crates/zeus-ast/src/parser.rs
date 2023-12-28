@@ -138,6 +138,7 @@ impl<'a> Parser<'a> {
 
         Ok(ast::Stmt::Var(ast::Variable { name, value: expr }))
     }
+
     fn unary(&mut self) -> Result<Box<ast::Expr>, AstError> {
         for token in [&TokenType::Bang, &TokenType::Minus] {
             if self.scanner.check(token) {
@@ -464,7 +465,7 @@ impl<'a> Parser<'a> {
             TokenType::EOF => return Err(AstError::EOF),
             TokenType::LeftParen => {
                 let expr = self.expression()?;
-                let right = self.consume(TokenType::RightParen, "expect ')' after expression")?;
+                self.consume(TokenType::RightParen, "expect ')' after expression")?;
                 Box::new(ast::Expr::Grouping(ast::Grouping {
                     left: ast::Group::LeftParen,
                     expr,

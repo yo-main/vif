@@ -8,5 +8,12 @@ pub fn build_ast(content: String) -> Vec<Stmt> {
     let scanner = Scanner::new(content.as_str());
     let mut parser = Parser::new(scanner);
     parser.build();
-    parser.get_ast()
+
+    let ast = parser.get_ast();
+    log::debug!("########### AST ##########");
+    for token in ast.iter() {
+        log::debug!("{:?}", token);
+    }
+    log::debug!("########### AST ##########");
+    ast
 }

@@ -1,8 +1,2 @@
-def test(a, b):
-	var p = 1
-	var m = 3
-	@ a
-	@ b
-	return a+b
-
-print(test(9, 2), 3, 4)
+var a = 1
+print(a)
