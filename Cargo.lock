@@ -413,6 +413,7 @@ name = "zeus-compiler"
 version = "0.1.0"
 dependencies = [
  "log",
+ "zeus-ast",
  "zeus-objects",
  "zeus-scanner",
 ]

@@ -396,6 +396,7 @@ where
             OpCode::Multiply => self.multiply()?,
             OpCode::Divide => self.divide()?,
             OpCode::Modulo => self.modulo()?,
+            OpCode::NotImplemented => panic!("Not implemented"),
         };
 
         Ok(())

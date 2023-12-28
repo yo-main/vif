@@ -30,6 +30,7 @@ pub enum OpCode {
     Jump(usize),
     Goto(usize),
     Call(usize),
+    NotImplemented,
 }
 
 impl std::fmt::Display for OpCode {
@@ -65,6 +66,7 @@ impl std::fmt::Display for OpCode {
             Self::Goto(i) => write!(f, "OP_GOTO {i}"),
             Self::Call(i) => write!(f, "OP_CALL {i}"),
             Self::AssertTrue => write!(f, "OP_ASSERT_TRUE"),
+            Self::NotImplemented => write!(f, "NOT_IMPLEMENTED"),
         }
     }
 }

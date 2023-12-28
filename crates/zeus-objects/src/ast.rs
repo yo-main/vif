@@ -15,7 +15,6 @@ pub enum Operator {
     PlusEqual,
     DevideEqual,
     MultiplyEqual,
-    EqualEqual,
     BangEqual,
     Greater,
     Less,
@@ -42,7 +41,7 @@ pub enum Group {
 #[derive(Debug, PartialEq)]
 pub enum Literal {
     String(String),
-    Indentifier(String),
+    Identifier(String),
 }
 
 #[derive(Debug, PartialEq)]
@@ -127,8 +126,6 @@ pub enum Value {
     Integer(i64),
     Float(f64),
     Variable(String),
-    BuiltIn(BuiltIn),
-    UserFunction(UserFunction),
     NewLine,
     True,
     False,
@@ -153,7 +150,6 @@ pub struct Logical {
 
 #[derive(Debug, PartialEq)]
 pub enum Expr {
-    Operator(Operator),
     Binary(Binary),
     Unary(Unary),
     Grouping(Grouping),
@@ -248,7 +244,7 @@ impl std::fmt::Display for Literal {
             "Literal[{}]",
             match self {
                 Self::String(v) => v,
-                Self::Indentifier(v) => v,
+                Self::Identifier(v) => v,
             }
         )
     }
@@ -287,7 +283,6 @@ impl std::fmt::Display for Value {
             Self::Variable(v) => write!(f, "{}", v),
             Self::Integer(v) => write!(f, "{}", v),
             Self::Float(v) => write!(f, "{}", v),
-            Self::BuiltIn(v) => write!(f, "{}", v),
             Self::True => write!(f, "True"),
             Self::False => write!(f, "False"),
             Self::None => write!(f, "None"),
@@ -295,7 +290,6 @@ impl std::fmt::Display for Value {
             Self::Ignore => write!(f, ""),
             Self::Break => write!(f, "break"),
             Self::Continue => write!(f, "continue"),
-            Self::UserFunction(v) => write!(f, "{}", v),
         }
     }
 }
@@ -355,7 +349,6 @@ impl std::fmt::Display for Operator {
                 Self::PlusEqual => "+=",
                 Self::DevideEqual => "/=",
                 Self::MultiplyEqual => "*=",
-                Self::EqualEqual => "==",
                 Self::BangEqual => "!=",
                 Self::Greater => ">",
                 Self::GreaterEqual => ">=",
@@ -400,7 +393,6 @@ impl std::fmt::Display for Call {
 impl std::fmt::Display for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Expr::Operator(e) => write!(f, "{}", e),
             Expr::Binary(e) => write!(f, "{}", e),
             Expr::Unary(e) => write!(f, "{}", e),
             Expr::Grouping(e) => write!(f, "{}", e),

@@ -1,24 +1,17 @@
-use zeus_scanner::Scanner;
-use zeus_scanner::ScanningErrorType;
-use zeus_scanner::Token;
-use zeus_scanner::TokenType;
-
 use crate::debug::disassemble_chunk;
 use crate::error::CompilerError;
-use crate::parser_rule::PrattParser;
 use crate::precedence::Precedence;
 use crate::NativeFunction;
 use crate::NativeFunctionCallee;
 use crate::OpCode;
 use crate::Variable;
+use zeus_objects::ast;
 use zeus_objects::function::Arity;
 use zeus_objects::function::Function;
 use zeus_objects::global::Global;
 use zeus_objects::local::Local;
 
-pub struct Compiler<'scanner, 'function, 'a> {
-    scanner: &'scanner mut Scanner<'a>,
-    pending: Option<Token>,
+pub struct Compiler<'function> {
     scope_depth: usize,
     loop_details: Vec<(usize, usize)>,
     globals: Global,
@@ -28,22 +21,28 @@ pub struct Compiler<'scanner, 'function, 'a> {
 // TODO: this mixes both parsing and translation into bytecode at the same time
 // we should be able to split those 2 steps in distinct part: parsing AST, translation
 // potentially we could add more steps in between (like optimization)
-impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
-    pub fn new(scanner: &'scanner mut Scanner<'a>, function: &'function mut Function) -> Self {
+impl<'function> Compiler<'function> {
+    pub fn new(function: &'function mut Function) -> Self {
         Compiler {
-            scanner,
             function,
-            pending: None,
             scope_depth: 0,
             loop_details: Vec::new(),
             globals: Global::new(),
         }
     }
 
+    pub fn compile(&mut self, ast: &Vec<ast::Stmt>) {
+        for token in ast.iter() {
+            self.statement(token);
+        }
+    }
+
+    fn r#return(&mut self, token: &ast::Return) {
+        self.expression(&token.value)
+    }
+
     fn emit_op_code(&mut self, op_code: OpCode) {
-        self.function
-            .chunk
-            .write_chunk(op_code, self.scanner.get_line());
+        self.function.chunk.write_chunk(op_code);
     }
     fn emit_jump(&mut self, op_code: OpCode) -> usize {
         self.emit_op_code(op_code);
@@ -64,186 +63,83 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
         }
     }
 
-    pub fn advance(&mut self) -> Result<Token, CompilerError> {
-        if self.pending.is_some() {
-            return Ok(self.pending.take().unwrap());
-        };
-
-        match self.scanner.scan() {
-            Ok(token) => match token.r#type {
-                TokenType::Ignore => self.advance(),
-                _ => Ok(token),
-            },
-            Err(e) => match e.r#type {
-                ScanningErrorType::EOF => Err(CompilerError::EOF),
-                _ => Err(CompilerError::ScanningError(format!("{e}"))),
-            },
-        }
+    pub fn declaration(&mut self) {
+        // log::debug!("Starting declaration");
+        // match self.advance()? {
+        //     t if t.r#type == TokenType::NewLine => self.declaration(),
+        //     t if t.r#type == TokenType::Def => self.function_declaration(),
+        //     t if t.r#type == TokenType::Var => self.var_declaration(),
+        //     t => {
+        //         self.pending = Some(t);
+        //         self.statement()
+        //     }
+        // }
     }
 
-    pub fn synchronize(&mut self) -> Result<(), CompilerError> {
-        log::debug!("Resynchronizing compiler");
-        if self.scanner.is_at_line_start() {
-            return Ok(());
-        }
-
-        loop {
-            match self.advance()? {
-                t if t.r#type == TokenType::NewLine => return Ok(()),
-                t if t.r#type == TokenType::Class => return Ok(()),
-                t if t.r#type == TokenType::Def => return Ok(()),
-                t if t.r#type == TokenType::Var => return Ok(()),
-                t if t.r#type == TokenType::For => return Ok(()),
-                t if t.r#type == TokenType::If => return Ok(()),
-                t if t.r#type == TokenType::While => return Ok(()),
-                t if t.r#type == TokenType::Return => return Ok(()),
-                _ => (),
-            }
-        }
-    }
-
-    pub fn declaration(&mut self) -> Result<(), CompilerError> {
-        log::debug!("Starting declaration");
-        match self.advance()? {
-            t if t.r#type == TokenType::NewLine => self.declaration(),
-            t if t.r#type == TokenType::Def => self.function_declaration(),
-            t if t.r#type == TokenType::Var => self.var_declaration(),
-            t => {
-                self.pending = Some(t);
-                self.statement()
-            }
-        }
-    }
-
-    pub fn statement(&mut self) -> Result<(), CompilerError> {
+    pub fn statement(&mut self, token: &ast::Stmt) {
         log::debug!("Starting statement");
-        match self.advance()? {
-            t if t.r#type == TokenType::At => {
-                self.expression()?;
-                self.consume(TokenType::NewLine, "Expects new line after expression")?;
-                self.emit_op_code(OpCode::Print);
-                return Ok(());
-            }
-            t if t.r#type == TokenType::If => self.if_statement(),
-            t if t.r#type == TokenType::While => self.while_statement(),
-            t if t.r#type == TokenType::Assert => self.assert_statement(),
-            t if t.r#type == TokenType::Return => self.return_statement(),
-            t if t.r#type == TokenType::Indent => {
-                let res = self.block();
-                return res;
-            }
-            t => {
-                self.pending = Some(t);
-                self.expression_statement()
-            }
+        match token {
+            ast::Stmt::Expression(expr) => self.expression(expr),
+            ast::Stmt::Return(ret) => self.return_statement(ret),
+            ast::Stmt::Block(blocks) => blocks.iter().for_each(|v| self.statement(v)),
+            ast::Stmt::Condition(cond) => self.if_statement(cond),
+            ast::Stmt::While(whi) => self.while_statement(whi),
+            ast::Stmt::Function(func) => self.function_statement(func),
+            ast::Stmt::Var(var) => self.var_declaration(var),
         }
     }
 
-    fn return_statement(&mut self) -> Result<(), CompilerError> {
-        if self.scope_depth == 0 {
-            return Err(CompilerError::SyntaxError(format!(
-                "You can't return on top-level code"
-            )));
-        }
-
-        match self.advance()? {
-            t if t.r#type == TokenType::NewLine => self.emit_op_code(OpCode::None),
-            t => {
-                self.pending = Some(t);
-                self.expression()?;
-                self.consume(
-                    TokenType::NewLine,
-                    "Expects new line after return statement",
-                )?;
-            }
-        };
-
+    fn return_statement(&mut self, token: &ast::Return) {
+        self.expression(&token.value);
         self.emit_op_code(OpCode::Return);
-        Ok(())
     }
 
-    pub fn call(&mut self) -> Result<(), CompilerError> {
+    pub fn call(&mut self, token: &ast::Call) {
         log::debug!("Starting call");
-        let arg_count = self.argument_list()?;
-        self.emit_op_code(OpCode::Call(arg_count));
-        Ok(())
-    }
-
-    fn argument_list(&mut self) -> Result<usize, CompilerError> {
-        let mut arg_acount = 0;
-        loop {
-            match self.advance()? {
-                t if t.r#type == TokenType::Comma => (),
-                t if t.r#type == TokenType::RightParen => break,
-                t => {
-                    self.pending = Some(t);
-                    self.expression()?;
-                    arg_acount += 1;
-                }
-            }
+        for arg in token.arguments.iter() {
+            self.expression(arg);
         }
-
-        Ok(arg_acount)
+        self.emit_op_code(OpCode::Call(token.arguments.len()));
     }
 
-    fn if_statement(&mut self) -> Result<(), CompilerError> {
+    fn if_statement(&mut self, token: &ast::Condition) {
         log::debug!("Starting if statement");
-        self.expression()?;
-        self.consume(TokenType::DoubleDot, "Expects : after if statement")?;
-        self.consume(TokenType::NewLine, "Expects \\n after if statement")?;
 
+        self.expression(&token.expr);
         let then_jump = self.emit_jump(OpCode::JumpIfFalse(self.function.chunk.code.len()));
-
         self.emit_op_code(OpCode::Pop);
-        self.statement()?;
+        self.statement(&token.then);
 
         let else_jump = self.emit_jump(OpCode::Jump(self.function.chunk.code.len()));
-
         self.patch_jump(then_jump);
         self.emit_op_code(OpCode::Pop);
 
-        let res = match self.advance() {
-            Ok(t) if t.r#type == TokenType::Else => {
-                self.consume(TokenType::DoubleDot, "Expects : after else statement")?;
-                self.consume(TokenType::NewLine, "Expects \\n after else statement")?;
-
-                self.statement()
-            }
-            Ok(t) if t.r#type == TokenType::ElIf => self.if_statement(),
-            Ok(t) => {
-                self.pending = Some(t);
-                Ok(())
-            }
-            Err(e) => Err(e),
-        };
-
+        if token.r#else.is_some() {
+            self.statement(token.r#else.as_ref().unwrap());
+        }
         self.patch_jump(else_jump);
-
-        res
     }
 
-    fn assert_statement(&mut self) -> Result<(), CompilerError> {
-        log::debug!("Starting assert statement");
-        self.expression()?;
+    fn assert_statement(&mut self) {
+        // log::debug!("Starting assert statement");
+        // self.expression()?;
 
-        self.consume(TokenType::NewLine, "Expects \\n after assert statement")?;
-        self.emit_op_code(OpCode::AssertTrue);
-        self.emit_op_code(OpCode::Pop);
-        Ok(())
+        // self.consume(TokenType::NewLine, "Expects \\n after assert statement")?;
+        // self.emit_op_code(OpCode::AssertTrue);
+        // self.emit_op_code(OpCode::Pop);
+        // Ok(())
     }
 
-    fn while_statement(&mut self) -> Result<(), CompilerError> {
+    fn while_statement(&mut self, token: &ast::While) {
         log::debug!("Starting while statement");
         let loop_start = self.function.chunk.code.len();
 
-        self.expression()?;
-        self.consume(TokenType::DoubleDot, "Expects : after else statement")?;
-        self.consume(TokenType::NewLine, "Expects \\n after else statement")?;
+        self.expression(&token.condition);
 
         let exit_jump = self.emit_jump(OpCode::JumpIfFalse(self.function.chunk.code.len()));
         self.loop_details.push((loop_start, exit_jump));
         self.emit_op_code(OpCode::Pop);
-        let res = self.statement();
+        let res = self.statement(&token.body);
         self.loop_details.pop().unwrap();
         self.emit_op_code(OpCode::Goto(loop_start));
 
@@ -280,71 +176,49 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
         Ok(())
     }
 
-    fn function_declaration(&mut self) -> Result<(), CompilerError> {
-        log::debug!("Starting function declaration");
-        let var = self.parse_variable()?;
-        self.function_statement()?;
-        self.define_variable(var);
-        Ok(())
-    }
+    // fn function_declaration(&mut self) -> Result<(), CompilerError> {
+    //     log::debug!("Starting function declaration");
+    //     let var = self.parse_variable()?;
+    //     self.function_statement()?;
+    //     self.define_variable(var);
+    //     Ok(())
+    // }
 
-    fn function_statement(&mut self) -> Result<(), CompilerError> {
+    fn function_statement(&mut self, token: &ast::Function) {
         log::debug!("Starting function statement");
-        let mut function = Function::new(Arity::None, "function".to_owned());
-        let mut compiler = Compiler::new(self.scanner, &mut function);
+        let mut function = Function::new(Arity::Fixed(token.params.len()), token.name.clone());
+        let mut compiler = Compiler::new(&mut function);
         std::mem::swap(&mut compiler.globals, &mut self.globals);
 
         compiler.begin_scope();
         log::debug!("Function compiling starting");
-        compiler.consume(TokenType::LeftParen, "Expects ( after function name")?;
-        loop {
-            match compiler.advance()? {
-                t if t.r#type == TokenType::Comma => (),
-                t if t.r#type == TokenType::RightParen => break,
-                t => {
-                    compiler.function.arity += 1;
-                    compiler.pending = Some(t);
-                    let variable = compiler.parse_variable()?;
-                    compiler.define_variable(variable);
-                }
-            }
-        }
+        compiler.compile(&token.body);
 
-        compiler.consume(TokenType::DoubleDot, "Expects : after function declaration")?;
-        compiler.consume(
-            TokenType::NewLine,
-            "Expects NewLine after function declaration",
-        )?;
-        compiler.consume(
-            TokenType::Indent,
-            "Expects indentation after function declaration",
-        )?;
-
-        let res = compiler.block();
         // compiler.end_scope();
         let mut globals = compiler.end();
         std::mem::swap(&mut globals, &mut self.globals);
         log::debug!("Function compiling terminated");
         self.emit_constant(Variable::Function(Box::new(function)));
-
-        res
     }
 
-    fn block(&mut self) -> Result<(), CompilerError> {
+    fn block(&mut self, token: &Vec<ast::Stmt>) {
         log::debug!("Block starting");
-        loop {
-            match self.advance()? {
-                t if t.r#type == TokenType::Dedent => break,
-                t if t.r#type == TokenType::NewLine => (),
-                t => {
-                    self.pending = Some(t);
-                    self.declaration()?;
-                }
-            }
+        for block in token {
+            self.statement(block)
         }
-        log::debug!("Block ending");
+        // loop {
+        //     match self.advance()? {
+        //         t if t.r#type == TokenType::Dedent => break,
+        //         t if t.r#type == TokenType::NewLine => (),
+        //         t => {
+        //             self.pending = Some(t);
+        //             self.declaration()?;
+        //         }
+        //     }
+        // }
+        // log::debug!("Block ending");
 
-        Ok(())
+        // Ok(())
     }
 
     fn begin_scope(&mut self) {
@@ -365,42 +239,11 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
         self.scope_depth -= 1
     }
 
-    fn var_declaration(&mut self) -> Result<(), CompilerError> {
+    fn var_declaration(&mut self, token: &ast::Variable) {
         log::debug!("Starting variable declaration");
-        let variable = self.parse_variable()?;
-
-        match self.advance()? {
-            t if t.r#type == TokenType::Equal => self.expression()?,
-            _ => {
-                return Err(CompilerError::SyntaxError(format!(
-                    "Expected an assignement after var declaration"
-                )))
-            }
-        };
-
-        self.consume(
-            TokenType::NewLine,
-            "Expects new line after variable declaration",
-        )?;
-
-        self.define_variable(variable);
-        Ok(())
-    }
-
-    fn parse_variable(&mut self) -> Result<usize, CompilerError> {
-        let token = self.advance()?;
-        log::debug!("Parse variable {}", token);
-
-        let variable = match token.r#type {
-            TokenType::Identifier(s) => Variable::Identifier(Box::new(s)),
-            e => {
-                return Err(CompilerError::SyntaxError(format!(
-                    "Expected identifier when parsing variable, got {e}"
-                )))
-            }
-        };
-
-        Ok(self.register_variable(variable))
+        let index = self.register_variable(Variable::Identifier(Box::new(token.name.clone())));
+        self.expression(&token.value);
+        self.define_variable(index);
     }
 
     fn initialize_variable(&mut self) {
@@ -440,142 +283,140 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
         }
     }
 
-    fn expression_statement(&mut self) -> Result<(), CompilerError> {
-        log::debug!("Starting expression statement");
-        self.expression()?;
-        self.consume(TokenType::NewLine, "Expects \\n after an expression")?;
-        self.emit_op_code(OpCode::Pop);
-        Ok(())
-    }
+    // fn expression_statement(&mut self) -> Result<(), CompilerError> {
+    //     log::debug!("Starting expression statement");
+    //     self.expression()?;
+    //     self.consume(TokenType::NewLine, "Expects \\n after an expression")?;
+    //     self.emit_op_code(OpCode::Pop);
+    //     Ok(())
+    // }
 
-    fn expression(&mut self) -> Result<(), CompilerError> {
-        log::debug!("Starting expression");
-        self.parse_precedence(Precedence::Assignement)?;
-        Ok(())
-    }
-
-    fn consume(&mut self, token_type: TokenType, msg: &str) -> Result<(), CompilerError> {
-        match self.advance() {
-            Ok(t) if t.r#type == token_type => Ok(()),
-            Ok(t) => Err(CompilerError::SyntaxError(format!(
-                "{}, got {}",
-                msg.to_owned(),
-                t
-            ))),
-            Err(e) => Err(CompilerError::ScanningError(format!("{e}"))),
+    fn expression(&mut self, token: &Box<ast::Expr>) {
+        match token.as_ref() {
+            ast::Expr::Binary(t) => self.binary(t),
+            ast::Expr::Unary(t) => self.unary(t),
+            ast::Expr::Grouping(t) => self.grouping(t),
+            ast::Expr::Literal(t) => self.literal(t),
+            ast::Expr::Value(t) => self.value(t),
+            ast::Expr::Assign(t) => self.assign(t),
+            ast::Expr::Logical(t) => self.logical(t),
+            ast::Expr::Call(t) => self.call(t),
         }
     }
 
-    fn match_token(&mut self, token_type: TokenType) -> Result<bool, CompilerError> {
-        Ok(match self.advance()? {
-            t if t.r#type == token_type => true,
-            t => {
-                self.pending = Some(t);
-                false
+    fn logical(&mut self, token: &ast::Logical) {
+        match token.operator {
+            ast::LogicalOperator::And => self.and(token),
+            ast::LogicalOperator::Or => self.or(token),
+        }
+    }
+
+    fn assign(&mut self, token: &ast::Assign) {
+        self.expression(&token.value);
+        self.named_variable(Variable::Identifier(Box::new(token.name.clone())), true);
+    }
+
+    fn value(&mut self, token: &ast::Value) {
+        match token {
+            ast::Value::Operator(o) => self.operator(o),
+            ast::Value::String(s) => self.emit_constant(Variable::String(Box::new(s.clone()))),
+            ast::Value::Integer(i) => self.emit_constant(Variable::Integer(*i)),
+            ast::Value::Float(f) => self.emit_constant(Variable::Float(*f)),
+            ast::Value::Variable(s) => {
+                self.emit_constant(Variable::Identifier(Box::new(s.clone())))
             }
+            ast::Value::True => self.emit_op_code(OpCode::True),
+            ast::Value::False => self.emit_op_code(OpCode::False),
+            ast::Value::Break => self.emit_op_code(OpCode::NotImplemented),
+            ast::Value::Continue => self.emit_op_code(OpCode::NotImplemented),
+            ast::Value::NewLine => (),
+            ast::Value::None => self.emit_op_code(OpCode::None),
+            ast::Value::Ignore => (),
+        }
+    }
+
+    fn binary(&mut self, token: &ast::Binary) {
+        self.expression(&token.left);
+        self.expression(&token.right);
+        self.operator(&token.operator);
+    }
+
+    fn operator(&mut self, token: &ast::Operator) {
+        self.emit_op_code(match token {
+            ast::Operator::Plus => OpCode::Add,
+            ast::Operator::Minus => OpCode::Substract,
+            ast::Operator::Divide => OpCode::Divide,
+            ast::Operator::Multiply => OpCode::Multiply,
+            ast::Operator::PlusEqual => OpCode::NotImplemented,
+            ast::Operator::MinusEqual => OpCode::NotImplemented,
+            ast::Operator::DevideEqual => OpCode::NotImplemented,
+            ast::Operator::MultiplyEqual => OpCode::NotImplemented,
+            ast::Operator::BangEqual => OpCode::NotEqual,
+            ast::Operator::Less => OpCode::Less,
+            ast::Operator::LessEqual => OpCode::LessOrEqual,
+            ast::Operator::Greater => OpCode::Greater,
+            ast::Operator::GreaterEqual => OpCode::GreaterOrEqual,
+            ast::Operator::Equal => OpCode::Equal,
+            ast::Operator::Comma => OpCode::NotImplemented,
         })
     }
 
-    fn parse_precedence(&mut self, precedence: Precedence) -> Result<(), CompilerError> {
-        log::debug!("Starting parsing precedence");
-        let precedence = precedence as u8;
-
-        let token = self.advance()?;
-        let can_assign = precedence <= Precedence::Assignement as u8;
-
-        token.r#type.prefix(self, can_assign)?;
-        log::debug!("parse precedence in with {}", precedence);
-
-        loop {
-            let token = self.advance()?;
-            if precedence > token.r#type.precedence() as u8 {
-                self.pending = Some(token);
-                break;
-            }
-            token.r#type.infix(self)?;
-        }
-        if can_assign && self.match_token(TokenType::Equal)? {
-            return Err(CompilerError::SyntaxError(format!(
-                "Invalid assignment target"
-            )));
-        }
-
-        log::debug!("parse precedence out with {}", token.r#type.precedence());
-
-        Ok(())
-    }
-
-    fn get_rule(&mut self, token_type: &TokenType) -> Precedence {
-        token_type.precedence()
-    }
-
-    pub fn and(&mut self) -> Result<(), CompilerError> {
+    pub fn and(&mut self, token: &ast::Logical) {
         log::debug!("Starting and operation");
+        self.expression(&token.left);
         let end_jump = self.emit_jump(OpCode::JumpIfFalse(self.function.chunk.code.len()));
         self.emit_op_code(OpCode::Pop);
-        let res = self.parse_precedence(Precedence::And);
+        self.expression(&token.right);
         self.patch_jump(end_jump);
-        res
     }
 
-    pub fn or(&mut self) -> Result<(), CompilerError> {
+    pub fn or(&mut self, token: &ast::Logical) {
         log::debug!("Starting or operation");
+        self.expression(&token.left);
         let else_jump = self.emit_jump(OpCode::JumpIfFalse(self.function.chunk.code.len()));
         let end_jump = self.emit_jump(OpCode::Jump(self.function.chunk.code.len()));
 
         self.patch_jump(else_jump);
         self.emit_op_code(OpCode::Pop);
 
-        let res = self.parse_precedence(Precedence::Or);
+        self.expression(&token.right);
         self.patch_jump(end_jump);
-        res
     }
 
-    pub fn variable(
-        &mut self,
-        token_type: &TokenType,
-        can_assign: bool,
-    ) -> Result<(), CompilerError> {
-        log::debug!("Starting variable");
-        match token_type {
-            TokenType::Identifier(s) => match s.as_str() {
-                "get_time" => self.named_variable(
-                    Variable::Native(NativeFunction::new(NativeFunctionCallee::GetTime)),
-                    can_assign,
-                ),
-                "print" => self.named_variable(
-                    Variable::Native(NativeFunction::new(NativeFunctionCallee::Print)),
-                    can_assign,
-                ),
-                _ => self.named_variable(Variable::Identifier(Box::new(s.clone())), can_assign),
-            },
-            _ => return Err(CompilerError::Unknown(format!("Impossible"))),
-        }
-    }
+    // pub fn variable(
+    //     &mut self,
+    //     token_type: &TokenType,
+    //     can_assign: bool,
+    // ) -> Result<(), CompilerError> {
+    //     log::debug!("Starting variable");
+    //     match token_type {
+    //         TokenType::Identifier(s) => match s.as_str() {
+    //             "get_time" => self.named_variable(
+    //                 Variable::Native(NativeFunction::new(NativeFunctionCallee::GetTime)),
+    //                 can_assign,
+    //             ),
+    //             "print" => self.named_variable(
+    //                 Variable::Native(NativeFunction::new(NativeFunctionCallee::Print)),
+    //                 can_assign,
+    //             ),
+    //             _ => self.named_variable(Variable::Identifier(Box::new(s.clone())), can_assign),
+    //         },
+    //         _ => return Err(CompilerError::Unknown(format!("Impossible"))),
+    //     }
+    // }
 
-    fn named_variable(
-        &mut self,
-        variable: Variable,
-        can_assign: bool,
-    ) -> Result<(), CompilerError> {
-        log::debug!("Named variable {} (assign={})", variable, can_assign);
-        let is_set = can_assign && self.match_token(TokenType::Equal)?;
+    fn named_variable(&mut self, variable: Variable, assign: bool) -> Result<(), CompilerError> {
+        log::debug!("Named variable {} (assign={})", variable, assign);
 
         let op_code = match self.resolve_local(&variable)? {
-            Some(index) => match is_set {
-                true => {
-                    self.expression()?;
-                    OpCode::SetLocal(index)
-                }
+            Some(index) => match assign {
+                true => OpCode::SetLocal(index),
                 false => OpCode::GetLocal(index),
             },
             None => {
                 let index = self.make_constant(variable);
-                match is_set {
-                    true => {
-                        self.expression()?;
-                        OpCode::SetGlobal(index)
-                    }
+                match assign {
+                    true => OpCode::SetGlobal(index),
                     false => OpCode::GetGlobal(index),
                 }
             }
@@ -611,94 +452,57 @@ impl<'scanner, 'function, 'a> Compiler<'scanner, 'function, 'a> {
         return Ok(None);
     }
 
-    pub fn binary(&mut self, token_type: &TokenType) -> Result<(), CompilerError> {
-        log::debug!("Binary expresion: {}", token_type);
-        let rule = self.get_rule(token_type);
-        self.parse_precedence(rule)?;
-
-        match token_type {
-            TokenType::Plus => self.emit_op_code(OpCode::Add),
-            TokenType::Minus => self.emit_op_code(OpCode::Substract),
-            TokenType::Star => self.emit_op_code(OpCode::Multiply),
-            TokenType::Slash => self.emit_op_code(OpCode::Divide),
-            TokenType::EqualEqual => self.emit_op_code(OpCode::Equal),
-            TokenType::BangEqual => self.emit_op_code(OpCode::NotEqual),
-            TokenType::Greater => self.emit_op_code(OpCode::Greater),
-            TokenType::GreaterEqual => self.emit_op_code(OpCode::GreaterOrEqual),
-            TokenType::Less => self.emit_op_code(OpCode::Less),
-            TokenType::LessEqual => self.emit_op_code(OpCode::LessOrEqual),
-            e => {
-                return Err(CompilerError::Unknown(format!(
-                    "Expected an operator here, got {e}"
-                )))
-            }
-        };
-        Ok(())
+    fn unary(&mut self, token: &ast::Unary) {
+        self.expression(&token.right);
+        self.unary_operator(&token.operator)
     }
 
-    pub fn unary(&mut self, token: &TokenType) -> Result<(), CompilerError> {
-        log::debug!("Unary starting");
-        self.parse_precedence(Precedence::Unary)?;
+    fn unary_operator(&mut self, token: &ast::UnaryOperator) {
+        self.emit_op_code(match token {
+            ast::UnaryOperator::Minus => OpCode::Negate,
+            ast::UnaryOperator::Bang => OpCode::Not,
+        })
+    }
+
+    pub fn grouping(&mut self, token: &ast::Grouping) {
+        self.expression(&token.expr);
+    }
+
+    // pub fn number(&mut self, number: &TokenType) -> Result<(), CompilerError> {
+    //     log::debug!("Number starting");
+    //     match number {
+    //         TokenType::Integer(i) => self.emit_constant(Variable::Integer(*i)),
+    //         _ => {
+    //             return Err(CompilerError::Unknown(
+    //                 "Should not have been something else than number".to_owned(),
+    //             ))
+    //         }
+    //     }
+
+    //     Ok(())
+    // }
+
+    // pub fn string(&mut self, token: &TokenType) -> Result<(), CompilerError> {
+    //     log::debug!("String starting");
+    //     match token {
+    //         TokenType::String(s) => self.emit_constant(Variable::String(Box::new(s.clone()))),
+    //         _ => {
+    //             return Err(CompilerError::Unknown(
+    //                 "Should not have been something else than number".to_owned(),
+    //             ))
+    //         }
+    //     }
+
+    //     Ok(())
+    // }
+
+    pub fn literal(&mut self, token: &ast::Literal) {
         match token {
-            TokenType::Minus => self.emit_op_code(OpCode::Negate),
-            TokenType::Not => self.emit_op_code(OpCode::Not),
-            e => {
-                return Err(CompilerError::Unknown(format!(
-                    "Expected a unary operator here, got {e}"
-                )))
+            ast::Literal::String(s) => self.emit_constant(Variable::String(Box::new(s.clone()))),
+            ast::Literal::Identifier(i) => {
+                self.emit_constant(Variable::Identifier(Box::new(i.clone())))
             }
         }
-        Ok(())
-    }
-
-    pub fn grouping(&mut self) -> Result<(), CompilerError> {
-        log::debug!("Grouping starting");
-        self.expression()?;
-        self.consume(TokenType::RightParen, "Expect ')' after an expression")
-    }
-
-    pub fn number(&mut self, number: &TokenType) -> Result<(), CompilerError> {
-        log::debug!("Number starting");
-        match number {
-            TokenType::Integer(i) => self.emit_constant(Variable::Integer(*i)),
-            _ => {
-                return Err(CompilerError::Unknown(
-                    "Should not have been something else than number".to_owned(),
-                ))
-            }
-        }
-
-        Ok(())
-    }
-
-    pub fn string(&mut self, token: &TokenType) -> Result<(), CompilerError> {
-        log::debug!("String starting");
-        match token {
-            TokenType::String(s) => self.emit_constant(Variable::String(Box::new(s.clone()))),
-            _ => {
-                return Err(CompilerError::Unknown(
-                    "Should not have been something else than number".to_owned(),
-                ))
-            }
-        }
-
-        Ok(())
-    }
-
-    pub fn literal(&mut self, token: &TokenType) -> Result<(), CompilerError> {
-        log::debug!("Starting literal {token}");
-        match token {
-            TokenType::False => self.emit_op_code(OpCode::False),
-            TokenType::True => self.emit_op_code(OpCode::True),
-            TokenType::None => self.emit_op_code(OpCode::None),
-            e => {
-                return Err(CompilerError::Unknown(format!(
-                    "Expected a literal, got {e}"
-                )))
-            }
-        };
-
-        Ok(())
     }
 
     pub fn end(mut self) -> Global {

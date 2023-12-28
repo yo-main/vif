@@ -20,6 +20,10 @@ impl<'a> Parser<'a> {
         }
     }
 
+    pub fn get_ast(self) -> Vec<ast::Stmt> {
+        self.ast
+    }
+
     pub fn build(&mut self) -> bool {
         loop {
             match self.declaration() {
@@ -495,6 +499,7 @@ mod tests {
     use super::ast::Unary;
     use super::ast::UnaryOperator;
     use super::ast::Value;
+    use super::ast::Variable;
     use super::Parser;
     use super::Scanner;
     use super::Token;
@@ -537,6 +542,28 @@ mod tests {
                 operator: UnaryOperator::Minus,
                 right: Box::new(Expr::Value(Value::Integer(1)))
             })))
+        );
+    }
+
+    #[test]
+    fn var_declaration() {
+        let string = "var coucou = -1\n";
+        let scanner = Scanner::new(string);
+        let mut parser = Parser::new(scanner);
+
+        let success = parser.build();
+
+        assert!(success);
+        assert_eq!(parser.ast.len(), 1);
+        assert_eq!(
+            parser.ast[0],
+            Stmt::Var(Variable {
+                name: "coucou".to_owned(),
+                value: Box::new(Expr::Unary(Unary {
+                    operator: UnaryOperator::Minus,
+                    right: Box::new(Expr::Value(Value::Integer(1)))
+                }))
+            })
         );
     }
 

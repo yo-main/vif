@@ -9,3 +9,4 @@ edition = "2021"
 log = "0.4.20"
 zeus-scanner = { version = "0.1.0", path = "../zeus-scanner" }
 zeus-objects = { version = "0.1.0", path = "../zeus-objects" }
+zeus-ast = { version = "0.1.0", path = "../zeus-ast" }

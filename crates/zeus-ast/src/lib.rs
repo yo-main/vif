@@ -6,6 +6,7 @@ use zeus_scanner::Scanner;
 
 pub fn build_ast(content: String) -> Vec<Stmt> {
     let scanner = Scanner::new(content.as_str());
-    let parser = Parser::new(scanner);
-    Vec::new()
+    let mut parser = Parser::new(scanner);
+    parser.build();
+    parser.get_ast()
 }

@@ -49,6 +49,7 @@ pub fn disassemble_instruction(offset: usize, op_code: &OpCode, chunk: &Chunk, g
         OpCode::Goto(i) => jump_instruction("OP_GOTO", i),
         OpCode::Call(i) => jump_instruction("OP_CALL", i),
         OpCode::AssertTrue => simple_instruction("OP_ASSERT_TRUE"),
+        OpCode::NotImplemented => simple_instruction("NOT_IMPLEMENTED"),
     }
 }
 
