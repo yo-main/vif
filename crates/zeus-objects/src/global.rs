@@ -111,3 +111,20 @@ impl Global {
             .position(|v| v.as_ref() == Some(variable))
     }
 }
+
+impl std::fmt::Debug for Global {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{:?}",
+            self.storage
+                .iter()
+                .filter(|v| match v {
+                    None => false,
+                    _ => true,
+                })
+                .map(|v| v.as_ref().unwrap())
+                .collect::<Vec<&Variable>>()
+        )
+    }
+}

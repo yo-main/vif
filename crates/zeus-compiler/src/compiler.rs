@@ -18,9 +18,6 @@ pub struct Compiler<'function> {
     function: &'function mut Function,
 }
 
-// TODO: this mixes both parsing and translation into bytecode at the same time
-// we should be able to split those 2 steps in distinct part: parsing AST, translation
-// potentially we could add more steps in between (like optimization)
 impl<'function> Compiler<'function> {
     pub fn new(function: &'function mut Function) -> Self {
         Compiler {
@@ -45,6 +42,7 @@ impl<'function> Compiler<'function> {
     fn emit_op_code(&mut self, op_code: OpCode) {
         self.function.chunk.write_chunk(op_code);
     }
+
     fn emit_jump(&mut self, op_code: OpCode) -> usize {
         self.emit_op_code(op_code);
         self.function.chunk.code.len() - 1
@@ -90,7 +88,7 @@ impl<'function> Compiler<'function> {
             }
             ast::Stmt::Condition(cond) => self.if_statement(cond),
             ast::Stmt::While(whi) => self.while_statement(whi),
-            ast::Stmt::Function(func) => self.function_statement(func),
+            ast::Stmt::Function(func) => self.function_declaration(func),
             ast::Stmt::Var(var) => self.var_declaration(var),
             ast::Stmt::Assert(ass) => self.assert_statement(ass),
         }
@@ -185,13 +183,14 @@ impl<'function> Compiler<'function> {
         Ok(())
     }
 
-    // fn function_declaration(&mut self) -> Result<(), CompilerError> {
-    //     log::debug!("Starting function declaration");
-    //     let var = self.parse_variable()?;
-    //     self.function_statement()?;
-    //     self.define_variable(var);
-    //     Ok(())
-    // }
+    fn function_declaration(&mut self, token: &ast::Function) -> Result<(), CompilerError> {
+        log::debug!("Starting function declaration");
+        // let var = self.parse_variable()?;
+        let index = self.register_variable(Variable::Identifier(Box::new(token.name.clone())));
+        self.function_statement(token)?;
+        self.define_variable(index);
+        Ok(())
+    }
 
     fn function_statement(&mut self, token: &ast::Function) -> Result<(), CompilerError> {
         log::debug!("Starting function statement");

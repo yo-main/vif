@@ -1,2 +1,5 @@
-var a = 1
-print(a)
+def coucou():
+	var a = 1
+	print(a)
+
+coucou()
