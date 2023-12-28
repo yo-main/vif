@@ -95,6 +95,11 @@ pub struct Return {
 }
 
 #[derive(Debug, PartialEq)]
+pub struct Assert {
+    pub value: Box<Expr>,
+}
+
+#[derive(Debug, PartialEq)]
 pub enum Number {
     Integer(i64),
     Float(f64),
@@ -169,6 +174,7 @@ pub enum Stmt {
     Condition(Condition),
     While(While),
     Return(Return),
+    Assert(Assert),
 }
 
 impl std::fmt::Display for Return {
@@ -190,6 +196,7 @@ impl std::fmt::Display for Stmt {
             Self::While(w) => write!(f, "{}", w),
             Self::Function(v) => write!(f, "{}", v),
             Self::Return(v) => write!(f, "{}", v),
+            Self::Assert(v) => write!(f, "{}", v),
         }
     }
 }
@@ -197,6 +204,12 @@ impl std::fmt::Display for Stmt {
 impl std::fmt::Display for Function {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "function[{}]", self.name)
+    }
+}
+
+impl std::fmt::Display for Assert {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "assert[{}]", self.value)
     }
 }
 

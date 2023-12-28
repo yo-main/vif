@@ -105,8 +105,26 @@ impl<'a> Parser<'a> {
             Ok(t) if t.r#type == TokenType::If => ast::Stmt::Condition(self.if_statement()?),
             Ok(t) if t.r#type == TokenType::While => ast::Stmt::While(self.while_statement()?),
             Ok(t) if t.r#type == TokenType::Return => ast::Stmt::Return(self.return_statement()?),
+            Ok(t) if t.r#type == TokenType::Assert => ast::Stmt::Assert(self.assert_statement()?),
             _ => ast::Stmt::Expression(self.expression()?),
         })
+    }
+
+    fn assert_statement(&mut self) -> Result<ast::Assert, AstError> {
+        self.scanner.scan().unwrap();
+
+        let value = match self.scanner.peek() {
+            Ok(t) if t.r#type == TokenType::NewLine => Box::new(ast::Expr::Value(Value::None)),
+            _ => self.expression()?,
+        };
+        let stmt = ast::Assert { value };
+
+        self.consume(
+            TokenType::NewLine,
+            "expects new line after assert statement",
+        )?;
+
+        Ok(stmt)
     }
 
     fn var_declaration(&mut self) -> Result<ast::Stmt, AstError> {

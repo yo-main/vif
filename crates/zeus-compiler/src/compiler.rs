@@ -92,6 +92,7 @@ impl<'function> Compiler<'function> {
             ast::Stmt::While(whi) => self.while_statement(whi),
             ast::Stmt::Function(func) => self.function_statement(func),
             ast::Stmt::Var(var) => self.var_declaration(var),
+            ast::Stmt::Assert(ass) => self.assert_statement(ass),
         }
     }
 
@@ -131,14 +132,12 @@ impl<'function> Compiler<'function> {
         Ok(())
     }
 
-    fn assert_statement(&mut self) {
-        // log::debug!("Starting assert statement");
-        // self.expression()?;
-
-        // self.consume(TokenType::NewLine, "Expects \\n after assert statement")?;
-        // self.emit_op_code(OpCode::AssertTrue);
-        // self.emit_op_code(OpCode::Pop);
-        // Ok(())
+    fn assert_statement(&mut self, token: &ast::Assert) -> Result<(), CompilerError> {
+        log::debug!("Starting assert statement");
+        self.expression(&token.value)?;
+        self.emit_op_code(OpCode::AssertTrue);
+        self.emit_op_code(OpCode::Pop);
+        Ok(())
     }
 
     fn while_statement(&mut self, token: &ast::While) -> Result<(), CompilerError> {
@@ -337,7 +336,6 @@ impl<'function> Compiler<'function> {
             ast::Value::Float(f) => self.emit_constant(Variable::Float(*f)),
             ast::Value::Variable(s) => {
                 self.variable(s, false)?;
-                // self.emit_constant(Variable::Identifier(Box::new(s.clone())))
             }
             ast::Value::True => self.emit_op_code(OpCode::True),
             ast::Value::False => self.emit_op_code(OpCode::False),
