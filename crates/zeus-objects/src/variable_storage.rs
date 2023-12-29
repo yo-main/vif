@@ -78,7 +78,6 @@ impl<'globals, 'value, 'variables> VariableStore<'globals, 'value> {
     }
 
     pub fn get(&self, key: &'globals str) -> &Value<'value> {
-        println!("{}", key);
         &self.storage.iter().find(|&v| v.key.eq(key)).unwrap().value
     }
 }

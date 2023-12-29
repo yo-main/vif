@@ -199,6 +199,24 @@ impl<'function> Compiler<'function> {
         std::mem::swap(&mut compiler.globals, &mut self.globals);
 
         compiler.begin_scope();
+        for variable in token.params.iter() {
+            compiler.register_variable(Variable::Identifier(Box::new(variable.clone())));
+            compiler.initialize_variable();
+        }
+
+        // loop {
+        //     match compiler.advance()? {
+        //         t if t.r#type == TokenType::Comma => (),
+        //         t if t.r#type == TokenType::RightParen => break,
+        //         t => {
+        //             compiler.function.arity += 1;
+        //             compiler.pending = Some(t);
+        //             let variable = compiler.parse_variable()?;
+        //             compiler.define_variable(variable);
+        //         }
+        //     }
+        // }
+
         log::debug!("Function compiling starting");
         compiler.compile(&token.body)?;
 
