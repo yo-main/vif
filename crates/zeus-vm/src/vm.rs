@@ -360,13 +360,13 @@ where
     }
 
     pub fn interpret(&mut self, op_code: &OpCode) -> Result<(), InterpreterError> {
-        log::debug!(
-            "op {}, stack: {:?}, global {:?}, variables: {:?}",
-            op_code,
-            self.stack,
-            self.globals,
-            self.variables
-        );
+        // log::debug!(
+        //     "op {}, stack: {:?}, global {:?}, variables: {:?}",
+        //     op_code,
+        //     self.stack,
+        //     self.globals,
+        //     self.variables
+        // );
 
         match op_code {
             OpCode::Print => {

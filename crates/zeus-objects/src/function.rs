@@ -26,6 +26,14 @@ impl PartialEq<usize> for Arity {
             Self::None => other == &0,
         }
     }
+
+    fn ne(&self, other: &usize) -> bool {
+        match self {
+            Self::Fixed(i) => i != other,
+            Self::Infinite => false,
+            Self::None => other != &0,
+        }
+    }
 }
 
 impl std::fmt::Display for Arity {
