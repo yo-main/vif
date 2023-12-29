@@ -1,5 +1,4 @@
 use crate::error::AstError;
-use zeus_objects::ast::Operator;
 use zeus_objects::ast::{self, Value};
 use zeus_scanner::Scanner;
 use zeus_scanner::Token;
@@ -47,7 +46,7 @@ impl<'a> Parser<'a> {
                 self.declaration()
             }
             t if t.r#type == TokenType::Var => self.var_declaration(),
-            t if t.r#type == TokenType::Def => self.function("function"),
+            t if t.r#type == TokenType::Def => self.function(),
             _ => self.statement(),
         }
         // for testing
@@ -56,7 +55,7 @@ impl<'a> Parser<'a> {
         // }))
     }
 
-    fn function(&mut self, kind: &str) -> Result<ast::Stmt, AstError> {
+    fn function(&mut self) -> Result<ast::Stmt, AstError> {
         self.scanner.scan()?;
 
         let name = match self.scanner.scan() {

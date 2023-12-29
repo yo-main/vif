@@ -5,7 +5,6 @@ pub enum AstError {
     ScannerError(ScanningError),
     ParsingError(String),
     EOF,
-    Generic,
 }
 
 impl From<ScanningError> for AstError {

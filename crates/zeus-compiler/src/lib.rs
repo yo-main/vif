@@ -1,8 +1,6 @@
 mod compiler;
 mod debug;
 mod error;
-mod parser_rule;
-mod precedence;
 
 pub use crate::error::CompilerError;
 use compiler::Compiler;

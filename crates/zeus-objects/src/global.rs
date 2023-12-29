@@ -92,7 +92,7 @@ impl Global {
     }
 
     pub fn push(&mut self, variable: Variable) {
-        self.storage[self.top].insert(variable);
+        let _ = self.storage[self.top].insert(variable);
         self.top += 1;
     }
 

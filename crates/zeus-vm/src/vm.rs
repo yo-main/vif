@@ -214,7 +214,7 @@ where
                     RuntimeErrorType::AssertFail(format!("0 is not true")),
                 ))
             }
-            Value::Float(0.0) => {
+            Value::Float(v) if v == &0.0 => {
                 return Err(InterpreterError::RuntimeError(
                     RuntimeErrorType::AssertFail(format!("0.0 is not true")),
                 ))
@@ -239,7 +239,7 @@ where
                     RuntimeErrorType::AssertFail(format!("0 is not true")),
                 ))
             }
-            Value::Constant(Variable::Float(0.0)) => {
+            Value::Constant(Variable::Float(v)) if v == &0.0 => {
                 return Err(InterpreterError::RuntimeError(
                     RuntimeErrorType::AssertFail(format!("0.0 is not true")),
                 ))

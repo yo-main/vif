@@ -1,6 +1,5 @@
 use crate::debug::disassemble_chunk;
 use crate::error::CompilerError;
-use crate::precedence::Precedence;
 use crate::NativeFunction;
 use crate::NativeFunctionCallee;
 use crate::OpCode;
@@ -35,10 +34,6 @@ impl<'function> Compiler<'function> {
         Ok(())
     }
 
-    fn r#return(&mut self, token: &ast::Return) -> Result<(), CompilerError> {
-        self.expression(&token.value)
-    }
-
     fn emit_op_code(&mut self, op_code: OpCode) {
         self.function.chunk.write_chunk(op_code);
     }
@@ -62,30 +57,12 @@ impl<'function> Compiler<'function> {
         }
     }
 
-    pub fn declaration(&mut self) {
-        // log::debug!("Starting declaration");
-        // match self.advance()? {
-        //     t if t.r#type == TokenType::NewLine => self.declaration(),
-        //     t if t.r#type == TokenType::Def => self.function_declaration(),
-        //     t if t.r#type == TokenType::Var => self.var_declaration(),
-        //     t => {
-        //         self.pending = Some(t);
-        //         self.statement()
-        //     }
-        // }
-    }
-
     pub fn statement(&mut self, token: &ast::Stmt) -> Result<(), CompilerError> {
         log::debug!("Starting statement");
         match token {
             ast::Stmt::Expression(expr) => self.expression_statement(expr),
             ast::Stmt::Return(ret) => self.return_statement(ret),
-            ast::Stmt::Block(blocks) => {
-                for block in blocks.iter() {
-                    self.statement(block)?;
-                }
-                Ok(())
-            }
+            ast::Stmt::Block(blocks) => self.block(blocks),
             ast::Stmt::Condition(cond) => self.if_statement(cond),
             ast::Stmt::While(whi) => self.while_statement(whi),
             ast::Stmt::Function(func) => self.function_declaration(func),
@@ -234,37 +211,24 @@ impl<'function> Compiler<'function> {
             self.statement(block)?;
         }
         Ok(())
-        // loop {
-        //     match self.advance()? {
-        //         t if t.r#type == TokenType::Dedent => break,
-        //         t if t.r#type == TokenType::NewLine => (),
-        //         t => {
-        //             self.pending = Some(t);
-        //             self.declaration()?;
-        //         }
-        //     }
-        // }
-        // log::debug!("Block ending");
-
-        // Ok(())
     }
 
     fn begin_scope(&mut self) {
         self.scope_depth += 1
     }
 
-    fn end_scope(&mut self) {
-        // Since we adjust stack on the VM, I'm wondering if that part is still needed ?
-        while let Some(variable) = self.function.locals.last() {
-            // TODO: maybe use a match here ?
-            if variable.depth.unwrap_or(usize::MAX) >= self.scope_depth {
-                self.function.locals.pop().unwrap();
-                self.emit_op_code(OpCode::Pop);
-            }
-        }
+    // fn end_scope(&mut self) {
+    //     // Since we adjust stack on the VM, I'm wondering if that part is still needed ?
+    //     while let Some(variable) = self.function.locals.last() {
+    //         // TODO: maybe use a match here ?
+    //         if variable.depth.unwrap_or(usize::MAX) >= self.scope_depth {
+    //             self.function.locals.pop().unwrap();
+    //             self.emit_op_code(OpCode::Pop);
+    //         }
+    //     }
 
-        self.scope_depth -= 1
-    }
+    //     self.scope_depth -= 1
+    // }
 
     fn var_declaration(&mut self, token: &ast::Variable) -> Result<(), CompilerError> {
         log::debug!("Starting variable declaration");
@@ -349,13 +313,11 @@ impl<'function> Compiler<'function> {
             ast::Value::String(s) => self.emit_constant(Variable::String(Box::new(s.clone()))),
             ast::Value::Integer(i) => self.emit_constant(Variable::Integer(*i)),
             ast::Value::Float(f) => self.emit_constant(Variable::Float(*f)),
-            ast::Value::Variable(s) => {
-                self.variable(s, false)?;
-            }
+            ast::Value::Variable(s) => self.variable(s, false)?,
             ast::Value::True => self.emit_op_code(OpCode::True),
             ast::Value::False => self.emit_op_code(OpCode::False),
-            ast::Value::Break => self.emit_op_code(OpCode::NotImplemented),
-            ast::Value::Continue => self.emit_op_code(OpCode::NotImplemented),
+            ast::Value::Break => self.break_loop()?,
+            ast::Value::Continue => self.continue_loop()?,
             ast::Value::NewLine => (),
             ast::Value::None => self.emit_op_code(OpCode::None),
             ast::Value::Ignore => (),
@@ -492,34 +454,6 @@ impl<'function> Compiler<'function> {
     pub fn grouping(&mut self, token: &ast::Grouping) -> Result<(), CompilerError> {
         self.expression(&token.expr)
     }
-
-    // pub fn number(&mut self, number: &TokenType) -> Result<(), CompilerError> {
-    //     log::debug!("Number starting");
-    //     match number {
-    //         TokenType::Integer(i) => self.emit_constant(Variable::Integer(*i)),
-    //         _ => {
-    //             return Err(CompilerError::Unknown(
-    //                 "Should not have been something else than number".to_owned(),
-    //             ))
-    //         }
-    //     }
-
-    //     Ok(())
-    // }
-
-    // pub fn string(&mut self, token: &TokenType) -> Result<(), CompilerError> {
-    //     log::debug!("String starting");
-    //     match token {
-    //         TokenType::String(s) => self.emit_constant(Variable::String(Box::new(s.clone()))),
-    //         _ => {
-    //             return Err(CompilerError::Unknown(
-    //                 "Should not have been something else than number".to_owned(),
-    //             ))
-    //         }
-    //     }
-
-    //     Ok(())
-    // }
 
     pub fn literal(&mut self, token: &ast::Literal) -> Result<(), CompilerError> {
         match token {

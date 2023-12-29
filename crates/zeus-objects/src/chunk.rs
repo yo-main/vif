@@ -13,7 +13,7 @@ impl Chunk {
         self.code.push(op_code);
     }
 
-    pub fn get_line(&self, index: usize) -> u64 {
+    pub fn get_line(&self, _index: usize) -> u64 {
         0
     }
 

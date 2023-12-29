@@ -69,6 +69,6 @@ impl std::fmt::Debug for InterpreterError {
 
 impl From<ValueError> for InterpreterError {
     fn from(value: ValueError) -> Self {
-        InterpreterError::RuntimeError(RuntimeErrorType::ValueError(format!("value")))
+        InterpreterError::RuntimeError(RuntimeErrorType::ValueError(format!("{value}")))
     }
 }
