@@ -23,6 +23,10 @@ impl<'a> Parser<'a> {
         self.ast
     }
 
+    pub fn get_errors(self) -> Vec<AstError> {
+        self.errors
+    }
+
     pub fn build(&mut self) -> bool {
         loop {
             match self.declaration() {

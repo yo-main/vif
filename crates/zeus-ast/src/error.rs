@@ -15,3 +15,13 @@ impl From<ScanningError> for AstError {
         }
     }
 }
+
+impl std::fmt::Display for AstError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::ScannerError(err) => write!(f, "{}", err),
+            Self::ParsingError(s) => write!(f, "{}", s),
+            Self::EOF => write!(f, "EOF"),
+        }
+    }
+}

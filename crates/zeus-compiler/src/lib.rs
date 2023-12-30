@@ -15,7 +15,7 @@ pub use zeus_objects::op_code::OpCode;
 pub use zeus_objects::variable::Variable;
 
 pub fn compile(content: String) -> Result<(Function, Global), CompilerError> {
-    let ast = build_ast(content);
+    let ast = build_ast(content).unwrap();
     let mut function = Function::new(Arity::None, "Main".to_owned());
     // let mut scanner = Scanner::new(content.as_str());
     let mut compiler = Compiler::new(&mut function);

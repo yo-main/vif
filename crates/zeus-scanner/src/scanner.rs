@@ -164,11 +164,15 @@ impl<'a> Tokenizer<'a> {
             TokenType::NewLine => {
                 self.line_start = true;
             }
+            TokenType::IgnoreNewLine => {
+                self.line_start = true;
+            }
             _ => (),
         };
 
         match token_type {
             TokenType::Ignore => self.scan_token(),
+            TokenType::IgnoreNewLine => self.scan_token(),
             TokenType::Comment(_) => self.scan_token(),
             t => Ok(Token::new(t, self.line)),
         }
@@ -205,7 +209,10 @@ impl<'a> Tokenizer<'a> {
                     self.advance().unwrap();
                     stack += 4;
                 }
-                &'\n' => return Ok(TokenType::Ignore),
+                &'\n' => {
+                    self.advance().unwrap();
+                    return Ok(TokenType::IgnoreNewLine);
+                }
                 _ => break,
             }
         }

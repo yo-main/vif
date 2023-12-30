@@ -1,0 +1,10 @@
+def test():
+
+	def closure():
+		print(1)
+		print(a)
+
+	var a = 2
+	closure()
+
+test()

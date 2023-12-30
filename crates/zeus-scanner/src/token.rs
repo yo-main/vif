@@ -71,6 +71,7 @@ pub enum TokenType {
     Dedent,
 
     // other
+    IgnoreNewLine,
     Ignore,
     EOF,
 }
@@ -97,6 +98,7 @@ impl Hash for TokenType {
             Self::Equal => state.write_u8(17),
             Self::Greater => state.write_u8(18),
             Self::Less => state.write_u8(19),
+            Self::IgnoreNewLine => state.write_u8(20),
             Self::NewLine => state.write_u8(21),
             Self::At => state.write_u8(22),
             Self::EqualEqual => state.write_u8(23),
@@ -185,6 +187,7 @@ impl Display for TokenType {
             TokenType::Greater => write!(f, ">"),
             TokenType::Less => write!(f, "<"),
             TokenType::NewLine => write!(f, "\\n"),
+            TokenType::IgnoreNewLine => write!(f, "\\n(-)"),
             TokenType::At => write!(f, "@"),
             TokenType::EqualEqual => write!(f, "=="),
             TokenType::BangEqual => write!(f, "!="),

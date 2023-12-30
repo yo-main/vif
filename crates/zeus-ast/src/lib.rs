@@ -4,10 +4,16 @@ use parser::Parser;
 use zeus_objects::ast::Stmt;
 use zeus_scanner::Scanner;
 
-pub fn build_ast(content: String) -> Vec<Stmt> {
+pub fn build_ast(content: String) -> Option<Vec<Stmt>> {
     let scanner = Scanner::new(content.as_str());
     let mut parser = Parser::new(scanner);
-    parser.build();
+    let res = parser.build();
+    if !res {
+        for res in parser.get_errors() {
+            println!("ERROR: {}", res);
+        }
+        return None;
+    }
 
     let ast = parser.get_ast();
     log::debug!("########### AST ##########");
@@ -15,5 +21,5 @@ pub fn build_ast(content: String) -> Vec<Stmt> {
         log::debug!("{:?}", token);
     }
     log::debug!("########### AST ##########");
-    ast
+    Some(ast)
 }
