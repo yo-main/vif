@@ -1,10 +1,10 @@
+var value = "coucou"
+
 def test(value):
 
 	def closure():
-		print(1)
-		print(value)
+		return value
 
-	print(value)
 	return closure
 
-test("a")()
+assert test("a")() == "coucou"
