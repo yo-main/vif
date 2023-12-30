@@ -410,14 +410,16 @@ impl<'a> Parser<'a> {
     fn factor(&mut self) -> Result<Box<ast::Expr>, AstError> {
         let left = self.unary()?;
 
-        for token in [&TokenType::Star, &TokenType::Slash] {
+        for token in [&TokenType::Star, &TokenType::Slash, &TokenType::Modulo] {
             if self.scanner.check(token) {
                 self.scanner.scan().unwrap();
                 let right = self.factor()?;
                 let operator = if token == &TokenType::Star {
                     ast::Operator::Multiply
-                } else {
+                } else if token == &TokenType::Slash {
                     ast::Operator::Divide
+                } else {
+                    ast::Operator::Modulo
                 };
 
                 return Ok(Box::new(ast::Expr::Binary(ast::Binary {

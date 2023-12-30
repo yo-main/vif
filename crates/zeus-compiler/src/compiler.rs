@@ -350,6 +350,7 @@ impl<'function> Compiler<'function> {
             ast::Operator::GreaterEqual => OpCode::GreaterOrEqual,
             ast::Operator::Equal => OpCode::Equal,
             ast::Operator::Comma => OpCode::NotImplemented,
+            ast::Operator::Modulo => OpCode::Modulo,
         })
     }
 

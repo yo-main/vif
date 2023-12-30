@@ -16,6 +16,7 @@ pub enum Operator {
     DevideEqual,
     MultiplyEqual,
     BangEqual,
+    Modulo,
     Greater,
     Less,
     GreaterEqual,
@@ -367,6 +368,7 @@ impl std::fmt::Display for Operator {
                 Self::GreaterEqual => ">=",
                 Self::Less => "<",
                 Self::LessEqual => "<=",
+                Self::Modulo => "%",
             }
         )
     }
