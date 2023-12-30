@@ -1,10 +1,10 @@
-def test():
+def test(value):
 
 	def closure():
 		print(1)
-		print(a)
+		print(value)
 
-	var a = 2
-	closure()
+	print(value)
+	return closure
 
-test()
+test("a")()

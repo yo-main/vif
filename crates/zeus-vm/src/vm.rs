@@ -174,7 +174,14 @@ where
 
     fn get_global(&mut self, i: usize) -> Result<(), InterpreterError> {
         match self.globals.get(i) {
-            Variable::Identifier(s) => self.stack.push(self.variables.get(s.as_str()).clone()),
+            Variable::Identifier(s) => match self.variables.get(s.as_str()) {
+                None => {
+                    return Err(InterpreterError::RuntimeError(
+                        RuntimeErrorType::UndeclaredVariable(format!("{}", s)),
+                    ))
+                }
+                Some(var) => self.stack.push(var.clone()),
+            },
             Variable::Native(f) => self.stack.push(Value::Native(f)),
             _ => return Err(InterpreterError::Impossible),
         }
