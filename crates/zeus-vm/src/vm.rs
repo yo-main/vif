@@ -97,6 +97,8 @@ where
             ));
         }
 
+        println!("COUCOU {}", func.name);
+        println!("COUCOU {}", self.stack);
         let new_frame = self.frame.start_new(func, self.stack.len() - arg_count - 1);
         self.previous_frames
             .push(std::mem::replace(&mut self.frame, new_frame));
