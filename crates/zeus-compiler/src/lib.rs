@@ -18,7 +18,7 @@ pub fn compile(content: String) -> Result<(Function, Global), CompilerError> {
     let ast = build_ast(content).unwrap();
     let mut function = Function::new(Arity::None, "Main".to_owned());
     // let mut scanner = Scanner::new(content.as_str());
-    let mut compiler = Compiler::new(&mut function);
+    let mut compiler = Compiler::new(&mut function, 0);
 
     compiler.compile(&ast)?;
 

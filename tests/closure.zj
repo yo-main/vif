@@ -2,9 +2,18 @@ var value = "coucou"
 
 def test(value):
 
+	var g = 3
+	var abc = 1
+
 	def closure():
+		assert g == 3
+		assert abc == 1
+		abc = 0
 		return value
 
-	return closure
+	print(1, value)
+	var res = closure
+	print(abc)
+	return res()
 
-assert test("a")() == "coucou"
+assert test("a") == "a"

@@ -41,4 +41,8 @@ where
     pub fn start_new(&self, function: &'function Function, stack_position: usize) -> Self {
         Self::new(function, 0, stack_position)
     }
+
+    pub fn get_function_name(&self) -> &str {
+        self.function.name.as_str()
+    }
 }

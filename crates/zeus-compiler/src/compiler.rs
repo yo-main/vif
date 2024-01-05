@@ -8,7 +8,9 @@ use zeus_objects::ast;
 use zeus_objects::function::Arity;
 use zeus_objects::function::Function;
 use zeus_objects::global::Global;
+use zeus_objects::local::InheritedLocalPos;
 use zeus_objects::local::Local;
+use zeus_objects::local::VariableType;
 
 pub struct Compiler<'function> {
     scope_depth: usize,
@@ -18,10 +20,10 @@ pub struct Compiler<'function> {
 }
 
 impl<'function> Compiler<'function> {
-    pub fn new(function: &'function mut Function) -> Self {
+    pub fn new(function: &'function mut Function, scope_depth: usize) -> Self {
         Compiler {
             function,
-            scope_depth: 0,
+            scope_depth,
             loop_details: Vec::new(),
             globals: Global::new(),
         }
@@ -162,7 +164,6 @@ impl<'function> Compiler<'function> {
 
     fn function_declaration(&mut self, token: &ast::Function) -> Result<(), CompilerError> {
         log::debug!("Starting function declaration");
-        // let var = self.parse_variable()?;
         let index = self.register_variable(Variable::Identifier(Box::new(token.name.clone())));
         self.function_statement(token)?;
         self.define_variable(index);
@@ -172,27 +173,33 @@ impl<'function> Compiler<'function> {
     fn function_statement(&mut self, token: &ast::Function) -> Result<(), CompilerError> {
         log::debug!("Starting function statement");
         let mut function = Function::new(Arity::Fixed(token.params.len()), token.name.clone());
-        let mut compiler = Compiler::new(&mut function);
+
+        if self.scope_depth > 0 {
+            // TODO: manage self.function.inherited_locals as well
+
+            for (i, local) in self.function.locals.iter().enumerate() {
+                match &local.variable {
+                    Variable::Identifier(s) => {
+                        function
+                            .inherited_locals
+                            .push(zeus_objects::local::InheritedLocal {
+                                var_name: s.clone(),
+                                depth: self.scope_depth,
+                                pos: i + 1,
+                            })
+                    }
+                    _ => (),
+                }
+            }
+        }
+
+        let mut compiler = Compiler::new(&mut function, self.scope_depth + 1);
         std::mem::swap(&mut compiler.globals, &mut self.globals);
 
-        compiler.begin_scope();
         for variable in token.params.iter() {
             compiler.register_variable(Variable::Identifier(Box::new(variable.clone())));
             compiler.initialize_variable();
         }
-
-        // loop {
-        //     match compiler.advance()? {
-        //         t if t.r#type == TokenType::Comma => (),
-        //         t if t.r#type == TokenType::RightParen => break,
-        //         t => {
-        //             compiler.function.arity += 1;
-        //             compiler.pending = Some(t);
-        //             let variable = compiler.parse_variable()?;
-        //             compiler.define_variable(variable);
-        //         }
-        //     }
-        // }
 
         log::debug!("Function compiling starting");
         compiler.compile(&token.body)?;
@@ -397,11 +404,15 @@ impl<'function> Compiler<'function> {
         log::debug!("Named variable {} (assign={})", variable, assign);
 
         let op_code = match self.resolve_local(&variable)? {
-            Some(index) => match assign {
+            VariableType::Local(index) => match assign {
                 true => OpCode::SetLocal(index),
                 false => OpCode::GetLocal(index),
             },
-            None => {
+            VariableType::Inherited(v) => match assign {
+                true => OpCode::SetInheritedLocal(v),
+                false => OpCode::GetInheritedLocal(v),
+            },
+            VariableType::None => {
                 let index = self.make_constant(variable);
                 match assign {
                     true => OpCode::SetGlobal(index),
@@ -414,12 +425,12 @@ impl<'function> Compiler<'function> {
         Ok(())
     }
 
-    fn resolve_local(&mut self, variable: &Variable) -> Result<Option<usize>, CompilerError> {
+    fn resolve_local(&mut self, variable: &Variable) -> Result<VariableType, CompilerError> {
         log::debug!("Resolve variable {}", variable);
         let var_name = match variable {
             Variable::Identifier(s) => s,
             Variable::Native(f) => f.name,
-            _ => return Ok(None), // TODO: I beg you to change that
+            e => return Err(CompilerError::Unknown(format!("Trying to resolve {e}"))),
         };
 
         for (i, local) in self.function.locals.iter().rev().enumerate() {
@@ -430,13 +441,22 @@ impl<'function> Compiler<'function> {
                             "Can't read local variable in its own initializer"
                         )));
                     }
-                    Some(_) => return Ok(Some(self.function.locals.len() - i)),
+                    Some(_) => return Ok(VariableType::Local(self.function.locals.len() - i)),
                 },
                 _ => (),
             }
         }
 
-        return Ok(None);
+        for local in self.function.inherited_locals.iter().rev() {
+            if local.var_name.as_str() == var_name {
+                return Ok(VariableType::Inherited(InheritedLocalPos {
+                    pos: local.pos,
+                    depth: local.depth,
+                }));
+            }
+        }
+
+        return Ok(VariableType::None);
     }
 
     fn unary(&mut self, token: &ast::Unary) -> Result<(), CompilerError> {

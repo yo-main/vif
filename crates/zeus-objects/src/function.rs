@@ -1,5 +1,5 @@
 use crate::chunk::Chunk;
-use crate::local::Local;
+use crate::local::{InheritedLocal, Local};
 
 #[derive(Clone, Copy)]
 pub enum Arity {
@@ -61,6 +61,7 @@ pub struct Function {
     pub chunk: Chunk,
     pub name: String,
     pub locals: Vec<Local>,
+    pub inherited_locals: Vec<InheritedLocal>,
 }
 
 impl PartialEq for Function {
@@ -69,13 +70,14 @@ impl PartialEq for Function {
     }
 }
 
-impl Function {
+impl<'p> Function {
     pub fn new(arity: Arity, name: String) -> Self {
         Self {
             arity,
             name,
             chunk: Chunk::new(),
             locals: Vec::new(),
+            inherited_locals: Vec::new(),
         }
     }
 

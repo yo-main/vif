@@ -7,6 +7,7 @@ use zeus_compiler::NativeFunction;
 use zeus_compiler::Variable;
 use zeus_native::execute_native_call;
 use zeus_objects::global::Global;
+use zeus_objects::local::InheritedLocalPos;
 use zeus_objects::op_code::OpCode;
 use zeus_objects::stack::Stack;
 use zeus_objects::value::Value;
@@ -164,10 +165,28 @@ where
         self.stack
             .push(self.stack.peek(i + self.frame.get_position()).clone())
     }
-
     fn set_local(&mut self, i: usize) {
         self.stack.set(
             i + self.frame.get_position(),
+            self.stack.peek_last().clone(),
+        )
+    }
+    fn get_inherited_local(&mut self, pos: &InheritedLocalPos) {
+        let frame = self.previous_frames.iter().nth(pos.depth - 1).unwrap();
+        // println!(
+        //     "COUCOU - with {} fetching {} in {}",
+        //     pos,
+        //     pos.pos + frame.get_position(),
+        //     self.stack
+        // );
+        self.stack
+            .push(self.stack.peek(pos.pos + frame.get_position()).clone())
+    }
+
+    fn set_inherited_local(&mut self, pos: &InheritedLocalPos) {
+        let frame = self.previous_frames.iter().nth(pos.depth).unwrap();
+        self.stack.set(
+            pos.pos + frame.get_position(),
             self.stack.peek_last().clone(),
         )
     }
@@ -389,6 +408,8 @@ where
             // WTF is that ?? It's working though but wow. I'll need to spend more time studying how
             OpCode::GetLocal(i) => self.get_local(*i),
             OpCode::SetLocal(i) => self.set_local(*i),
+            OpCode::GetInheritedLocal(v) => self.get_inherited_local(v),
+            OpCode::SetInheritedLocal(v) => self.set_inherited_local(v),
             OpCode::GetGlobal(i) => self.get_global(*i)?,
             OpCode::SetGlobal(i) => self.set_global(*i)?,
             OpCode::Constant(i) => self.constant(*i),

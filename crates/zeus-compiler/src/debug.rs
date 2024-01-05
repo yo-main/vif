@@ -24,8 +24,14 @@ pub fn disassemble_instruction(offset: usize, op_code: &OpCode, chunk: &Chunk, g
         OpCode::GlobalVariable(i) => constant_instruction("OP_GLOBAL_VARIABLE", chunk, *i, globals),
         OpCode::GetGlobal(i) => constant_instruction("OP_GET_GLOBAL", chunk, *i, globals),
         OpCode::SetGlobal(i) => constant_instruction("OP_SET_GLOBAL", chunk, *i, globals),
-        OpCode::GetLocal(i) => constant_instruction("OP_GET_LOCAL", chunk, *i, globals),
-        OpCode::SetLocal(i) => constant_instruction("OP_SET_LOCAL", chunk, *i, globals),
+        OpCode::GetLocal(i) => simple_instruction(format!("OP_GET_LOCAL({i})").as_str()),
+        OpCode::SetLocal(i) => simple_instruction(format!("OP_SET_LOCAL({i})").as_str()),
+        OpCode::GetInheritedLocal(v) => {
+            simple_instruction(format!("OP_GET_INHERITED_LOCAL({v})").as_str())
+        }
+        OpCode::SetInheritedLocal(v) => {
+            simple_instruction(format!("OP_SET_INHERITED_LOCAL({v})").as_str())
+        }
         OpCode::Negate => simple_instruction("OP_NEGATE"),
         OpCode::Add => simple_instruction("OP_ADD"),
         OpCode::Substract => simple_instruction("OP_SUBSTRACT"),

@@ -1,3 +1,5 @@
+use crate::local::InheritedLocalPos;
+
 #[derive(PartialEq, Debug)]
 pub enum OpCode {
     Return,
@@ -7,6 +9,8 @@ pub enum OpCode {
     SetGlobal(usize),
     GetLocal(usize),
     SetLocal(usize),
+    GetInheritedLocal(InheritedLocalPos),
+    SetInheritedLocal(InheritedLocalPos),
     Negate,
     Add,
     Substract,
@@ -43,6 +47,8 @@ impl std::fmt::Display for OpCode {
             Self::SetGlobal(c) => write!(f, "OP_SET_GLOBAL({c})"),
             Self::GetLocal(c) => write!(f, "OP_GET_LOCAL({c})"),
             Self::SetLocal(c) => write!(f, "OP_SET_LOCAL({c})"),
+            Self::GetInheritedLocal(v) => write!(f, "OP_GET_INHERITED_LOCAL({v})"),
+            Self::SetInheritedLocal(v) => write!(f, "OP_SET_INHERITED_LOCAL({v})"),
             Self::Negate => write!(f, "OP_NEGATE"),
             Self::Add => write!(f, "OP_ADD"),
             Self::Substract => write!(f, "OP_SUBSTRACT"),
