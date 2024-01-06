@@ -151,21 +151,33 @@ impl<'value> Stack<'value> {
     pub fn truncate(&mut self, n: usize) {
         self.top = n;
     }
+
+    pub fn get_items(&self) -> Vec<&Value<'_>> {
+        self.stack
+            .iter()
+            .filter(|v| match v {
+                None => false,
+                _ => true,
+            })
+            .map(|v| v.as_ref().unwrap())
+            .collect::<Vec<&Value<'_>>>()
+    }
 }
 
 impl std::fmt::Display for Stack<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{:?}",
+            "[{}]",
             self.stack
                 .iter()
                 .filter(|v| match v {
                     None => false,
                     _ => true,
                 })
-                .map(|v| v.as_ref().unwrap())
-                .collect::<Vec<&Value<'_>>>()
+                .map(|v| format!("{}", v.as_ref().unwrap()))
+                .collect::<Vec<String>>()
+                .join(", ")
         )
     }
 }

@@ -1,5 +1,11 @@
 def coucou():
-	var a = 1
-	print(a)
+	var a = True
 
-coucou()
+	def w():
+		return a
+
+
+	return w
+
+assert coucou()()
+

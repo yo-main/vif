@@ -6,15 +6,15 @@ def test(value):
 	var abc = 1
 
 	def closure():
-		# uncomment those and fix
-		# assert g == 3
-		# assert abc == 1
+		assert g == 3
+		assert abc == 1
 		# abc = 0
+		# assert abc == 0
 		return value
 
 	print(1, value)
-	var res = closure
-	print(abc)
-	return res
+	return closure
 
-assert test("a")() == "a"
+var res = test("a")()
+print(res)
+assert res == "a"

@@ -4,14 +4,32 @@ use crate::error::RuntimeErrorType;
 use crate::value_error;
 use zeus_compiler::Function;
 use zeus_compiler::NativeFunction;
-use zeus_compiler::Variable;
 use zeus_native::execute_native_call;
 use zeus_objects::global::Global;
 use zeus_objects::local::InheritedLocalPos;
 use zeus_objects::op_code::OpCode;
 use zeus_objects::stack::Stack;
 use zeus_objects::value::Value;
+use zeus_objects::variable::Variable;
 use zeus_objects::variable_storage::VariableStore;
+
+fn debug_stack(name: &str, stack: &Stack, frame: &CallFrame, previous_frames: &Vec<CallFrame>) {
+    let mut items: Vec<String> = Vec::new();
+    let mut frames = previous_frames.iter().collect::<Vec<&CallFrame>>();
+    frames.push(frame);
+    frames.remove(0);
+
+    for (i, value) in stack.get_items().iter().enumerate() {
+        if Some(i) == frames.first().and_then(|f| Some(f.get_position())) {
+            items.push(format!("| {value}"));
+            frames.remove(0);
+        } else {
+            items.push(format!("{value}"));
+        };
+    }
+
+    println!("{}: [{}]", name, items.join(", "));
+}
 
 pub struct VM<'function, 'stack, 'value, 'variables, 'globals>
 where
@@ -67,7 +85,10 @@ where
         let result = self.stack.pop();
 
         if self.previous_frames.len() > 0 {
-            self.stack.truncate(self.frame.get_position());
+            match result {
+                Value::Constant(Variable::Function(_)) => (), // function hasn't been called yet, don't get rid of its variable
+                _ => self.stack.truncate(self.frame.get_position()),
+            }
             self.frame = self.previous_frames.pop().unwrap();
             self.stack.push(result);
         }
@@ -97,8 +118,6 @@ where
             ));
         }
 
-        println!("COUCOU {}", func.name);
-        println!("COUCOU {}", self.stack);
         let new_frame = self.frame.start_new(func, self.stack.len() - arg_count - 1);
         self.previous_frames
             .push(std::mem::replace(&mut self.frame, new_frame));
@@ -175,6 +194,12 @@ where
     }
     fn get_inherited_local(&mut self, pos: &InheritedLocalPos) {
         let frame = self.previous_frames.iter().nth(pos.depth - 1).unwrap();
+        // debug_stack(
+        //     "get_inherited_local",
+        //     self.stack,
+        //     &self.frame,
+        //     &self.previous_frames,
+        // );
         // println!(
         //     "COUCOU - with {} fetching {} in {}",
         //     pos,
@@ -235,6 +260,7 @@ where
     }
 
     fn assert_true(&mut self) -> Result<(), InterpreterError> {
+        // debug_stack("assert", self.stack, &self.frame, &self.previous_frames);
         let value = self.stack.peek_last();
         match value {
             Value::Integer(0) => {
@@ -388,12 +414,13 @@ where
     }
 
     pub fn interpret(&mut self, op_code: &OpCode) -> Result<(), InterpreterError> {
-        // log::debug!(
-        //     "op {}, stack: {:?}, global {:?}, variables: {:?}",
-        //     op_code,
+        // println!(
+        //     "{:>50} | {:<10} | stack: {}",
+        //     format!("{op_code}"),
+        //     format!("{}", self.frame.get_function_name(),),
         //     self.stack,
-        //     self.globals,
-        //     self.variables
+        //     //     self.globals,
+        //     //     self.variables
         // );
 
         match op_code {
