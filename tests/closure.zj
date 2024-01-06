@@ -8,13 +8,13 @@ def test(value):
 	def closure():
 		assert g == 3
 		assert abc == 1
-		# abc = 0
-		# assert abc == 0
+
+		abc = 0
+		assert abc == 0
+
 		return value
 
 	print(1, value)
 	return closure
 
-var res = test("a")()
-print(res)
-assert res == "a"
+assert test("a")() == "a"

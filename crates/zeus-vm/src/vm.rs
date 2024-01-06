@@ -194,24 +194,12 @@ where
     }
     fn get_inherited_local(&mut self, pos: &InheritedLocalPos) {
         let frame = self.previous_frames.iter().nth(pos.depth - 1).unwrap();
-        // debug_stack(
-        //     "get_inherited_local",
-        //     self.stack,
-        //     &self.frame,
-        //     &self.previous_frames,
-        // );
-        // println!(
-        //     "COUCOU - with {} fetching {} in {}",
-        //     pos,
-        //     pos.pos + frame.get_position(),
-        //     self.stack
-        // );
         self.stack
             .push(self.stack.peek(pos.pos + frame.get_position()).clone())
     }
 
     fn set_inherited_local(&mut self, pos: &InheritedLocalPos) {
-        let frame = self.previous_frames.iter().nth(pos.depth).unwrap();
+        let frame = self.previous_frames.iter().nth(pos.depth - 1).unwrap();
         self.stack.set(
             pos.pos + frame.get_position(),
             self.stack.peek_last().clone(),
