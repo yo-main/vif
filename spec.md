@@ -2,25 +2,6 @@
 
 Zeus is supposed to be a simple, straight language for every day usage.
 
-## A python replacement
-
-It aims to replace python, plain and simple.
-
-Why, you ask ?
-Well, valid question. I like python. A lot. It's elegant, simple, easy to learn.
-It's the best way to onboard more people into the programing world. That's how I came in.
-
-But I'm also asking myself a lot of questions regarding python and its energy consumption. Seeing it
-as one of the most energivore language saddens me. It's a great language, I love it, but I consider
-that the world should offer us a language similar but which much better performance.
-
-That's what I aim to build. Yeah, that may be a huge claim, but that's my goal, and my way to motivate
-me to start working on that project.
-
-It's also a way for me to learn more about what's a programing language.
-
-I consider programing an art, and given my objectives for Zeus, it should be my most beautifully crafted piece of code.
-
 ## Main features
 
 ### Typing (not)

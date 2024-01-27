@@ -1,0 +1,15 @@
+def get(url, status_code):
+	if url == "/finance/invoice":
+		return 200
+	return 400
+
+def request(url):
+	var response = get(url)
+
+	if response == 200:
+		print("Yay")
+	else:
+		print("Boo")
+
+
+request("/finance/invoice")
