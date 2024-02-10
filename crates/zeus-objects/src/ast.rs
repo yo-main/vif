@@ -40,12 +40,6 @@ pub enum Group {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum Literal {
-    String(String),
-    Identifier(String),
-}
-
-#[derive(Debug, PartialEq)]
 pub struct Condition {
     pub expr: Box<Expr>,
     pub then: Box<Stmt>,
@@ -159,7 +153,6 @@ pub enum Expr {
     Binary(Binary),
     Unary(Unary),
     Grouping(Grouping),
-    Literal(Literal),
     Value(Value),
     Assign(Assign),
     Logical(Logical),
@@ -248,19 +241,6 @@ impl std::fmt::Display for Logical {
 impl std::fmt::Display for Variable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}={}", self.name, self.value)
-    }
-}
-
-impl std::fmt::Display for Literal {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Literal[{}]",
-            match self {
-                Self::String(v) => v,
-                Self::Identifier(v) => v,
-            }
-        )
     }
 }
 
@@ -411,7 +391,6 @@ impl std::fmt::Display for Expr {
             Expr::Binary(e) => write!(f, "{}", e),
             Expr::Unary(e) => write!(f, "{}", e),
             Expr::Grouping(e) => write!(f, "{}", e),
-            Expr::Literal(e) => write!(f, "{}", e),
             Expr::Value(e) => write!(f, "{}", e),
             Expr::Assign(e) => write!(f, "{}", e),
             Expr::Logical(e) => write!(f, "{}", e),

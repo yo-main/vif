@@ -32,11 +32,7 @@ impl<'a> Parser<'a> {
             match self.declaration() {
                 Ok(stmt) => self.ast.push(stmt),
                 Err(AstError::EOF) => break,
-                Err(err) => {
-                    // self.parse_error()
-                    //     .expect(&format!("Could not recover from error: {:?}", err));
-                    self.errors.push(err);
-                }
+                Err(err) => self.errors.push(err),
             };
         }
 
@@ -53,10 +49,6 @@ impl<'a> Parser<'a> {
             t if t.r#type == TokenType::Def => self.function(),
             _ => self.statement(),
         }
-        // for testing
-        // Ok(ast::Stmt::Return(ast::Return {
-        //     value: Box::new(ast::Expr::Value(Value::Integer(1))),
-        // }))
     }
 
     fn function(&mut self) -> Result<ast::Stmt, AstError> {
@@ -481,7 +473,6 @@ impl<'a> Parser<'a> {
             TokenType::Float(f) => Box::new(ast::Expr::Value(Value::Float(f))),
             TokenType::String(s) => Box::new(ast::Expr::Value(Value::String(s))),
             TokenType::Identifier(s) => Box::new(ast::Expr::Value(Value::Variable(s))),
-            // TokenType::NewLine => Box::new(ast::Expr::Value(Value::NewLine)),
             TokenType::Break => {
                 self.consume(TokenType::NewLine, "Expect new line after break")?;
                 Box::new(ast::Expr::Value(Value::Break))

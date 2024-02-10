@@ -294,7 +294,6 @@ impl<'function> Compiler<'function> {
             ast::Expr::Binary(t) => self.binary(t),
             ast::Expr::Unary(t) => self.unary(t),
             ast::Expr::Grouping(t) => self.grouping(t),
-            ast::Expr::Literal(t) => self.literal(t),
             ast::Expr::Value(t) => self.value(t),
             ast::Expr::Assign(t) => self.assign(t),
             ast::Expr::Logical(t) => self.logical(t),
@@ -474,16 +473,6 @@ impl<'function> Compiler<'function> {
 
     pub fn grouping(&mut self, token: &ast::Grouping) -> Result<(), CompilerError> {
         self.expression(&token.expr)
-    }
-
-    pub fn literal(&mut self, token: &ast::Literal) -> Result<(), CompilerError> {
-        match token {
-            ast::Literal::String(s) => self.emit_constant(Variable::String(Box::new(s.clone()))),
-            ast::Literal::Identifier(i) => {
-                self.emit_constant(Variable::Identifier(Box::new(i.clone())))
-            }
-        }
-        Ok(())
     }
 
     pub fn end(mut self) -> Global {
