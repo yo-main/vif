@@ -261,6 +261,69 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "711b9620af191e0cdc7468a8d14e709c3dcdb115b36f838e601583af800a370a"
 
 [[package]]
+name = "vif-ast"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "vif-objects",
+ "vif-scanner",
+]
+
+[[package]]
+name = "vif-cli"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "fern",
+ "log",
+ "vif-vm",
+]
+
+[[package]]
+name = "vif-compiler"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "vif-ast",
+ "vif-objects",
+ "vif-scanner",
+]
+
+[[package]]
+name = "vif-native"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "vif-compiler",
+ "vif-objects",
+]
+
+[[package]]
+name = "vif-objects"
+version = "0.1.0"
+
+[[package]]
+name = "vif-scanner"
+version = "0.1.0"
+dependencies = [
+ "log",
+]
+
+[[package]]
+name = "vif-vm"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "fern",
+ "log",
+ "vif-compiler",
+ "vif-native",
+ "vif-objects",
+ "vif-scanner",
+]
+
+[[package]]
 name = "wasm-bindgen"
 version = "0.2.88"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -388,66 +451,3 @@ name = "windows_x86_64_msvc"
 version = "0.48.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed94fce61571a4006852b7389a063ab983c02eb1bb37b47f8272ce92d06d9538"
-
-[[package]]
-name = "zeus-ast"
-version = "0.1.0"
-dependencies = [
- "log",
- "zeus-objects",
- "zeus-scanner",
-]
-
-[[package]]
-name = "zeus-cli"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "clap",
- "fern",
- "log",
- "zeus-vm",
-]
-
-[[package]]
-name = "zeus-compiler"
-version = "0.1.0"
-dependencies = [
- "log",
- "zeus-ast",
- "zeus-objects",
- "zeus-scanner",
-]
-
-[[package]]
-name = "zeus-native"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "zeus-compiler",
- "zeus-objects",
-]
-
-[[package]]
-name = "zeus-objects"
-version = "0.1.0"
-
-[[package]]
-name = "zeus-scanner"
-version = "0.1.0"
-dependencies = [
- "log",
-]
-
-[[package]]
-name = "zeus-vm"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "fern",
- "log",
- "zeus-compiler",
- "zeus-native",
- "zeus-objects",
- "zeus-scanner",
-]

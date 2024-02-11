@@ -1,4 +1,4 @@
-Reaching a stage where I can benchmark Zeus against itself or other languages.
+Reaching a stage where I can benchmark Vif against itself or other languages.
 
 Let's always use the release binary to run those tests.
 

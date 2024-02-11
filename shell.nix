@@ -1,5 +1,5 @@
 with import <nixpkgs> {};
 stdenv.mkDerivation {
-  name = "zeus-env";
+  name = "vif-env";
   nativeBuildInputs = [ stdenv rust-analyzer hyperfine mdbook rustup ];
 }

@@ -1,0 +1,10 @@
+[package]
+name = "vif-cli-prof"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dev-dependencies]
+pprof = { version = "0.13", features = ["flamegraph", "protobuf-codec", "prost-codec", "cpp"] }
+vif-cli = { version = "0.1.0", path = "../vif-cli" }

@@ -3,7 +3,7 @@ authors = ["Yomain"]
 language = "en"
 multilingual = false
 src = "src"
-title = "Zeus documentation"
+title = "Vif documentation"
 
 [preprocessor.toc]
 renderer = ["html"]

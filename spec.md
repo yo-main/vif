@@ -1,6 +1,6 @@
-# Zeus
+# Vif
 
-Zeus is supposed to be a simple, straight language for every day usage.
+Vif is supposed to be a simple, straight language for every day usage.
 
 ## Main features
 

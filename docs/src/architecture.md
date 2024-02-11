@@ -1,6 +1,6 @@
 # Compiler
 
-Zeus is a dynamic language.
+Vif is a dynamic language.
 
 It has a compiler that tries to do as much as possible as a way to reduce things to be done on runtime.
 Like any compilers goal, I guess.

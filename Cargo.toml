@@ -1,14 +1,14 @@
 [workspace]
 members = [
-  "crates/zeus-vm",
-  "crates/zeus-cli",
-  "crates/zeus-objects",
-  "crates/zeus-native",
-  "crates/zeus-scanner",
-  "crates/zeus-compiler",
-  "crates/zeus-ast",
+  "crates/vif-vm",
+  "crates/vif-cli",
+  "crates/vif-objects",
+  "crates/vif-native",
+  "crates/vif-scanner",
+  "crates/vif-compiler",
+  "crates/vif-ast",
 ]
-default-members = ["crates/zeus-cli"]
+default-members = ["crates/vif-cli"]
 resolver = "2"
 
 [profile.release]

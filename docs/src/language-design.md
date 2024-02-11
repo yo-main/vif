@@ -1,4 +1,4 @@
-# Design
+# Language Design
 
 I am not 100% of all the details and things might change but here's a few snippets of what I have in mind.
 
@@ -19,7 +19,7 @@ And I also suppose it will be less complex to manage for the interpreter because
 
 ## Constants
 
-Zeus has the notion of a constant, and as well as mutable for function parameters.
+Vif has the notion of a constant, and as well as mutable for function parameters.
 By default, function parameters are not mutable, you need to specify which parameter should be mutable.
 
 This is probably one of the most important difference with Python. Directly influenced by Rust as you might have guessed :)
@@ -81,7 +81,7 @@ def coucou(algo: AlgorithmInterface):
 I do want some kind of interface though. Different from a class and very similar to what a `Protocol` is in python.
 
 Another difference is that `self` is part of the language. 
-You can add it, or not, Zeus is smart enough to know if it's an instance method.
+You can add it, or not, Vif is smart enough to know if it's an instance method.
 
 You can add attribute in the interface, on top of methods.
 
@@ -95,7 +95,7 @@ If a type cannot be guessed and is not specified, then we would check that on ru
 But it will obviously lower performances.
 
 ```python
-# here zeus should be smart enough to understand that 
+# here vif should be smart enough to understand that 
 # `a` should be of type int and `b` of type int or float
 def add(a, b) -> int:
     return a + b
