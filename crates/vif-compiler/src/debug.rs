@@ -3,11 +3,13 @@ use vif_objects::global::Global;
 use vif_objects::op_code::OpCode;
 
 pub fn disassemble_chunk(chunk: &Chunk, name: &str, globals: &Global) {
-    println!("== {} ==", name);
-    chunk
-        .iter(0)
-        .enumerate()
-        .for_each(|(i, c)| disassemble_instruction(i, c, chunk, globals))
+    if std::env::var("DEBUG").is_ok() {
+        println!("== {} ==", name);
+        chunk
+            .iter(0)
+            .enumerate()
+            .for_each(|(i, c)| disassemble_instruction(i, c, chunk, globals))
+    }
 }
 
 pub fn disassemble_instruction(offset: usize, op_code: &OpCode, chunk: &Chunk, globals: &Global) {

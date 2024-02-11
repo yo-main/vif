@@ -28,17 +28,6 @@ But there's a small issue in my plan to conquer the world with Vif. I have zero 
 
 Here are a bunch of things which are still to be implemented:
 
-### Language features
-
-- [x] variable
-- [x] function
-- [x] closure
-- [ ] constant
-- [ ] class/interface
-- [ ] typing
-- [ ] module
-- [ ] standard lib
-- [ ] LLVM ? (lot of unknows here but I like what it offers. I just lack a lot of knowledge on the subject)
 
 ### Tooling
 
@@ -47,4 +36,93 @@ Here are a bunch of things which are still to be implemented:
 - [ ] linter
 - [ ] formatter
 - [ ] lsp server
+
+
+### Language features
+
+- [x] variable
+- [x] function
+- [x] closure
+- [ ] constant & mutables
+- [ ] class/interface
+- [ ] typing
+- [ ] error management
+- [ ] module
+- [ ] standard lib
+- [ ] LLVM ? (lot of unknows here but I like what it offers. I just lack a lot of knowledge on the subject)
+
+
+#### Closures
+
+I'm really considering whether I want closure in vif or not. It does complexify things a lot, and I don't see the usage of closures 
+that critical in python. They could be replaced by simple functions, we just need to pass parameters in.
+
+One advantage of vif is that passed variables can be mutated, contrary to python, so it does not prevent any use case and it enforces better
+design practices.
+
+Example of replacement
+
+```python
+def counter():
+  count = 0
+
+	def wrapper():
+		count = count + 1
+		return count
+
+	return wrapper
+
+var incr = counter()
+print(incr())
+print(incr())
+
+## and in vif
+def incr(mut i):
+  i += 1
+  return i
+  
+def counter():
+  return partial(incr, 0)
+
+var incr = counter()
+print(incr())
+print(incr())
+
+
+```
+
+So for now I have a few bugs in the way closures are managed, cf below. I'm considering whether I'll solve them or rather remove closure feature !
+
+--- 
+
+```python
+def sum(a, b, c):
+	def add():
+		def nested():
+			return a + b
+		return nested()
+
+	return add()
+
+assert sum(1, 2, 3) == 3
+```
+
+Here I get an error the variable `a` is not defined
+
+--- 
+
+```python
+def sum(a, b, c):
+	def add(i, j):
+		def nested():
+			return i + j
+		return nested()
+
+	return add(a, c)
+
+assert sum(1, 4, 3) == 4
+```
+
+This gives me `5` instead of `4`.
+
 

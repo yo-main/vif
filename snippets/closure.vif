@@ -1,0 +1,16 @@
+def counter():
+    var count = 0
+
+	def wrapper():
+		count = count + 1
+		return count
+
+	return wrapper
+
+var incr = counter()
+
+print(incr())
+print(incr())
+print(incr())
+print(incr())
+print(incr())
