@@ -69,6 +69,7 @@ pub struct Grouping {
 #[derive(Debug, PartialEq)]
 pub struct Variable {
     pub name: String,
+    pub mutable: bool,
     pub value: Box<Expr>,
 }
 

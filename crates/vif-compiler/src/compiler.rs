@@ -268,11 +268,18 @@ impl<'function> Compiler<'function> {
             self.function.locals.push(Local::new(variable, None));
             0
         } else {
-            self.make_constant(variable)
+            self.make_global(variable)
         }
     }
 
-    fn make_constant(&mut self, variable: Variable) -> usize {
+    fn get_global_index(&mut self, variable: Variable) -> Result<usize, CompilerError> {
+        match self.globals.find(&variable) {
+            Some(index) => Ok(index),
+            None => Err(CompilerError::ConstantNotFound(format!("{}", variable))),
+        }
+    }
+
+    fn make_global(&mut self, variable: Variable) -> usize {
         match self.globals.find(&variable) {
             Some(index) => return index,
             None => {
@@ -310,7 +317,7 @@ impl<'function> Compiler<'function> {
 
     fn assign(&mut self, token: &ast::Assign) -> Result<(), CompilerError> {
         self.expression(&token.value)?;
-        self.variable(token.name.as_str(), true)
+        self.set_variable(token.name.as_str())
     }
 
     fn value(&mut self, token: &ast::Value) -> Result<(), CompilerError> {
@@ -319,7 +326,7 @@ impl<'function> Compiler<'function> {
             ast::Value::String(s) => self.emit_constant(Variable::String(Box::new(s.clone()))),
             ast::Value::Integer(i) => self.emit_constant(Variable::Integer(*i)),
             ast::Value::Float(f) => self.emit_constant(Variable::Float(*f)),
-            ast::Value::Variable(s) => self.variable(s, false)?,
+            ast::Value::Variable(s) => self.get_variable(s)?,
             ast::Value::True => self.emit_op_code(OpCode::True),
             ast::Value::False => self.emit_op_code(OpCode::False),
             ast::Value::Break => self.break_loop()?,
@@ -384,53 +391,46 @@ impl<'function> Compiler<'function> {
         Ok(())
     }
 
-    pub fn variable(&mut self, var_name: &str, assign: bool) -> Result<(), CompilerError> {
-        log::debug!("Starting variable");
-        match var_name {
-            "get_time" => self.named_variable(
-                Variable::Native(NativeFunction::new(NativeFunctionCallee::GetTime)),
-                assign,
-            ),
-            "print" => self.named_variable(
-                Variable::Native(NativeFunction::new(NativeFunctionCallee::Print)),
-                assign,
-            ),
-            _ => self.named_variable(Variable::Identifier(Box::new(var_name.to_owned())), assign),
-        }
-    }
+    pub fn set_variable(&mut self, var_name: &str) -> Result<(), CompilerError> {
+        log::debug!("Starting variable assignment");
 
-    fn named_variable(&mut self, variable: Variable, assign: bool) -> Result<(), CompilerError> {
-        log::debug!("Named variable {} (assign={})", variable, assign);
-
-        let op_code = match self.resolve_local(&variable)? {
-            VariableType::Local(index) => match assign {
-                true => OpCode::SetLocal(index),
-                false => OpCode::GetLocal(index),
-            },
-            VariableType::Inherited(v) => match assign {
-                true => OpCode::SetInheritedLocal(v),
-                false => OpCode::GetInheritedLocal(v),
-            },
-            VariableType::None => {
-                let index = self.make_constant(variable);
-                match assign {
-                    true => OpCode::SetGlobal(index),
-                    false => OpCode::GetGlobal(index),
-                }
-            }
+        let op_code = match self.resolve_local(&var_name)? {
+            VariableType::Local(index) => OpCode::SetLocal(index),
+            VariableType::Inherited(v) => OpCode::SetInheritedLocal(v),
+            VariableType::None => OpCode::SetGlobal(
+                self.make_global(Variable::Identifier(Box::new(var_name.to_owned()))),
+            ),
         };
 
         self.emit_op_code(op_code);
         Ok(())
     }
 
-    fn resolve_local(&mut self, variable: &Variable) -> Result<VariableType, CompilerError> {
-        log::debug!("Resolve variable {}", variable);
-        let var_name = match variable {
-            Variable::Identifier(s) => s,
-            Variable::Native(f) => f.name,
-            e => return Err(CompilerError::Unknown(format!("Trying to resolve {e}"))),
+    pub fn get_variable(&mut self, var_name: &str) -> Result<(), CompilerError> {
+        log::debug!("Starting variable");
+
+        let op_code = match self.resolve_local(var_name)? {
+            VariableType::Local(index) => OpCode::GetLocal(index),
+            VariableType::Inherited(v) => OpCode::GetInheritedLocal(v),
+            VariableType::None => match var_name {
+                "get_time" => OpCode::GetGlobal(self.make_global(Variable::Native(
+                    NativeFunction::new(NativeFunctionCallee::GetTime),
+                ))),
+                "print" => OpCode::GetGlobal(self.make_global(Variable::Native(
+                    NativeFunction::new(NativeFunctionCallee::Print),
+                ))),
+                _ => OpCode::GetGlobal(
+                    self.get_global_index(Variable::Identifier(Box::new(var_name.to_owned())))?,
+                ),
+            },
         };
+
+        self.emit_op_code(op_code);
+        Ok(())
+    }
+
+    fn resolve_local(&mut self, var_name: &str) -> Result<VariableType, CompilerError> {
+        log::debug!("Resolve variable {}", var_name);
 
         for (i, local) in self.function.locals.iter().rev().enumerate() {
             match &local.variable {

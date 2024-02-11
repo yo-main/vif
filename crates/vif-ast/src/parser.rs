@@ -46,6 +46,7 @@ impl<'a> Parser<'a> {
                 self.declaration()
             }
             t if t.r#type == TokenType::Var => self.var_declaration(),
+            t if t.r#type == TokenType::Const => self.const_declaration(),
             t if t.r#type == TokenType::Def => self.function(),
             _ => self.statement(),
         }
@@ -153,7 +154,45 @@ impl<'a> Parser<'a> {
             "Expected new line after variable declaration",
         )?;
 
-        Ok(ast::Stmt::Var(ast::Variable { name, value: expr }))
+        Ok(ast::Stmt::Var(ast::Variable {
+            name,
+            mutable: true,
+            value: expr,
+        }))
+    }
+
+    fn const_declaration(&mut self) -> Result<ast::Stmt, AstError> {
+        self.scanner.scan()?;
+
+        let name = match self.scanner.scan() {
+            Ok(t) => match t.r#type {
+                TokenType::Identifier(s) => s,
+                t => {
+                    return Err(AstError::ParsingError(format!(
+                        "Expected an constant name, got {}",
+                        t
+                    )))
+                }
+            },
+            _ => {
+                return Err(AstError::ParsingError(format!(
+                    "Expected an constant name, got EOF"
+                )))
+            }
+        };
+
+        self.consume(TokenType::Equal, "Expected an =")?;
+        let expr = self.expression()?;
+        self.consume(
+            TokenType::NewLine,
+            "Expected new line after const declaration",
+        )?;
+
+        Ok(ast::Stmt::Var(ast::Variable {
+            name,
+            mutable: false,
+            value: expr,
+        }))
     }
 
     fn unary(&mut self) -> Result<Box<ast::Expr>, AstError> {
@@ -575,6 +614,7 @@ mod tests {
             parser.ast[0],
             Stmt::Var(Variable {
                 name: "coucou".to_owned(),
+                mutable: true,
                 value: Box::new(Expr::Unary(Unary {
                     operator: UnaryOperator::Minus,
                     right: Box::new(Expr::Value(Value::Integer(1)))
