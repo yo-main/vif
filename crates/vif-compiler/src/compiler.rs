@@ -197,8 +197,7 @@ impl<'function> Compiler<'function> {
         std::mem::swap(&mut compiler.globals, &mut self.globals);
 
         for variable in token.params.iter() {
-            compiler.register_variable(Variable::Identifier(Box::new(variable.clone())));
-            compiler.initialize_variable();
+            compiler.register_function_parameter(Variable::Identifier(Box::new(variable.clone())));
         }
 
         log::debug!("Function compiling starting");
@@ -270,6 +269,12 @@ impl<'function> Compiler<'function> {
         } else {
             self.make_global(variable)
         }
+    }
+
+    fn register_function_parameter(&mut self, variable: Variable) {
+        self.function
+            .locals
+            .push(Local::new(variable, Some(self.scope_depth)));
     }
 
     fn get_global_index(&mut self, variable: Variable) -> Result<usize, CompilerError> {
