@@ -7,7 +7,7 @@ use crate::Variable;
 use vif_objects::ast;
 use vif_objects::function::Arity;
 use vif_objects::function::Function;
-use vif_objects::global::Global;
+use vif_objects::global::GlobalStore;
 use vif_objects::local::InheritedLocalPos;
 use vif_objects::local::Local;
 use vif_objects::local::VariableType;
@@ -15,7 +15,7 @@ use vif_objects::local::VariableType;
 pub struct Compiler<'function> {
     scope_depth: usize,
     loop_details: Vec<(usize, usize)>,
-    globals: Global,
+    globals: GlobalStore,
     function: &'function mut Function,
 }
 
@@ -25,7 +25,7 @@ impl<'function> Compiler<'function> {
             function,
             scope_depth,
             loop_details: Vec::new(),
-            globals: Global::new(),
+            globals: GlobalStore::new(),
         }
     }
 
@@ -480,7 +480,7 @@ impl<'function> Compiler<'function> {
         self.expression(&token.expr)
     }
 
-    pub fn end(mut self) -> Global {
+    pub fn end(mut self) -> GlobalStore {
         match self.function.chunk.code.last() {
             Some(OpCode::Return) => (),
             _ => {

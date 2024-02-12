@@ -1,8 +1,8 @@
 use vif_objects::chunk::Chunk;
-use vif_objects::global::Global;
+use vif_objects::global::GlobalStore;
 use vif_objects::op_code::OpCode;
 
-pub fn disassemble_chunk(chunk: &Chunk, name: &str, globals: &Global) {
+pub fn disassemble_chunk(chunk: &Chunk, name: &str, globals: &GlobalStore) {
     if std::env::var("DEBUG").is_ok() {
         println!("== {} ==", name);
         chunk
@@ -12,7 +12,12 @@ pub fn disassemble_chunk(chunk: &Chunk, name: &str, globals: &Global) {
     }
 }
 
-pub fn disassemble_instruction(offset: usize, op_code: &OpCode, chunk: &Chunk, globals: &Global) {
+pub fn disassemble_instruction(
+    offset: usize,
+    op_code: &OpCode,
+    chunk: &Chunk,
+    globals: &GlobalStore,
+) {
     print!("{:0>4} ", offset);
     if offset > 0 && chunk.get_line(offset - 1) == chunk.get_line(offset) {
         print!("{char:>4} ", char = "|",);
@@ -69,6 +74,6 @@ fn jump_instruction(name: &str, jump: &usize) {
     println!("{} {}", name, jump);
 }
 
-fn constant_instruction(name: &str, _chunk: &Chunk, index: usize, globals: &Global) {
+fn constant_instruction(name: &str, _chunk: &Chunk, index: usize, globals: &GlobalStore) {
     println!("{} {}", name, globals.get(index));
 }

@@ -5,7 +5,7 @@ use crate::value_error;
 use vif_compiler::Function;
 use vif_compiler::NativeFunction;
 use vif_native::execute_native_call;
-use vif_objects::global::Global;
+use vif_objects::global::GlobalStore;
 use vif_objects::local::InheritedLocalPos;
 use vif_objects::op_code::OpCode;
 use vif_objects::stack::Stack;
@@ -37,7 +37,7 @@ where
 {
     pub stack: &'stack mut Stack<'value>,
     pub variables: &'variables mut VariableStore<'globals, 'value>,
-    pub globals: &'globals Global,
+    pub globals: &'globals GlobalStore,
     pub frame: CallFrame<'stack, 'function>,
     pub previous_frames: Vec<CallFrame<'stack, 'function>>,
 }
@@ -51,7 +51,7 @@ where
     pub fn new(
         stack: &'stack mut Stack<'value>,
         variables: &'variables mut VariableStore<'globals, 'value>,
-        globals: &'globals Global,
+        globals: &'globals GlobalStore,
         frame: CallFrame<'stack, 'function>,
     ) -> Self {
         VM {
@@ -99,7 +99,7 @@ where
                 //         x = 1
                 //
                 // when x=2, we need to know it's a inherited variable
-                Value::Constant(Variable::Function(_)) => (),
+                Value::Global(Variable::Function(_)) => (),
                 _ => self.stack.truncate(self.frame.get_position()),
             }
             self.frame = self.previous_frames.pop().unwrap();
@@ -162,7 +162,7 @@ where
 
     fn call(&mut self, arg_count: usize) -> Result<(), InterpreterError> {
         match self.stack.peek(self.stack.len() - arg_count - 1) {
-            Value::Constant(Variable::Function(func)) => self.call_function(func, arg_count),
+            Value::Global(Variable::Function(func)) => self.call_function(func, arg_count),
             Value::Native(func) => self.call_native(func, arg_count),
             v => {
                 return Err(InterpreterError::CompileError(format!(
@@ -187,8 +187,8 @@ where
             Value::Boolean(false) => self.frame.advance_by(i),
             Value::Integer(0) => self.frame.advance_by(i),
             Value::Float(v) if v == &0.0 => self.frame.advance_by(i),
-            Value::Constant(Variable::Integer(0)) => self.frame.advance_by(i),
-            Value::Constant(Variable::Float(v)) if v == &0.0 => self.frame.advance_by(i),
+            Value::Global(Variable::Integer(0)) => self.frame.advance_by(i),
+            Value::Global(Variable::Float(v)) if v == &0.0 => self.frame.advance_by(i),
             Value::String(s) if s.is_empty() => self.frame.advance_by(i),
             Value::None => self.frame.advance_by(i),
             _ => (),
@@ -257,7 +257,7 @@ where
     }
 
     fn constant(&mut self, i: usize) {
-        self.stack.push(Value::Constant(self.globals.get(i)))
+        self.stack.push(Value::Global(self.globals.get(i)))
     }
 
     fn assert_true(&mut self) -> Result<(), InterpreterError> {
@@ -289,17 +289,17 @@ where
                     RuntimeErrorType::AssertFail(format!("None")),
                 ))
             }
-            Value::Constant(Variable::Integer(0)) => {
+            Value::Global(Variable::Integer(0)) => {
                 return Err(InterpreterError::RuntimeError(
                     RuntimeErrorType::AssertFail(format!("0 is not true")),
                 ))
             }
-            Value::Constant(Variable::Float(v)) if v == &0.0 => {
+            Value::Global(Variable::Float(v)) if v == &0.0 => {
                 return Err(InterpreterError::RuntimeError(
                     RuntimeErrorType::AssertFail(format!("0.0 is not true")),
                 ))
             }
-            Value::Constant(Variable::String(s)) if s.is_empty() => {
+            Value::Global(Variable::String(s)) if s.is_empty() => {
                 return Err(InterpreterError::RuntimeError(
                     RuntimeErrorType::AssertFail(format!("Empty string is not true")),
                 ))
@@ -318,9 +318,9 @@ where
             Value::Float(ref mut f) => *value = Value::Boolean(f == &0.0),
             Value::Boolean(ref mut b) => *b = !*b,
             Value::None => *value = Value::Boolean(true),
-            Value::Constant(Variable::Integer(i)) => *value = Value::Boolean(*i == 0),
-            Value::Constant(Variable::Float(f)) => *value = Value::Boolean(*f == 0.0),
-            Value::Constant(Variable::String(s)) => *value = Value::Boolean(s.is_empty()),
+            Value::Global(Variable::Integer(i)) => *value = Value::Boolean(*i == 0),
+            Value::Global(Variable::Float(f)) => *value = Value::Boolean(*f == 0.0),
+            Value::Global(Variable::String(s)) => *value = Value::Boolean(s.is_empty()),
             _ => return value_error!("Can't compare {value}"),
         };
 
@@ -333,8 +333,8 @@ where
             Value::Integer(ref mut i) => *i *= -1,
             Value::Float(ref mut f) => *f *= -1.0,
             Value::Boolean(ref mut b) => *b = b == &false,
-            Value::Constant(Variable::Integer(i)) => *value = Value::Integer(i * -1),
-            Value::Constant(Variable::Float(f)) => *value = Value::Float(f * -1.0),
+            Value::Global(Variable::Integer(i)) => *value = Value::Integer(i * -1),
+            Value::Global(Variable::Float(f)) => *value = Value::Float(f * -1.0),
             _ => return value_error!("Can't negate {value}"),
         };
 

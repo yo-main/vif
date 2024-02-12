@@ -78,14 +78,14 @@ macro_rules! create_array {
     };
 }
 
-pub struct Global {
+pub struct GlobalStore {
     storage: [Option<Variable>; 1000],
     top: usize,
 }
 
-impl Global {
+impl GlobalStore {
     pub fn new() -> Self {
-        Global {
+        GlobalStore {
             storage: create_array!(),
             top: 0,
         }
@@ -112,7 +112,7 @@ impl Global {
     }
 }
 
-impl std::fmt::Debug for Global {
+impl std::fmt::Debug for GlobalStore {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
