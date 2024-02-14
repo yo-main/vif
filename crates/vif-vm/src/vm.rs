@@ -5,12 +5,12 @@ use crate::value_error;
 use vif_compiler::Function;
 use vif_compiler::NativeFunction;
 use vif_native::execute_native_call;
-use vif_objects::global::GlobalStore;
+use vif_objects::global::Global;
+use vif_objects::global_store::GlobalStore;
 use vif_objects::local::InheritedLocalPos;
 use vif_objects::op_code::OpCode;
 use vif_objects::stack::Stack;
 use vif_objects::value::Value;
-use vif_objects::variable::Variable;
 use vif_objects::variable_storage::VariableStore;
 
 fn debug_stack(name: &str, stack: &Stack, frame: &CallFrame, previous_frames: &Vec<CallFrame>) {
@@ -99,7 +99,7 @@ where
                 //         x = 1
                 //
                 // when x=2, we need to know it's a inherited variable
-                Value::Global(Variable::Function(_)) => (),
+                Value::Global(Global::Function(_)) => (),
                 _ => self.stack.truncate(self.frame.get_position()),
             }
             self.frame = self.previous_frames.pop().unwrap();
@@ -108,7 +108,7 @@ where
     }
 
     fn global_variable(&mut self, i: usize) -> Result<(), InterpreterError> {
-        if let Variable::Identifier(var_name) = self.globals.get(i) {
+        if let Global::Identifier(var_name) = self.globals.get(i) {
             self.variables.insert(var_name, self.stack.pop());
         } else {
             return Err(InterpreterError::Impossible);
@@ -162,7 +162,7 @@ where
 
     fn call(&mut self, arg_count: usize) -> Result<(), InterpreterError> {
         match self.stack.peek(self.stack.len() - arg_count - 1) {
-            Value::Global(Variable::Function(func)) => self.call_function(func, arg_count),
+            Value::Global(Global::Function(func)) => self.call_function(func, arg_count),
             Value::Native(func) => self.call_native(func, arg_count),
             v => {
                 return Err(InterpreterError::CompileError(format!(
@@ -187,8 +187,8 @@ where
             Value::Boolean(false) => self.frame.advance_by(i),
             Value::Integer(0) => self.frame.advance_by(i),
             Value::Float(v) if v == &0.0 => self.frame.advance_by(i),
-            Value::Global(Variable::Integer(0)) => self.frame.advance_by(i),
-            Value::Global(Variable::Float(v)) if v == &0.0 => self.frame.advance_by(i),
+            Value::Global(Global::Integer(0)) => self.frame.advance_by(i),
+            Value::Global(Global::Float(v)) if v == &0.0 => self.frame.advance_by(i),
             Value::String(s) if s.is_empty() => self.frame.advance_by(i),
             Value::None => self.frame.advance_by(i),
             _ => (),
@@ -221,7 +221,7 @@ where
 
     fn get_global(&mut self, i: usize) -> Result<(), InterpreterError> {
         match self.globals.get(i) {
-            Variable::Identifier(s) => match self.variables.get(s.as_str()) {
+            Global::Identifier(s) => match self.variables.get(s.as_str()) {
                 None => {
                     return Err(InterpreterError::RuntimeError(
                         RuntimeErrorType::UndeclaredVariable(format!("{}", s)),
@@ -229,7 +229,7 @@ where
                 }
                 Some(var) => self.stack.push(var.clone()),
             },
-            Variable::Native(f) => self.stack.push(Value::Native(f)),
+            Global::Native(f) => self.stack.push(Value::Native(f)),
             _ => return Err(InterpreterError::Impossible),
         }
 
@@ -237,7 +237,7 @@ where
     }
 
     fn set_global(&mut self, i: usize) -> Result<(), InterpreterError> {
-        if let Variable::Identifier(var_name) = self.globals.get(i) {
+        if let Global::Identifier(var_name) = self.globals.get(i) {
             if !self.variables.insert(
                 var_name,
                 self.stack.peek_last().clone(), // here we clone because the assignement might be part of a larger expression
@@ -289,17 +289,17 @@ where
                     RuntimeErrorType::AssertFail(format!("None")),
                 ))
             }
-            Value::Global(Variable::Integer(0)) => {
+            Value::Global(Global::Integer(0)) => {
                 return Err(InterpreterError::RuntimeError(
                     RuntimeErrorType::AssertFail(format!("0 is not true")),
                 ))
             }
-            Value::Global(Variable::Float(v)) if v == &0.0 => {
+            Value::Global(Global::Float(v)) if v == &0.0 => {
                 return Err(InterpreterError::RuntimeError(
                     RuntimeErrorType::AssertFail(format!("0.0 is not true")),
                 ))
             }
-            Value::Global(Variable::String(s)) if s.is_empty() => {
+            Value::Global(Global::String(s)) if s.is_empty() => {
                 return Err(InterpreterError::RuntimeError(
                     RuntimeErrorType::AssertFail(format!("Empty string is not true")),
                 ))
@@ -318,9 +318,9 @@ where
             Value::Float(ref mut f) => *value = Value::Boolean(f == &0.0),
             Value::Boolean(ref mut b) => *b = !*b,
             Value::None => *value = Value::Boolean(true),
-            Value::Global(Variable::Integer(i)) => *value = Value::Boolean(*i == 0),
-            Value::Global(Variable::Float(f)) => *value = Value::Boolean(*f == 0.0),
-            Value::Global(Variable::String(s)) => *value = Value::Boolean(s.is_empty()),
+            Value::Global(Global::Integer(i)) => *value = Value::Boolean(*i == 0),
+            Value::Global(Global::Float(f)) => *value = Value::Boolean(*f == 0.0),
+            Value::Global(Global::String(s)) => *value = Value::Boolean(s.is_empty()),
             _ => return value_error!("Can't compare {value}"),
         };
 
@@ -333,8 +333,8 @@ where
             Value::Integer(ref mut i) => *i *= -1,
             Value::Float(ref mut f) => *f *= -1.0,
             Value::Boolean(ref mut b) => *b = b == &false,
-            Value::Global(Variable::Integer(i)) => *value = Value::Integer(i * -1),
-            Value::Global(Variable::Float(f)) => *value = Value::Float(f * -1.0),
+            Value::Global(Global::Integer(i)) => *value = Value::Integer(i * -1),
+            Value::Global(Global::Float(f)) => *value = Value::Float(f * -1.0),
             _ => return value_error!("Can't negate {value}"),
         };
 

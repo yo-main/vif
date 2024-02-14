@@ -1,13 +1,13 @@
 use crate::debug::disassemble_chunk;
 use crate::error::CompilerError;
+use crate::Global;
 use crate::NativeFunction;
 use crate::NativeFunctionCallee;
 use crate::OpCode;
-use crate::Variable;
 use vif_objects::ast;
 use vif_objects::function::Arity;
 use vif_objects::function::Function;
-use vif_objects::global::GlobalStore;
+use vif_objects::global_store::GlobalStore;
 use vif_objects::local::InheritedLocalPos;
 use vif_objects::local::Local;
 use vif_objects::local::VariableType;
@@ -45,7 +45,7 @@ impl<'function> Compiler<'function> {
         self.function.chunk.code.len() - 1
     }
 
-    fn emit_constant(&mut self, variable: Variable) {
+    fn emit_global(&mut self, variable: Global) {
         self.globals.push(variable);
         self.emit_op_code(OpCode::Constant(self.globals.len() - 1))
     }
@@ -202,7 +202,7 @@ impl<'function> Compiler<'function> {
         let mut globals = compiler.end();
         std::mem::swap(&mut globals, &mut self.globals);
         log::debug!("Function compiling terminated");
-        self.emit_constant(Variable::Function(Box::new(function)));
+        self.emit_global(Global::Function(Box::new(function)));
         Ok(())
     }
 
@@ -262,7 +262,7 @@ impl<'function> Compiler<'function> {
             self.function.locals.push(Local::new(variable_name, None));
             0
         } else {
-            self.make_global(Variable::Identifier(variable_name))
+            self.make_global(Global::Identifier(variable_name))
         }
     }
 
@@ -272,14 +272,14 @@ impl<'function> Compiler<'function> {
             .push(Local::new(variable_name, Some(self.scope_depth)));
     }
 
-    fn get_global_index(&mut self, variable: Variable) -> Result<usize, CompilerError> {
+    fn get_global_index(&mut self, variable: Global) -> Result<usize, CompilerError> {
         match self.globals.find(&variable) {
             Some(index) => Ok(index),
             None => Err(CompilerError::ConstantNotFound(format!("{}", variable))),
         }
     }
 
-    fn make_global(&mut self, variable: Variable) -> usize {
+    fn make_global(&mut self, variable: Global) -> usize {
         match self.globals.find(&variable) {
             Some(index) => return index,
             None => {
@@ -323,9 +323,9 @@ impl<'function> Compiler<'function> {
     fn value(&mut self, token: &ast::Value) -> Result<(), CompilerError> {
         match token {
             ast::Value::Operator(o) => self.operator(o),
-            ast::Value::String(s) => self.emit_constant(Variable::String(Box::new(s.clone()))),
-            ast::Value::Integer(i) => self.emit_constant(Variable::Integer(*i)),
-            ast::Value::Float(f) => self.emit_constant(Variable::Float(*f)),
+            ast::Value::String(s) => self.emit_global(Global::String(Box::new(s.clone()))),
+            ast::Value::Integer(i) => self.emit_global(Global::Integer(*i)),
+            ast::Value::Float(f) => self.emit_global(Global::Float(*f)),
             ast::Value::Variable(s) => self.get_variable(s)?,
             ast::Value::True => self.emit_op_code(OpCode::True),
             ast::Value::False => self.emit_op_code(OpCode::False),
@@ -398,7 +398,7 @@ impl<'function> Compiler<'function> {
             VariableType::Local(index) => OpCode::SetLocal(index),
             VariableType::Inherited(v) => OpCode::SetInheritedLocal(v),
             VariableType::None => OpCode::SetGlobal(
-                self.make_global(Variable::Identifier(Box::new(var_name.to_owned()))),
+                self.make_global(Global::Identifier(Box::new(var_name.to_owned()))),
             ),
         };
 
@@ -413,14 +413,14 @@ impl<'function> Compiler<'function> {
             VariableType::Local(index) => OpCode::GetLocal(index),
             VariableType::Inherited(v) => OpCode::GetInheritedLocal(v),
             VariableType::None => match var_name {
-                "get_time" => OpCode::GetGlobal(self.make_global(Variable::Native(
+                "get_time" => OpCode::GetGlobal(self.make_global(Global::Native(
                     NativeFunction::new(NativeFunctionCallee::GetTime),
                 ))),
-                "print" => OpCode::GetGlobal(self.make_global(Variable::Native(
+                "print" => OpCode::GetGlobal(self.make_global(Global::Native(
                     NativeFunction::new(NativeFunctionCallee::Print),
                 ))),
                 _ => OpCode::GetGlobal(
-                    self.get_global_index(Variable::Identifier(Box::new(var_name.to_owned())))?,
+                    self.get_global_index(Global::Identifier(Box::new(var_name.to_owned())))?,
                 ),
             },
         };

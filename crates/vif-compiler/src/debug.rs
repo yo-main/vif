@@ -1,5 +1,5 @@
 use vif_objects::chunk::Chunk;
-use vif_objects::global::GlobalStore;
+use vif_objects::global_store::GlobalStore;
 use vif_objects::op_code::OpCode;
 
 pub fn disassemble_chunk(chunk: &Chunk, name: &str, globals: &GlobalStore) {
