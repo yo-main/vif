@@ -164,7 +164,7 @@ impl<'function> Compiler<'function> {
 
     fn function_declaration(&mut self, token: &ast::Function) -> Result<(), CompilerError> {
         log::debug!("Starting function declaration");
-        let index = self.register_variable(Variable::Identifier(Box::new(token.name.clone())));
+        let index = self.register_variable(Box::new(token.name.clone()));
         self.function_statement(token)?;
         self.define_variable(index);
         Ok(())
@@ -178,18 +178,13 @@ impl<'function> Compiler<'function> {
             // TODO: manage self.function.inherited_locals as well
 
             for (i, local) in self.function.locals.iter().enumerate() {
-                match &local.variable {
-                    Variable::Identifier(s) => {
-                        function
-                            .inherited_locals
-                            .push(vif_objects::local::InheritedLocal {
-                                var_name: s.clone(),
-                                depth: self.scope_depth,
-                                pos: i + 1,
-                            })
-                    }
-                    _ => (),
-                }
+                function
+                    .inherited_locals
+                    .push(vif_objects::local::InheritedLocal {
+                        var_name: local.variable.clone(),
+                        depth: self.scope_depth,
+                        pos: i + 1,
+                    });
             }
         }
 
@@ -197,7 +192,7 @@ impl<'function> Compiler<'function> {
         std::mem::swap(&mut compiler.globals, &mut self.globals);
 
         for variable in token.params.iter() {
-            compiler.register_function_parameter(Variable::Identifier(Box::new(variable.clone())));
+            compiler.register_function_parameter(Box::new(variable.clone()));
         }
 
         log::debug!("Function compiling starting");
@@ -238,7 +233,7 @@ impl<'function> Compiler<'function> {
 
     fn var_declaration(&mut self, token: &ast::Variable) -> Result<(), CompilerError> {
         log::debug!("Starting variable declaration");
-        let index = self.register_variable(Variable::Identifier(Box::new(token.name.clone())));
+        let index = self.register_variable(Box::new(token.name.clone()));
         self.expression(&token.value)?;
         self.define_variable(index);
         Ok(())
@@ -261,20 +256,20 @@ impl<'function> Compiler<'function> {
         self.emit_op_code(OpCode::GlobalVariable(variable_index));
     }
 
-    fn register_variable(&mut self, variable: Variable) -> usize {
-        log::debug!("Register variable {}", variable);
+    fn register_variable(&mut self, variable_name: Box<String>) -> usize {
+        log::debug!("Register variable {}", variable_name);
         if self.scope_depth > 0 {
-            self.function.locals.push(Local::new(variable, None));
+            self.function.locals.push(Local::new(variable_name, None));
             0
         } else {
-            self.make_global(variable)
+            self.make_global(Variable::Identifier(variable_name))
         }
     }
 
-    fn register_function_parameter(&mut self, variable: Variable) {
+    fn register_function_parameter(&mut self, variable_name: Box<String>) {
         self.function
             .locals
-            .push(Local::new(variable, Some(self.scope_depth)));
+            .push(Local::new(variable_name, Some(self.scope_depth)));
     }
 
     fn get_global_index(&mut self, variable: Variable) -> Result<usize, CompilerError> {
@@ -438,17 +433,17 @@ impl<'function> Compiler<'function> {
         log::debug!("Resolve variable {}", var_name);
 
         for (i, local) in self.function.locals.iter().rev().enumerate() {
-            match &local.variable {
-                Variable::Identifier(s) if s.as_str() == var_name => match local.depth {
-                    None => {
-                        return Err(CompilerError::Unknown(format!(
-                            "Can't read local variable in its own initializer"
-                        )));
-                    }
-                    Some(_) => return Ok(VariableType::Local(self.function.locals.len() - i)),
-                },
-                _ => (),
+            if local.variable.as_str() != var_name {
+                continue;
             }
+
+            if local.depth.is_none() {
+                return Err(CompilerError::Unknown(format!(
+                    "Can't read local variable in its own initializer"
+                )));
+            }
+
+            return Ok(VariableType::Local(self.function.locals.len() - i));
         }
 
         for local in self.function.inherited_locals.iter().rev() {

@@ -1,16 +1,23 @@
-def fib(n):
-    if n <= 1:
-        return n
-    return fib(n-2) + fib(n-1)
+import time 
 
-var i = 0
-while True:
-    var start = get_time()
-    var value = fib(i)
-    var duration = (get_time() - start) / 1000000
+def main():
+    def fib(n):
+        if n <= 1:
+            return n
+        return fib(n-2) + fib(n-1)
 
-    print("Got ", value, "in ", duration, "seconds")
+    i = 0
+    while True:
+        start = time.time()
 
-    i = i + 1
+        value = fib(i)
 
+        duration = (time.time() - start) / 1000000
+
+        print("Got ", value, "in ", duration, "seconds")
+
+        i = i + 1
+
+
+main()
 

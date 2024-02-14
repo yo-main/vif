@@ -1,12 +1,10 @@
-use crate::variable::Variable;
-
 pub struct Local {
-    pub variable: Variable,
+    pub variable: Box<String>,
     pub depth: Option<usize>,
 }
 
 impl Local {
-    pub fn new(variable: Variable, depth: Option<usize>) -> Self {
+    pub fn new(variable: Box<String>, depth: Option<usize>) -> Self {
         Self { variable, depth }
     }
 }

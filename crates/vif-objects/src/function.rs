@@ -70,7 +70,7 @@ impl PartialEq for Function {
     }
 }
 
-impl<'p> Function {
+impl Function {
     pub fn new(arity: Arity, name: String) -> Self {
         Self {
             arity,
