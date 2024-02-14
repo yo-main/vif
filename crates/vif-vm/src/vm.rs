@@ -10,7 +10,7 @@ use vif_objects::global_store::GlobalStore;
 use vif_objects::local::InheritedLocalPos;
 use vif_objects::op_code::OpCode;
 use vif_objects::stack::Stack;
-use vif_objects::value::Value;
+use vif_objects::stack_value::StackValue;
 use vif_objects::variable_storage::VariableStore;
 
 fn debug_stack(name: &str, stack: &Stack, frame: &CallFrame, previous_frames: &Vec<CallFrame>) {
@@ -99,7 +99,7 @@ where
                 //         x = 1
                 //
                 // when x=2, we need to know it's a inherited variable
-                Value::Global(Global::Function(_)) => (),
+                StackValue::Global(Global::Function(_)) => (),
                 _ => self.stack.truncate(self.frame.get_position()),
             }
             self.frame = self.previous_frames.pop().unwrap();
@@ -162,8 +162,8 @@ where
 
     fn call(&mut self, arg_count: usize) -> Result<(), InterpreterError> {
         match self.stack.peek(self.stack.len() - arg_count - 1) {
-            Value::Global(Global::Function(func)) => self.call_function(func, arg_count),
-            Value::Native(func) => self.call_native(func, arg_count),
+            StackValue::Global(Global::Function(func)) => self.call_function(func, arg_count),
+            StackValue::Native(func) => self.call_native(func, arg_count),
             v => {
                 return Err(InterpreterError::CompileError(format!(
                     "Expected function, got {v}"
@@ -184,13 +184,13 @@ where
         let value = self.stack.peek_last();
 
         match value {
-            Value::Boolean(false) => self.frame.advance_by(i),
-            Value::Integer(0) => self.frame.advance_by(i),
-            Value::Float(v) if v == &0.0 => self.frame.advance_by(i),
-            Value::Global(Global::Integer(0)) => self.frame.advance_by(i),
-            Value::Global(Global::Float(v)) if v == &0.0 => self.frame.advance_by(i),
-            Value::String(s) if s.is_empty() => self.frame.advance_by(i),
-            Value::None => self.frame.advance_by(i),
+            StackValue::Boolean(false) => self.frame.advance_by(i),
+            StackValue::Integer(0) => self.frame.advance_by(i),
+            StackValue::Float(v) if v == &0.0 => self.frame.advance_by(i),
+            StackValue::Global(Global::Integer(0)) => self.frame.advance_by(i),
+            StackValue::Global(Global::Float(v)) if v == &0.0 => self.frame.advance_by(i),
+            StackValue::String(s) if s.is_empty() => self.frame.advance_by(i),
+            StackValue::None => self.frame.advance_by(i),
             _ => (),
         }
     }
@@ -229,7 +229,7 @@ where
                 }
                 Some(var) => self.stack.push(var.clone()),
             },
-            Global::Native(f) => self.stack.push(Value::Native(f)),
+            Global::Native(f) => self.stack.push(StackValue::Native(f)),
             _ => return Err(InterpreterError::Impossible),
         }
 
@@ -257,49 +257,49 @@ where
     }
 
     fn constant(&mut self, i: usize) {
-        self.stack.push(Value::Global(self.globals.get(i)))
+        self.stack.push(StackValue::Global(self.globals.get(i)))
     }
 
     fn assert_true(&mut self) -> Result<(), InterpreterError> {
         // debug_stack("assert", self.stack, &self.frame, &self.previous_frames);
         let value = self.stack.peek_last();
         match value {
-            Value::Integer(0) => {
+            StackValue::Integer(0) => {
                 return Err(InterpreterError::RuntimeError(
                     RuntimeErrorType::AssertFail(format!("0 is not true")),
                 ))
             }
-            Value::Float(v) if v == &0.0 => {
+            StackValue::Float(v) if v == &0.0 => {
                 return Err(InterpreterError::RuntimeError(
                     RuntimeErrorType::AssertFail(format!("0.0 is not true")),
                 ))
             }
-            Value::String(s) if s.is_empty() => {
+            StackValue::String(s) if s.is_empty() => {
                 return Err(InterpreterError::RuntimeError(
                     RuntimeErrorType::AssertFail(format!("Empty string is not true")),
                 ))
             }
-            Value::Boolean(false) => {
+            StackValue::Boolean(false) => {
                 return Err(InterpreterError::RuntimeError(
                     RuntimeErrorType::AssertFail(format!("False")),
                 ))
             }
-            Value::None => {
+            StackValue::None => {
                 return Err(InterpreterError::RuntimeError(
                     RuntimeErrorType::AssertFail(format!("None")),
                 ))
             }
-            Value::Global(Global::Integer(0)) => {
+            StackValue::Global(Global::Integer(0)) => {
                 return Err(InterpreterError::RuntimeError(
                     RuntimeErrorType::AssertFail(format!("0 is not true")),
                 ))
             }
-            Value::Global(Global::Float(v)) if v == &0.0 => {
+            StackValue::Global(Global::Float(v)) if v == &0.0 => {
                 return Err(InterpreterError::RuntimeError(
                     RuntimeErrorType::AssertFail(format!("0.0 is not true")),
                 ))
             }
-            Value::Global(Global::String(s)) if s.is_empty() => {
+            StackValue::Global(Global::String(s)) if s.is_empty() => {
                 return Err(InterpreterError::RuntimeError(
                     RuntimeErrorType::AssertFail(format!("Empty string is not true")),
                 ))
@@ -313,14 +313,14 @@ where
     fn not(&mut self) -> Result<(), InterpreterError> {
         let value = self.stack.peek_last_mut();
         match value {
-            Value::Integer(ref mut i) => *value = Value::Boolean(i == &0),
-            Value::Index(ref mut i) => *value = Value::Boolean(i == &0),
-            Value::Float(ref mut f) => *value = Value::Boolean(f == &0.0),
-            Value::Boolean(ref mut b) => *b = !*b,
-            Value::None => *value = Value::Boolean(true),
-            Value::Global(Global::Integer(i)) => *value = Value::Boolean(*i == 0),
-            Value::Global(Global::Float(f)) => *value = Value::Boolean(*f == 0.0),
-            Value::Global(Global::String(s)) => *value = Value::Boolean(s.is_empty()),
+            StackValue::Integer(ref mut i) => *value = StackValue::Boolean(i == &0),
+            StackValue::Index(ref mut i) => *value = StackValue::Boolean(i == &0),
+            StackValue::Float(ref mut f) => *value = StackValue::Boolean(f == &0.0),
+            StackValue::Boolean(ref mut b) => *b = !*b,
+            StackValue::None => *value = StackValue::Boolean(true),
+            StackValue::Global(Global::Integer(i)) => *value = StackValue::Boolean(*i == 0),
+            StackValue::Global(Global::Float(f)) => *value = StackValue::Boolean(*f == 0.0),
+            StackValue::Global(Global::String(s)) => *value = StackValue::Boolean(s.is_empty()),
             _ => return value_error!("Can't compare {value}"),
         };
 
@@ -330,11 +330,11 @@ where
     fn negate(&mut self) -> Result<(), InterpreterError> {
         let value = self.stack.peek_last_mut();
         match value {
-            Value::Integer(ref mut i) => *i *= -1,
-            Value::Float(ref mut f) => *f *= -1.0,
-            Value::Boolean(ref mut b) => *b = b == &false,
-            Value::Global(Global::Integer(i)) => *value = Value::Integer(i * -1),
-            Value::Global(Global::Float(f)) => *value = Value::Float(f * -1.0),
+            StackValue::Integer(ref mut i) => *i *= -1,
+            StackValue::Float(ref mut f) => *f *= -1.0,
+            StackValue::Boolean(ref mut b) => *b = b == &false,
+            StackValue::Global(Global::Integer(i)) => *value = StackValue::Integer(i * -1),
+            StackValue::Global(Global::Float(f)) => *value = StackValue::Float(f * -1.0),
             _ => return value_error!("Can't negate {value}"),
         };
 
@@ -342,50 +342,50 @@ where
     }
 
     fn r#true(&mut self) {
-        self.stack.push(Value::Boolean(true))
+        self.stack.push(StackValue::Boolean(true))
     }
     fn r#false(&mut self) {
-        self.stack.push(Value::Boolean(false))
+        self.stack.push(StackValue::Boolean(false))
     }
 
     fn r#none(&mut self) {
-        self.stack.push(Value::None)
+        self.stack.push(StackValue::None)
     }
 
     fn equal(&mut self) {
         let a = self.stack.pop();
         let b = self.stack.peek_last_mut();
-        *b = Value::Boolean(a.eq(&b))
+        *b = StackValue::Boolean(a.eq(&b))
     }
 
     fn not_equal(&mut self) {
         let a = self.stack.pop();
         let b = self.stack.peek_last_mut();
-        *b = Value::Boolean(a.neq(&b))
+        *b = StackValue::Boolean(a.neq(&b))
     }
 
     fn greater(&mut self) -> Result<(), InterpreterError> {
         let a = self.stack.pop();
         let b = self.stack.peek_last_mut();
-        *b = Value::Boolean(b.gt(&a)?);
+        *b = StackValue::Boolean(b.gt(&a)?);
         Ok(())
     }
     fn greater_or_equal(&mut self) -> Result<(), InterpreterError> {
         let a = self.stack.pop();
         let b = self.stack.peek_last_mut();
-        *b = Value::Boolean(b.gte(&a)?);
+        *b = StackValue::Boolean(b.gte(&a)?);
         Ok(())
     }
     fn less(&mut self) -> Result<(), InterpreterError> {
         let a = self.stack.pop();
         let b = self.stack.peek_last_mut();
-        *b = Value::Boolean(b.lt(&a)?);
+        *b = StackValue::Boolean(b.lt(&a)?);
         Ok(())
     }
     fn less_or_equal(&mut self) -> Result<(), InterpreterError> {
         let a = self.stack.pop();
         let b = self.stack.peek_last_mut();
-        *b = Value::Boolean(b.lte(&a)?);
+        *b = StackValue::Boolean(b.lte(&a)?);
         Ok(())
     }
     fn add(&mut self) -> Result<(), InterpreterError> {

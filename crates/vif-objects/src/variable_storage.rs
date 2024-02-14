@@ -1,4 +1,4 @@
-use crate::value::Value;
+use crate::stack_value::StackValue;
 
 #[derive(Debug)]
 pub struct VariableStore<'globals, 'value> {
@@ -8,7 +8,7 @@ pub struct VariableStore<'globals, 'value> {
 #[derive(Debug)]
 struct KV<'globals, 'value> {
     key: &'globals str,
-    value: Box<Value<'value>>,
+    value: Box<StackValue<'value>>,
 }
 
 impl PartialOrd for KV<'_, '_> {
@@ -46,7 +46,7 @@ impl Ord for KV<'_, '_> {
 }
 
 impl<'globals, 'value> KV<'globals, 'value> {
-    fn new(key: &'globals str, value: Value<'value>) -> Self {
+    fn new(key: &'globals str, value: StackValue<'value>) -> Self {
         Self {
             key,
             value: Box::new(value),
@@ -63,7 +63,7 @@ impl<'globals, 'value, 'variables> VariableStore<'globals, 'value> {
         }
     }
 
-    pub fn insert(&mut self, key: &'globals str, value: Value<'value>) -> bool {
+    pub fn insert(&mut self, key: &'globals str, value: StackValue<'value>) -> bool {
         let new = KV::new(key, value);
         match self.storage.iter_mut().find(|v| v.key.eq(new.key)) {
             Some(v) => {
@@ -77,7 +77,7 @@ impl<'globals, 'value, 'variables> VariableStore<'globals, 'value> {
         }
     }
 
-    pub fn get(&self, key: &'globals str) -> Option<&Value<'value>> {
+    pub fn get(&self, key: &'globals str) -> Option<&StackValue<'value>> {
         self.storage
             .iter()
             .find(|&v| v.key.eq(key))

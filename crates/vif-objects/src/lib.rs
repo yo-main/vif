@@ -7,5 +7,5 @@ pub mod global_store;
 pub mod local;
 pub mod op_code;
 pub mod stack;
-pub mod value;
+pub mod stack_value;
 pub mod variable_storage;
