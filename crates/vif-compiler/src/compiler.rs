@@ -249,17 +249,21 @@ impl<'function> Compiler<'function> {
         log::debug!("Starting define variable");
         if self.scope_depth > 0 {
             self.initialize_variable();
-            return;
+            if !self.loop_details.is_empty() {
+                // in a loop we want to override the previously writen local
+                // if we don't do that the VM is not aware of it
+                self.emit_op_code(OpCode::SetLocal(variable_index))
+            };
+        } else {
+            self.emit_op_code(OpCode::GlobalVariable(variable_index))
         }
-
-        self.emit_op_code(OpCode::GlobalVariable(variable_index));
     }
 
     fn register_variable(&mut self, variable_name: Box<String>) -> usize {
         log::debug!("Register variable {}", variable_name);
         if self.scope_depth > 0 {
             self.function.locals.push(Local::new(variable_name, None));
-            0
+            return self.function.locals.len();
         } else {
             self.make_global(Global::Identifier(variable_name))
         }

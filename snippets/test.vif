@@ -1,11 +1,9 @@
-def coucou():
-	var a = True
+def main():
+	var i = 0
+	while i < 7:
+	    var duration = i
+		i = i + 1
+	print(i, duration)
 
-	def w():
-		return a
 
-
-	return w
-
-assert coucou()()
-
+main()

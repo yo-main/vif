@@ -1,0 +1,14 @@
+def main():
+	var index = 0
+
+	while index < 5:
+		var should_be_updated = index
+		index = index + 1
+
+	assert index == 5
+	assert should_be_updated == 4
+
+	return True
+
+assert main() == True
+		
