@@ -4,6 +4,7 @@ mod error;
 
 pub use crate::error::CompilerError;
 use compiler::Compiler;
+pub use debug::disassemble_application;
 use vif_ast::build_ast;
 pub use vif_objects::chunk::Chunk;
 pub use vif_objects::function::Arity;

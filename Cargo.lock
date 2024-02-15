@@ -19,9 +19,9 @@ dependencies = [
 
 [[package]]
 name = "anstream"
-version = "0.6.4"
+version = "0.6.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ab91ebe16eb252986481c5b62f6098f3b698a45e34b5b98200cf20dd2484a44"
+checksum = "6e2e1ebcb11de5c03c67de28a7df593d32191b44939c482e97702baaaa6ab6a5"
 dependencies = [
  "anstyle",
  "anstyle-parse",
@@ -108,18 +108,18 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.4.7"
+version = "4.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac495e00dcec98c83465d5ad66c5c4fabd652fd6686e7c6269b117e729a6f17b"
+checksum = "80c21025abd42669a92efc996ef13cfb2c5c627858421ea58d5c3b331a6c134f"
 dependencies = [
  "clap_builder",
 ]
 
 [[package]]
 name = "clap_builder"
-version = "4.4.7"
+version = "4.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c77ed9a32a62e6ca27175d00d29d05ca32e396ea1eb5fb01d8256b669cec7663"
+checksum = "458bf1f341769dfcf849846f65dffdf9146daa56bcd2a47cb4e1de9915567c99"
 dependencies = [
  "anstream",
  "anstyle",
@@ -129,9 +129,9 @@ dependencies = [
 
 [[package]]
 name = "clap_lex"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "702fc72eb24e5a1e48ce58027a675bc24edd52096d5397d4aea7c6dd9eca0bd1"
+checksum = "98cc8fbded0c607b7ba9dd60cd98df59af97e84d24e49c8557331cfc26d301ce"
 
 [[package]]
 name = "colorchoice"
@@ -187,6 +187,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "lazy_static"
+version = "1.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
+
+[[package]]
 name = "libc"
 version = "0.2.150"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -233,9 +239,9 @@ dependencies = [
 
 [[package]]
 name = "strsim"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
+checksum = "5ee073c9e4cd00e28217186dbe12796d692868f432bf2e97ee73bed0c56dfa01"
 
 [[package]]
 name = "syn"
@@ -264,7 +270,7 @@ checksum = "711b9620af191e0cdc7468a8d14e709c3dcdb115b36f838e601583af800a370a"
 name = "vif-ast"
 version = "0.1.0"
 dependencies = [
- "log",
+ "vif-loader",
  "vif-objects",
  "vif-scanner",
 ]
@@ -273,10 +279,8 @@ dependencies = [
 name = "vif-cli"
 version = "0.1.0"
 dependencies = [
- "chrono",
- "clap",
- "fern",
- "log",
+ "vif-compiler",
+ "vif-loader",
  "vif-vm",
 ]
 
@@ -284,10 +288,21 @@ dependencies = [
 name = "vif-compiler"
 version = "0.1.0"
 dependencies = [
- "log",
  "vif-ast",
+ "vif-loader",
  "vif-objects",
  "vif-scanner",
+]
+
+[[package]]
+name = "vif-loader"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "fern",
+ "lazy_static",
+ "log",
 ]
 
 [[package]]
@@ -307,16 +322,13 @@ version = "0.1.0"
 name = "vif-scanner"
 version = "0.1.0"
 dependencies = [
- "log",
+ "vif-loader",
 ]
 
 [[package]]
 name = "vif-vm"
 version = "0.1.0"
 dependencies = [
- "chrono",
- "fern",
- "log",
  "vif-compiler",
  "vif-native",
  "vif-objects",

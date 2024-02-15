@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-log = "0.4.20"
+vif-loader = { version = "0.1.0", path = "../vif-loader" }
 vif-scanner = { version = "0.1.0", path = "../vif-scanner" }
 vif-objects = { version = "0.1.0", path = "../vif-objects" }
 vif-ast = { version = "0.1.0", path = "../vif-ast" }

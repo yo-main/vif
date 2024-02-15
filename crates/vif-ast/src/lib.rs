@@ -1,6 +1,7 @@
 mod error;
 mod parser;
 use parser::Parser;
+use vif_loader::log;
 use vif_objects::ast::Stmt;
 use vif_scanner::Scanner;
 

@@ -6,7 +6,7 @@ members = [
   "crates/vif-native",
   "crates/vif-scanner",
   "crates/vif-compiler",
-  "crates/vif-ast",
+  "crates/vif-ast", "crates/vif-loader",
 ]
 default-members = ["crates/vif-cli"]
 resolver = "2"

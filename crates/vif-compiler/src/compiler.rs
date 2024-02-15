@@ -1,9 +1,9 @@
-use crate::debug::disassemble_chunk;
 use crate::error::CompilerError;
 use crate::Global;
 use crate::NativeFunction;
 use crate::NativeFunctionCallee;
 use crate::OpCode;
+use vif_loader::log;
 use vif_objects::ast;
 use vif_objects::function::Arity;
 use vif_objects::function::Function;
@@ -198,7 +198,6 @@ impl<'function> Compiler<'function> {
         log::debug!("Function compiling starting");
         compiler.compile(&token.body)?;
 
-        // compiler.end_scope();
         let mut globals = compiler.end();
         std::mem::swap(&mut globals, &mut self.globals);
         log::debug!("Function compiling terminated");
@@ -483,11 +482,6 @@ impl<'function> Compiler<'function> {
                 self.emit_op_code(OpCode::Return);
             }
         }
-        disassemble_chunk(
-            &self.function.chunk,
-            self.function.name.as_str(),
-            &self.globals,
-        );
         self.globals
     }
 }

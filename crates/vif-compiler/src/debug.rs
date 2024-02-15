@@ -1,23 +1,41 @@
+use vif_loader::CONFIG;
 use vif_objects::chunk::Chunk;
+use vif_objects::function::Function;
+use vif_objects::global::Global;
 use vif_objects::global_store::GlobalStore;
 use vif_objects::op_code::OpCode;
 
-pub fn disassemble_chunk(chunk: &Chunk, name: &str, globals: &GlobalStore) {
-    if std::env::var("DEBUG").is_ok() {
-        println!("== {} ==", name);
-        chunk
-            .iter(0)
-            .enumerate()
-            .for_each(|(i, c)| disassemble_instruction(i, c, chunk, globals))
+pub fn disassemble_application(function: &Function, globals: &GlobalStore) {
+    if !CONFIG.assembly {
+        return;
     }
+
+    let functions = globals
+        .as_vec()
+        .iter()
+        .filter_map(|g| match g {
+            Global::Function(f) => Some(f),
+            _ => None,
+        })
+        .collect::<Vec<&Box<Function>>>();
+
+    for f in functions {
+        disassemble_function(f, globals);
+    }
+
+    disassemble_function(function, globals);
 }
 
-pub fn disassemble_instruction(
-    offset: usize,
-    op_code: &OpCode,
-    chunk: &Chunk,
-    globals: &GlobalStore,
-) {
+fn disassemble_function(function: &Function, globals: &GlobalStore) {
+    println!("== {} ==", function.name);
+    function
+        .chunk
+        .iter(0)
+        .enumerate()
+        .for_each(|(i, c)| disassemble_instruction(i, c, &function.chunk, globals));
+}
+
+fn disassemble_instruction(offset: usize, op_code: &OpCode, chunk: &Chunk, globals: &GlobalStore) {
     print!("{:0>4} ", offset);
     if offset > 0 && chunk.get_line(offset - 1) == chunk.get_line(offset) {
         print!("{char:>4} ", char = "|",);

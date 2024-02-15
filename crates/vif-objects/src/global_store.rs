@@ -92,6 +92,17 @@ impl GlobalStore {
         }
     }
 
+    pub fn as_vec(&self) -> Vec<&Global> {
+        self.storage
+            .iter()
+            .filter(|v| match v {
+                None => false,
+                _ => true,
+            })
+            .map(|v| v.as_ref().unwrap())
+            .collect::<Vec<&Global>>()
+    }
+
     pub fn push(&mut self, variable: Global) {
         let _ = self.storage[self.top].insert(variable);
         self.top += 1;

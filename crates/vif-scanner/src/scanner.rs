@@ -4,6 +4,7 @@ use crate::token::Token;
 use crate::token::TokenType;
 use std::iter::Peekable;
 use std::str::Chars;
+use vif_loader::log;
 
 pub struct Scanner<'a> {
     next: Option<Token>,
