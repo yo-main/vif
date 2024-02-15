@@ -1,6 +1,3 @@
-use crate::ast::FunctionAst;
-use crate::global::Global;
-
 use crate::divide_by_zero_error;
 use crate::errors::ValueError;
 use crate::function::Function;
@@ -18,15 +15,6 @@ pub enum StackValue<'c> {
     None,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum BinaryOp {
-    Add,
-    Substract,
-    Multiply,
-    Divide,
-    Modulo,
-}
-
 impl std::fmt::Display for StackValue<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -37,18 +25,6 @@ impl std::fmt::Display for StackValue<'_> {
             Self::Native(s) => write!(f, "{}", s),
             Self::Function(s) => write!(f, "{}", s),
             Self::None => write!(f, "None"),
-        }
-    }
-}
-
-impl std::fmt::Display for BinaryOp {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Add => write!(f, "+"),
-            Self::Substract => write!(f, "-"),
-            Self::Multiply => write!(f, "*"),
-            Self::Divide => write!(f, "/"),
-            Self::Modulo => write!(f, "%"),
         }
     }
 }

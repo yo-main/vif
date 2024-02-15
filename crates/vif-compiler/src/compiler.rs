@@ -162,7 +162,7 @@ impl<'function> Compiler<'function> {
         Ok(())
     }
 
-    fn function_declaration(&mut self, token: &ast::FunctionAst) -> Result<(), CompilerError> {
+    fn function_declaration(&mut self, token: &ast::Function) -> Result<(), CompilerError> {
         log::debug!("Starting function declaration");
         let index = self.register_variable(Box::new(token.name.clone()));
         self.function_statement(token)?;
@@ -170,7 +170,7 @@ impl<'function> Compiler<'function> {
         Ok(())
     }
 
-    fn function_statement(&mut self, token: &ast::FunctionAst) -> Result<(), CompilerError> {
+    fn function_statement(&mut self, token: &ast::Function) -> Result<(), CompilerError> {
         log::debug!("Starting function statement");
         let mut function = Function::new(Arity::Fixed(token.params.len()), token.name.clone());
 

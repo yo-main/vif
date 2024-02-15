@@ -1,9 +1,4 @@
 #[derive(Debug, PartialEq)]
-pub struct UserFunction {
-    pub declaration: FunctionAst,
-}
-
-#[derive(Debug, PartialEq)]
 pub enum Operator {
     Comma,
     Plus,
@@ -102,7 +97,7 @@ pub enum Number {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct FunctionAst {
+pub struct Function {
     pub name: String,
     pub params: Vec<String>,
     pub body: Vec<Stmt>,
@@ -112,12 +107,6 @@ pub struct FunctionAst {
 pub struct While {
     pub condition: Box<Expr>,
     pub body: Box<Stmt>,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum BuiltIn {
-    Print,
-    GetTime,
 }
 
 #[derive(Debug, PartialEq)]
@@ -164,7 +153,7 @@ pub enum Expr {
 pub enum Stmt {
     Expression(Box<Expr>),
     Var(Variable),
-    Function(FunctionAst),
+    Function(Function),
     Block(Vec<Stmt>),
     Condition(Condition),
     While(While),
@@ -196,7 +185,7 @@ impl std::fmt::Display for Stmt {
     }
 }
 
-impl std::fmt::Display for FunctionAst {
+impl std::fmt::Display for Function {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "function[{}]", self.name)
     }
@@ -258,18 +247,6 @@ impl std::fmt::Display for Number {
     }
 }
 
-impl std::fmt::Display for BuiltIn {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self)
-    }
-}
-
-// impl std::fmt::Display for Parameter {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         write!(f, "{}={}", self.name, self.expr)
-//     }
-// }
-
 impl std::fmt::Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -286,12 +263,6 @@ impl std::fmt::Display for Value {
             Self::Break => write!(f, "break"),
             Self::Continue => write!(f, "continue"),
         }
-    }
-}
-
-impl std::fmt::Display for UserFunction {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "function {}", self.declaration.name)
     }
 }
 
