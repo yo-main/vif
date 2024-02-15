@@ -418,6 +418,9 @@ impl<'function> Compiler<'function> {
                 "print" => OpCode::GetGlobal(self.make_global(Global::Native(
                     NativeFunction::new(NativeFunctionCallee::Print),
                 ))),
+                "sleep" => OpCode::GetGlobal(self.make_global(Global::Native(
+                    NativeFunction::new(NativeFunctionCallee::Sleep),
+                ))),
                 _ => OpCode::GetGlobal(
                     self.get_global_index(Global::Identifier(Box::new(var_name.to_owned())))?,
                 ),

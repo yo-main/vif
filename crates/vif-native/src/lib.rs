@@ -19,6 +19,10 @@ pub fn execute_native_call<'v>(
             io::print(stack.get_slice(stack_start + 1))?;
             StackValue::None
         }
+        NativeFunctionCallee::Sleep => {
+            time::sleep(stack.peek_last())?;
+            StackValue::None
+        }
     };
 
     Ok(res)

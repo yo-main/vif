@@ -102,6 +102,7 @@ impl std::fmt::Debug for Function {
 pub enum NativeFunctionCallee {
     GetTime,
     Print,
+    Sleep,
 }
 
 #[derive(Clone, Copy)]
@@ -128,6 +129,11 @@ impl NativeFunction {
             NativeFunctionCallee::Print => Self {
                 arity: Arity::Infinite,
                 name: "print",
+                function: callee,
+            },
+            NativeFunctionCallee::Sleep => Self {
+                arity: Arity::Fixed(1),
+                name: "sleep",
                 function: callee,
             },
         }
