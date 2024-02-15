@@ -1,6 +1,6 @@
 #[derive(Debug, PartialEq)]
 pub struct UserFunction {
-    pub declaration: Function,
+    pub declaration: FunctionAst,
 }
 
 #[derive(Debug, PartialEq)]
@@ -102,7 +102,7 @@ pub enum Number {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Function {
+pub struct FunctionAst {
     pub name: String,
     pub params: Vec<String>,
     pub body: Vec<Stmt>,
@@ -164,7 +164,7 @@ pub enum Expr {
 pub enum Stmt {
     Expression(Box<Expr>),
     Var(Variable),
-    Function(Function),
+    Function(FunctionAst),
     Block(Vec<Stmt>),
     Condition(Condition),
     While(While),
@@ -196,7 +196,7 @@ impl std::fmt::Display for Stmt {
     }
 }
 
-impl std::fmt::Display for Function {
+impl std::fmt::Display for FunctionAst {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "function[{}]", self.name)
     }

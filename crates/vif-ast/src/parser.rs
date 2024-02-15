@@ -92,7 +92,7 @@ impl<'a> Parser<'a> {
         self.consume(TokenType::DoubleDot, "Expect : after function declaration")?;
         self.consume(TokenType::NewLine, "Expect : after function declaration")?;
 
-        Ok(ast::Stmt::Function(ast::Function {
+        Ok(ast::Stmt::Function(ast::FunctionAst {
             name,
             params: parameters,
             body: self.block()?,
@@ -549,7 +549,7 @@ mod tests {
     use super::ast::Call;
     use super::ast::Condition;
     use super::ast::Expr;
-    use super::ast::Function;
+    use super::ast::FunctionAst;
     use super::ast::Logical;
     use super::ast::LogicalOperator;
     use super::ast::Operator;
@@ -741,7 +741,7 @@ mod tests {
         assert_eq!(parser.ast.len(), 1);
         assert_eq!(
             parser.ast[0],
-            Stmt::Function(Function {
+            Stmt::Function(FunctionAst {
                 name: "my_function".to_owned(),
                 params: vec!["a".to_owned(), "b".to_owned(), "c".to_owned()],
                 body: vec![Stmt::Return(Return {
@@ -763,7 +763,7 @@ mod tests {
         assert_eq!(parser.ast.len(), 1);
         assert_eq!(
             parser.ast[0],
-            Stmt::Function(Function {
+            Stmt::Function(FunctionAst {
                 name: "my_function".to_owned(),
                 params: vec!["a".to_owned(), "b".to_owned(), "c".to_owned()],
                 body: vec![Stmt::Return(Return {

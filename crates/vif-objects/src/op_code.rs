@@ -3,7 +3,7 @@ use crate::local::InheritedLocalPos;
 #[derive(PartialEq, Debug)]
 pub enum OpCode {
     Return,
-    Constant(usize),
+    Global(usize),
     GlobalVariable(usize),
     GetGlobal(usize),
     SetGlobal(usize),
@@ -41,7 +41,7 @@ impl std::fmt::Display for OpCode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Return => write!(f, "OP_RETURN"),
-            Self::Constant(c) => write!(f, "OP_CONSTANT({c})"),
+            Self::Global(c) => write!(f, "OP_CONSTANT({c})"),
             Self::GlobalVariable(c) => write!(f, "OP_GLOBAL_VARIABLE({c})"),
             Self::GetGlobal(c) => write!(f, "OP_GET_GLOBAL({c})"),
             Self::SetGlobal(c) => write!(f, "OP_SET_GLOBAL({c})"),

@@ -99,7 +99,7 @@ where
                 //         x = 1
                 //
                 // when x=2, we need to know it's a inherited variable
-                StackValue::Global(Global::Function(_)) => (),
+                StackValue::Function(_) => (),
                 _ => self.stack.truncate(self.frame.get_position()),
             }
             self.frame = self.previous_frames.pop().unwrap();
@@ -162,7 +162,7 @@ where
 
     fn call(&mut self, arg_count: usize) -> Result<(), InterpreterError> {
         match self.stack.peek(self.stack.len() - arg_count - 1) {
-            StackValue::Global(Global::Function(func)) => self.call_function(func, arg_count),
+            StackValue::Function(func) => self.call_function(func, arg_count),
             StackValue::Native(func) => self.call_native(func, arg_count),
             v => {
                 return Err(InterpreterError::CompileError(format!(
@@ -187,8 +187,6 @@ where
             StackValue::Boolean(false) => self.frame.advance_by(i),
             StackValue::Integer(0) => self.frame.advance_by(i),
             StackValue::Float(v) if v == &0.0 => self.frame.advance_by(i),
-            StackValue::Global(Global::Integer(0)) => self.frame.advance_by(i),
-            StackValue::Global(Global::Float(v)) if v == &0.0 => self.frame.advance_by(i),
             StackValue::String(s) if s.is_empty() => self.frame.advance_by(i),
             StackValue::None => self.frame.advance_by(i),
             _ => (),
@@ -256,8 +254,21 @@ where
         Ok(())
     }
 
-    fn constant(&mut self, i: usize) {
-        self.stack.push(StackValue::Global(self.globals.get(i)))
+    fn global(&mut self, i: usize) -> Result<(), InterpreterError> {
+        self.stack.push(match self.globals.get(i) {
+            Global::Integer(i) => StackValue::Integer(*i),
+            Global::String(s) => StackValue::String(s.clone()),
+            Global::Float(f) => StackValue::Float(*f),
+            Global::Native(f) => StackValue::Native(f),
+            Global::Function(f) => StackValue::Function(f),
+            Global::Identifier(i) => {
+                return Err(InterpreterError::RuntimeError(
+                    RuntimeErrorType::ValueError(format!("Got an identifier as value: {}", i)),
+                ))
+            }
+        });
+
+        Ok(())
     }
 
     fn assert_true(&mut self) -> Result<(), InterpreterError> {
@@ -289,21 +300,6 @@ where
                     RuntimeErrorType::AssertFail(format!("None")),
                 ))
             }
-            StackValue::Global(Global::Integer(0)) => {
-                return Err(InterpreterError::RuntimeError(
-                    RuntimeErrorType::AssertFail(format!("0 is not true")),
-                ))
-            }
-            StackValue::Global(Global::Float(v)) if v == &0.0 => {
-                return Err(InterpreterError::RuntimeError(
-                    RuntimeErrorType::AssertFail(format!("0.0 is not true")),
-                ))
-            }
-            StackValue::Global(Global::String(s)) if s.is_empty() => {
-                return Err(InterpreterError::RuntimeError(
-                    RuntimeErrorType::AssertFail(format!("Empty string is not true")),
-                ))
-            }
             _ => (),
         }
 
@@ -317,9 +313,6 @@ where
             StackValue::Float(ref mut f) => *value = StackValue::Boolean(f == &0.0),
             StackValue::Boolean(ref mut b) => *b = !*b,
             StackValue::None => *value = StackValue::Boolean(true),
-            StackValue::Global(Global::Integer(i)) => *value = StackValue::Boolean(*i == 0),
-            StackValue::Global(Global::Float(f)) => *value = StackValue::Boolean(*f == 0.0),
-            StackValue::Global(Global::String(s)) => *value = StackValue::Boolean(s.is_empty()),
             _ => return value_error!("Can't compare {value}"),
         };
 
@@ -332,8 +325,6 @@ where
             StackValue::Integer(ref mut i) => *i *= -1,
             StackValue::Float(ref mut f) => *f *= -1.0,
             StackValue::Boolean(ref mut b) => *b = b == &false,
-            StackValue::Global(Global::Integer(i)) => *value = StackValue::Integer(i * -1),
-            StackValue::Global(Global::Float(f)) => *value = StackValue::Float(f * -1.0),
             _ => return value_error!("Can't negate {value}"),
         };
 
@@ -441,7 +432,7 @@ where
             OpCode::SetInheritedLocal(v) => self.set_inherited_local(v),
             OpCode::GetGlobal(i) => self.get_global(*i)?,
             OpCode::SetGlobal(i) => self.set_global(*i)?,
-            OpCode::Constant(i) => self.constant(*i),
+            OpCode::Global(i) => self.global(*i)?,
             OpCode::AssertTrue => self.assert_true()?,
             OpCode::Not => self.not()?,
             OpCode::Negate => self.negate()?,

@@ -9,7 +9,7 @@ fn test_variable_declaration() {
 "
     .to_owned();
     let bytes = vec![
-        OpCode::Constant(1),       // constant 1
+        OpCode::Global(1),         // constant 1
         OpCode::GlobalVariable(0), // save 1 in a variable named i
         OpCode::GetGlobal(2),      // get print
         OpCode::GetGlobal(0),      // get i
@@ -34,10 +34,10 @@ fn test_simple() {
     .to_owned();
 
     let bytes = vec![
-        OpCode::Constant(1),       // constant 1
+        OpCode::Global(1),         // constant 1
         OpCode::GlobalVariable(0), // save 1 in a variable named i
         OpCode::GetGlobal(0),      // get i
-        OpCode::Constant(2),       // get constant 5
+        OpCode::Global(2),         // get constant 5
         OpCode::Less,              // substract them
         OpCode::JumpIfFalse(11),   // if branch
         OpCode::Pop,               // pop jump op (if is true)
@@ -46,7 +46,7 @@ fn test_simple() {
         OpCode::Call(1),           // call print
         OpCode::Pop,               // pop print op
         OpCode::GetGlobal(0),      // get i
-        OpCode::Constant(4),       // get constant 1
+        OpCode::Global(4),         // get constant 1
         OpCode::Add,               // add them
         OpCode::SetGlobal(0),      // store them in a new global
         OpCode::Pop,               // pop set op
