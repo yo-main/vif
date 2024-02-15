@@ -36,4 +36,5 @@ this one is probably because the benchmark don't use a lot of variable. I guess 
 2023-12-07 - 24157817   - 6 seconds  - ed8d720a1c670e18a5feb758676cc5ba5567e0d6 (1.11 ± 0.02 times faster)
 2023-12-12 - 24157817   - 5 seconds  - 1b111ba5dd31f0a2f3f4d46a6da1e30eef89da66 (1.08 ± 0.03 times faster)
 2023-12-23 - 24157817   - 5 seconds  - 27e2da04038c54023bbd971af1e5e81ca4b5e47b (1.04 ± 0.04 times faster)
+2024-02-15 - 24157817   - 5 seconds  - 1abf8d93a399dbed4fd9d95f70b9696e3f431062 (1.10 ± 0.05 times faster)
 ```
