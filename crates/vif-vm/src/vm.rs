@@ -314,7 +314,6 @@ where
         let value = self.stack.peek_last_mut();
         match value {
             StackValue::Integer(ref mut i) => *value = StackValue::Boolean(i == &0),
-            StackValue::Index(ref mut i) => *value = StackValue::Boolean(i == &0),
             StackValue::Float(ref mut f) => *value = StackValue::Boolean(f == &0.0),
             StackValue::Boolean(ref mut b) => *b = !*b,
             StackValue::None => *value = StackValue::Boolean(true),

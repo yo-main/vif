@@ -8,11 +8,9 @@ use crate::value_error;
 #[derive(Debug, Clone)]
 pub enum StackValue<'c> {
     Integer(i64),
-    Index(i64),
     Float(f64),
     String(Box<String>),
     Global(&'c Global),
-    BinaryOp(BinaryOp),
     Boolean(bool),
     Native(&'c NativeFunction),
     None,
@@ -31,10 +29,8 @@ impl std::fmt::Display for StackValue<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Integer(i) => write!(f, "{}", i),
-            Self::Index(i) => write!(f, "{}", i),
             Self::Float(i) => write!(f, "{}", i),
             Self::Global(c) => write!(f, "{}", *c),
-            Self::BinaryOp(o) => write!(f, "{}", o),
             Self::Boolean(b) => write!(f, "{}", b),
             Self::String(s) => write!(f, "{}", s),
             Self::Native(s) => write!(f, "{}", s),
@@ -99,17 +95,6 @@ impl StackValue<'_> {
         match self {
             Self::Integer(i) => match other {
                 Self::Integer(j) => i == j,
-                Self::Index(j) => i == j,
-                Self::Float(j) => *i as f64 == *j,
-                Self::Global(Global::Integer(j)) => i == j,
-                Self::Global(Global::Float(j)) => *i as f64 == *j,
-                Self::Boolean(true) => i == &1,
-                Self::Boolean(false) => i == &0,
-                _ => false,
-            },
-            Self::Index(i) => match other {
-                Self::Integer(j) => i == j,
-                Self::Index(j) => i == j,
                 Self::Float(j) => *i as f64 == *j,
                 Self::Global(Global::Integer(j)) => i == j,
                 Self::Global(Global::Float(j)) => *i as f64 == *j,
@@ -119,7 +104,6 @@ impl StackValue<'_> {
             },
             Self::Float(i) => match other {
                 Self::Integer(j) => *i == *j as f64,
-                Self::Index(j) => *i == *j as f64,
                 Self::Float(j) => i == j,
                 Self::Global(Global::Integer(j)) => *i == *j as f64,
                 Self::Global(Global::Float(j)) => i == j,
@@ -129,7 +113,6 @@ impl StackValue<'_> {
             },
             Self::Global(Global::Integer(i)) => match other {
                 Self::Integer(j) => i == j,
-                Self::Index(j) => i == j,
                 Self::Float(j) => *i as f64 == *j,
                 Self::Global(Global::Integer(j)) => i == j,
                 Self::Global(Global::Float(j)) => *i as f64 == *j,
@@ -139,7 +122,6 @@ impl StackValue<'_> {
             },
             Self::Global(Global::Float(i)) => match other {
                 Self::Integer(j) => *i == *j as f64,
-                Self::Index(j) => *i == *j as f64,
                 Self::Float(j) => *i as f64 == *j,
                 Self::Global(Global::Integer(j)) => *i == *j as f64,
                 Self::Global(Global::Float(j)) => *i as f64 == *j,
@@ -181,17 +163,6 @@ impl StackValue<'_> {
         match self {
             Self::Integer(i) => match other {
                 Self::Integer(j) => i != j,
-                Self::Index(j) => i != j,
-                Self::Float(j) => *i as f64 != *j,
-                Self::Global(Global::Integer(j)) => i != j,
-                Self::Global(Global::Float(j)) => *i as f64 != *j,
-                Self::Boolean(true) => i != &1,
-                Self::Boolean(false) => i != &0,
-                _ => false,
-            },
-            Self::Index(i) => match other {
-                Self::Integer(j) => i != j,
-                Self::Index(j) => i != j,
                 Self::Float(j) => *i as f64 != *j,
                 Self::Global(Global::Integer(j)) => i != j,
                 Self::Global(Global::Float(j)) => *i as f64 != *j,
@@ -201,7 +172,6 @@ impl StackValue<'_> {
             },
             Self::Float(i) => match other {
                 Self::Integer(j) => *i != *j as f64,
-                Self::Index(j) => *i != *j as f64,
                 Self::Float(j) => i != j,
                 Self::Global(Global::Integer(j)) => *i != *j as f64,
                 Self::Global(Global::Float(j)) => i != j,
@@ -211,7 +181,6 @@ impl StackValue<'_> {
             },
             Self::Global(Global::Integer(i)) => match other {
                 Self::Integer(j) => i != j,
-                Self::Index(j) => i != j,
                 Self::Float(j) => *i as f64 != *j,
                 Self::Global(Global::Integer(j)) => i != j,
                 Self::Global(Global::Float(j)) => *i as f64 != *j,
@@ -221,7 +190,6 @@ impl StackValue<'_> {
             },
             Self::Global(Global::Float(i)) => match other {
                 Self::Integer(j) => *i != *j as f64,
-                Self::Index(j) => *i != *j as f64,
                 Self::Float(j) => *i as f64 != *j,
                 Self::Global(Global::Integer(j)) => *i != *j as f64,
                 Self::Global(Global::Float(j)) => *i as f64 != *j,
@@ -263,17 +231,6 @@ impl StackValue<'_> {
         match self {
             Self::Integer(i) => match other {
                 Self::Integer(j) => Ok(i < j),
-                Self::Index(j) => Ok(i < j),
-                Self::Float(j) => Ok((*i as f64) < *j),
-                Self::Global(Global::Integer(j)) => Ok(i < j),
-                Self::Global(Global::Float(j)) => Ok((*i as f64) < *j),
-                Self::Boolean(true) => Ok(i < &1),
-                Self::Boolean(false) => Ok(i < &0),
-                _ => return value_error!("Can't compare {self} and {other}"),
-            },
-            Self::Index(i) => match other {
-                Self::Integer(j) => Ok(i < j),
-                Self::Index(j) => Ok(i < j),
                 Self::Float(j) => Ok((*i as f64) < *j),
                 Self::Global(Global::Integer(j)) => Ok(i < j),
                 Self::Global(Global::Float(j)) => Ok((*i as f64) < *j),
@@ -283,7 +240,6 @@ impl StackValue<'_> {
             },
             Self::Float(i) => match other {
                 Self::Integer(j) => Ok(*i < *j as f64),
-                Self::Index(j) => Ok(*i < *j as f64),
                 Self::Float(j) => Ok(i < j),
                 Self::Global(Global::Integer(j)) => Ok(*i < *j as f64),
                 Self::Global(Global::Float(j)) => Ok(i < j),
@@ -293,7 +249,6 @@ impl StackValue<'_> {
             },
             Self::Global(Global::Integer(i)) => match other {
                 Self::Integer(j) => Ok(i < j),
-                Self::Index(j) => Ok(i < j),
                 Self::Float(j) => Ok((*i as f64) < *j),
                 Self::Global(Global::Integer(j)) => Ok(i < j),
                 Self::Global(Global::Float(j)) => Ok((*i as f64) < *j),
@@ -303,7 +258,6 @@ impl StackValue<'_> {
             },
             Self::Global(Global::Float(i)) => match other {
                 Self::Integer(j) => Ok(*i < (*j as f64)),
-                Self::Index(j) => Ok(*i < (*j as f64)),
                 Self::Float(j) => Ok((*i as f64) < *j),
                 Self::Global(Global::Integer(j)) => Ok(*i < (*j as f64)),
                 Self::Global(Global::Float(j)) => Ok((*i as f64) < *j),
@@ -314,7 +268,6 @@ impl StackValue<'_> {
             Self::Boolean(i) => match other {
                 Self::Boolean(j) => Ok(i < j),
                 Self::Integer(j) => Ok(&1 < j),
-                Self::Index(j) => Ok(&1 < j),
                 Self::Float(j) => Ok(&1.0 < j),
                 Self::Global(Global::Integer(j)) => Ok(&1 < j),
                 Self::Global(Global::Float(j)) => Ok(&1.0 < j),
@@ -328,17 +281,6 @@ impl StackValue<'_> {
         match self {
             Self::Integer(i) => match other {
                 Self::Integer(j) => Ok(i <= j),
-                Self::Index(j) => Ok(i <= j),
-                Self::Float(j) => Ok((*i as f64) <= *j),
-                Self::Global(Global::Integer(j)) => Ok(i <= j),
-                Self::Global(Global::Float(j)) => Ok((*i as f64) <= *j),
-                Self::Boolean(true) => Ok(i <= &1),
-                Self::Boolean(false) => Ok(i <= &0),
-                _ => return value_error!("Can't compare {self} and {other}"),
-            },
-            Self::Index(i) => match other {
-                Self::Integer(j) => Ok(i <= j),
-                Self::Index(j) => Ok(i <= j),
                 Self::Float(j) => Ok((*i as f64) <= *j),
                 Self::Global(Global::Integer(j)) => Ok(i <= j),
                 Self::Global(Global::Float(j)) => Ok((*i as f64) <= *j),
@@ -348,7 +290,6 @@ impl StackValue<'_> {
             },
             Self::Float(i) => match other {
                 Self::Integer(j) => Ok(*i <= *j as f64),
-                Self::Index(j) => Ok(*i <= *j as f64),
                 Self::Float(j) => Ok(i <= j),
                 Self::Global(Global::Integer(j)) => Ok(*i <= *j as f64),
                 Self::Global(Global::Float(j)) => Ok(i <= j),
@@ -358,7 +299,6 @@ impl StackValue<'_> {
             },
             Self::Global(Global::Integer(i)) => match other {
                 Self::Integer(j) => Ok(i <= j),
-                Self::Index(j) => Ok(i <= j),
                 Self::Float(j) => Ok((*i as f64) <= *j),
                 Self::Global(Global::Integer(j)) => Ok(i <= j),
                 Self::Global(Global::Float(j)) => Ok((*i as f64) <= *j),
@@ -368,7 +308,6 @@ impl StackValue<'_> {
             },
             Self::Global(Global::Float(i)) => match other {
                 Self::Integer(j) => Ok(*i <= (*j as f64)),
-                Self::Index(j) => Ok(*i <= (*j as f64)),
                 Self::Float(j) => Ok((*i as f64) <= *j),
                 Self::Global(Global::Integer(j)) => Ok(*i <= (*j as f64)),
                 Self::Global(Global::Float(j)) => Ok((*i as f64) <= *j),
@@ -379,7 +318,6 @@ impl StackValue<'_> {
             Self::Boolean(i) => match other {
                 Self::Boolean(j) => Ok(i <= j),
                 Self::Integer(j) => Ok(&1 <= j),
-                Self::Index(j) => Ok(&1 <= j),
                 Self::Float(j) => Ok(&1.0 <= j),
                 Self::Global(Global::Integer(j)) => Ok(&1 <= j),
                 Self::Global(Global::Float(j)) => Ok(&1.0 <= j),
@@ -393,17 +331,6 @@ impl StackValue<'_> {
         match self {
             Self::Integer(i) => match other {
                 Self::Integer(j) => Ok(i > j),
-                Self::Index(j) => Ok(i > j),
-                Self::Float(j) => Ok((*i as f64) > *j),
-                Self::Global(Global::Integer(j)) => Ok(i > j),
-                Self::Global(Global::Float(j)) => Ok((*i as f64) > *j),
-                Self::Boolean(true) => Ok(i > &1),
-                Self::Boolean(false) => Ok(i > &0),
-                _ => return value_error!("Can't compare {self} and {other}"),
-            },
-            Self::Index(i) => match other {
-                Self::Integer(j) => Ok(i > j),
-                Self::Index(j) => Ok(i > j),
                 Self::Float(j) => Ok((*i as f64) > *j),
                 Self::Global(Global::Integer(j)) => Ok(i > j),
                 Self::Global(Global::Float(j)) => Ok((*i as f64) > *j),
@@ -413,7 +340,6 @@ impl StackValue<'_> {
             },
             Self::Float(i) => match other {
                 Self::Integer(j) => Ok(*i > *j as f64),
-                Self::Index(j) => Ok(*i > *j as f64),
                 Self::Float(j) => Ok(i > j),
                 Self::Global(Global::Integer(j)) => Ok(*i > *j as f64),
                 Self::Global(Global::Float(j)) => Ok(i > j),
@@ -423,7 +349,6 @@ impl StackValue<'_> {
             },
             Self::Global(Global::Integer(i)) => match other {
                 Self::Integer(j) => Ok(i > j),
-                Self::Index(j) => Ok(i > j),
                 Self::Float(j) => Ok((*i as f64) > *j),
                 Self::Global(Global::Integer(j)) => Ok(i > j),
                 Self::Global(Global::Float(j)) => Ok((*i as f64) > *j),
@@ -433,7 +358,6 @@ impl StackValue<'_> {
             },
             Self::Global(Global::Float(i)) => match other {
                 Self::Integer(j) => Ok(*i > (*j as f64)),
-                Self::Index(j) => Ok(*i > (*j as f64)),
                 Self::Float(j) => Ok((*i as f64) > *j),
                 Self::Global(Global::Integer(j)) => Ok(*i > (*j as f64)),
                 Self::Global(Global::Float(j)) => Ok((*i as f64) > *j),
@@ -444,7 +368,6 @@ impl StackValue<'_> {
             Self::Boolean(i) => match other {
                 Self::Boolean(j) => Ok(i > j),
                 Self::Integer(j) => Ok(&1 > j),
-                Self::Index(j) => Ok(&1 > j),
                 Self::Float(j) => Ok(&1.0 > j),
                 Self::Global(Global::Integer(j)) => Ok(&1 > j),
                 Self::Global(Global::Float(j)) => Ok(&1.0 > j),
@@ -458,17 +381,6 @@ impl StackValue<'_> {
         match self {
             Self::Integer(i) => match other {
                 Self::Integer(j) => Ok(i >= j),
-                Self::Index(j) => Ok(i >= j),
-                Self::Float(j) => Ok((*i as f64) >= *j),
-                Self::Global(Global::Integer(j)) => Ok(i >= j),
-                Self::Global(Global::Float(j)) => Ok((*i as f64) >= *j),
-                Self::Boolean(true) => Ok(i >= &1),
-                Self::Boolean(false) => Ok(i >= &0),
-                _ => return value_error!("Can't compare {self} and {other}"),
-            },
-            Self::Index(i) => match other {
-                Self::Integer(j) => Ok(i >= j),
-                Self::Index(j) => Ok(i >= j),
                 Self::Float(j) => Ok((*i as f64) >= *j),
                 Self::Global(Global::Integer(j)) => Ok(i >= j),
                 Self::Global(Global::Float(j)) => Ok((*i as f64) >= *j),
@@ -478,7 +390,6 @@ impl StackValue<'_> {
             },
             Self::Float(i) => match other {
                 Self::Integer(j) => Ok(*i >= *j as f64),
-                Self::Index(j) => Ok(*i >= *j as f64),
                 Self::Float(j) => Ok(i >= j),
                 Self::Global(Global::Integer(j)) => Ok(*i >= *j as f64),
                 Self::Global(Global::Float(j)) => Ok(i >= j),
@@ -488,7 +399,6 @@ impl StackValue<'_> {
             },
             Self::Global(Global::Integer(i)) => match other {
                 Self::Integer(j) => Ok(i >= j),
-                Self::Index(j) => Ok(i >= j),
                 Self::Float(j) => Ok((*i as f64) >= *j),
                 Self::Global(Global::Integer(j)) => Ok(i >= j),
                 Self::Global(Global::Float(j)) => Ok((*i as f64) >= *j),
@@ -498,7 +408,6 @@ impl StackValue<'_> {
             },
             Self::Global(Global::Float(i)) => match other {
                 Self::Integer(j) => Ok(*i >= (*j as f64)),
-                Self::Index(j) => Ok(*i >= (*j as f64)),
                 Self::Float(j) => Ok((*i as f64) >= *j),
                 Self::Global(Global::Integer(j)) => Ok(*i >= (*j as f64)),
                 Self::Global(Global::Float(j)) => Ok((*i as f64) >= *j),
@@ -509,7 +418,6 @@ impl StackValue<'_> {
             Self::Boolean(i) => match other {
                 Self::Boolean(j) => Ok(i >= j),
                 Self::Integer(j) => Ok(&1 >= j),
-                Self::Index(j) => Ok(&1 >= j),
                 Self::Float(j) => Ok(&1.0 >= j),
                 Self::Global(Global::Integer(j)) => Ok(&1 >= j),
                 Self::Global(Global::Float(j)) => Ok(&1.0 >= j),
@@ -592,7 +500,6 @@ impl StackValue<'_> {
                 Self::String(j) => *self = StackValue::String(Box::new(format!("{i}{j}"))),
                 _ => return value_error!("Can't add {self} and {other}"),
             },
-            Self::BinaryOp(_) => return value_error!("Can't add {self} and {other}"),
             _ => return value_error!("Can't add {self} and {other}"),
         };
 
