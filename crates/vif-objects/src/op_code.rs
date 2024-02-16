@@ -1,4 +1,4 @@
-use crate::local::InheritedLocalPos;
+use crate::variable::InheritedLocalPos;
 
 #[derive(PartialEq, Debug)]
 pub enum OpCode {

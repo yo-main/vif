@@ -46,7 +46,6 @@ impl<'a> Parser<'a> {
                 self.declaration()
             }
             t if t.r#type == TokenType::Var => self.var_declaration(),
-            t if t.r#type == TokenType::Const => self.const_declaration(),
             t if t.r#type == TokenType::Def => self.function(),
             _ => self.statement(),
         }
@@ -71,6 +70,17 @@ impl<'a> Parser<'a> {
         let mut parameters = Vec::new();
 
         loop {
+            let mutable = match self.scanner.peek() {
+                Ok(t) => match &t.r#type {
+                    TokenType::Mut => {
+                        self.scanner.scan()?;
+                        true
+                    }
+                    _ => false,
+                },
+                _ => break,
+            };
+
             match self.scanner.peek() {
                 Ok(t) => match &t.r#type {
                     TokenType::RightParen => break,
@@ -79,7 +89,10 @@ impl<'a> Parser<'a> {
                         continue;
                     }
                     TokenType::Identifier(s) => {
-                        parameters.push(s.clone());
+                        parameters.push(ast::FunctionParameter {
+                            name: s.clone(),
+                            mutable,
+                        });
                         self.scanner.scan().unwrap();
                     }
                     _ => return Err(AstError::ParsingError(format!("Expected a parameter name"))),
@@ -130,6 +143,21 @@ impl<'a> Parser<'a> {
     fn var_declaration(&mut self) -> Result<ast::Stmt, AstError> {
         self.scanner.scan()?;
 
+        let mutable = match self.scanner.peek() {
+            Ok(t) => match t.r#type {
+                TokenType::Mut => {
+                    self.scanner.scan()?;
+                    true
+                }
+                _ => false,
+            },
+            _ => {
+                return Err(AstError::ParsingError(format!(
+                    "Expected an variable name, got EOF"
+                )))
+            }
+        };
+
         let name = match self.scanner.scan() {
             Ok(t) => match t.r#type {
                 TokenType::Identifier(s) => s,
@@ -156,41 +184,7 @@ impl<'a> Parser<'a> {
 
         Ok(ast::Stmt::Var(ast::Variable {
             name,
-            mutable: true,
-            value: expr,
-        }))
-    }
-
-    fn const_declaration(&mut self) -> Result<ast::Stmt, AstError> {
-        self.scanner.scan()?;
-
-        let name = match self.scanner.scan() {
-            Ok(t) => match t.r#type {
-                TokenType::Identifier(s) => s,
-                t => {
-                    return Err(AstError::ParsingError(format!(
-                        "Expected an constant name, got {}",
-                        t
-                    )))
-                }
-            },
-            _ => {
-                return Err(AstError::ParsingError(format!(
-                    "Expected an constant name, got EOF"
-                )))
-            }
-        };
-
-        self.consume(TokenType::Equal, "Expected an =")?;
-        let expr = self.expression()?;
-        self.consume(
-            TokenType::NewLine,
-            "Expected new line after const declaration",
-        )?;
-
-        Ok(ast::Stmt::Var(ast::Variable {
-            name,
-            mutable: false,
+            mutable,
             value: expr,
         }))
     }
@@ -550,6 +544,7 @@ mod tests {
     use super::ast::Condition;
     use super::ast::Expr;
     use super::ast::Function;
+    use super::ast::FunctionParameter;
     use super::ast::Logical;
     use super::ast::LogicalOperator;
     use super::ast::Operator;
@@ -603,6 +598,29 @@ mod tests {
     #[test]
     fn var_declaration() {
         let string = "var coucou = -1\n";
+        let scanner = Scanner::new(string);
+        let mut parser = Parser::new(scanner);
+
+        let success = parser.build();
+
+        assert!(success);
+        assert_eq!(parser.ast.len(), 1);
+        assert_eq!(
+            parser.ast[0],
+            Stmt::Var(Variable {
+                name: "coucou".to_owned(),
+                mutable: false,
+                value: Box::new(Expr::Unary(Unary {
+                    operator: UnaryOperator::Minus,
+                    right: Box::new(Expr::Value(Value::Integer(1)))
+                }))
+            })
+        );
+    }
+
+    #[test]
+    fn var_mut_declaration() {
+        let string = "var mut coucou = -1\n";
         let scanner = Scanner::new(string);
         let mut parser = Parser::new(scanner);
 
@@ -731,7 +749,7 @@ mod tests {
 
     #[test]
     fn function_definition() {
-        let string = "def my_function(a, b, c):\n    return\n";
+        let string = "def my_function(a, b, mut c):\n    return\n";
         let scanner = Scanner::new(string);
         let mut parser = Parser::new(scanner);
 
@@ -743,7 +761,20 @@ mod tests {
             parser.ast[0],
             Stmt::Function(Function {
                 name: "my_function".to_owned(),
-                params: vec!["a".to_owned(), "b".to_owned(), "c".to_owned()],
+                params: vec![
+                    FunctionParameter {
+                        name: "a".to_owned(),
+                        mutable: false
+                    },
+                    FunctionParameter {
+                        name: "b".to_owned(),
+                        mutable: false
+                    },
+                    FunctionParameter {
+                        name: "c".to_owned(),
+                        mutable: true
+                    },
+                ],
                 body: vec![Stmt::Return(Return {
                     value: Box::new(Expr::Value(Value::None))
                 })]
@@ -753,7 +784,7 @@ mod tests {
 
     #[test]
     fn function_with_return() {
-        let string = "def my_function(a, b, c):\n    return 1.5\n";
+        let string = "def my_function(a, mut b, c):\n    return 1.5\n";
         let scanner = Scanner::new(string);
         let mut parser = Parser::new(scanner);
 
@@ -765,7 +796,20 @@ mod tests {
             parser.ast[0],
             Stmt::Function(Function {
                 name: "my_function".to_owned(),
-                params: vec!["a".to_owned(), "b".to_owned(), "c".to_owned()],
+                params: vec![
+                    FunctionParameter {
+                        name: "a".to_owned(),
+                        mutable: false
+                    },
+                    FunctionParameter {
+                        name: "b".to_owned(),
+                        mutable: true
+                    },
+                    FunctionParameter {
+                        name: "c".to_owned(),
+                        mutable: false
+                    },
+                ],
                 body: vec![Stmt::Return(Return {
                     value: Box::new(Expr::Value(Value::Float(1.5)))
                 })]

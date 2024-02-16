@@ -290,7 +290,7 @@ impl<'a> Tokenizer<'a> {
             "for" => TokenType::For,
             "while" => TokenType::While,
             "var" => TokenType::Var,
-            "const" => TokenType::Const,
+            "mut" => TokenType::Mut,
             "self" => TokenType::Self_,
             "return" => TokenType::Return,
             "True" => TokenType::True,
@@ -441,7 +441,7 @@ mod tests {
 
     #[test]
     fn all_keywords() {
-        let string = "not and or def class if else elif for while var const self return True False None @ break continue assert\n";
+        let string = "not and or def class if else elif for while var mut self return True False None @ break continue assert\n";
         let mut scanner = Scanner::new(string);
 
         assert_eq!(
@@ -490,7 +490,7 @@ mod tests {
         );
         assert_eq!(
             scanner.tokenizer.scan_token().unwrap().r#type,
-            TokenType::Const
+            TokenType::Mut
         );
         assert_eq!(
             scanner.tokenizer.scan_token().unwrap().r#type,

@@ -25,8 +25,8 @@ By default, function parameters are not mutable, you need to specify which param
 This is probably one of the most important difference with Python. Directly influenced by Rust as you might have guessed :)
 
 ```python
-const one = 1
-two = 2
+var mut one = 1
+var two = 2
 
 def add(a, b):
     return a + b

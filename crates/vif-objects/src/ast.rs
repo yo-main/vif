@@ -97,9 +97,15 @@ pub enum Number {
 }
 
 #[derive(Debug, PartialEq)]
+pub struct FunctionParameter {
+    pub name: String,
+    pub mutable: bool,
+}
+
+#[derive(Debug, PartialEq)]
 pub struct Function {
     pub name: String,
-    pub params: Vec<String>,
+    pub params: Vec<FunctionParameter>,
     pub body: Vec<Stmt>,
 }
 

@@ -7,10 +7,10 @@ use vif_compiler::NativeFunction;
 use vif_native::execute_native_call;
 use vif_objects::global::Global;
 use vif_objects::global_store::GlobalStore;
-use vif_objects::local::InheritedLocalPos;
 use vif_objects::op_code::OpCode;
 use vif_objects::stack::Stack;
 use vif_objects::stack_value::StackValue;
+use vif_objects::variable::InheritedLocalPos;
 use vif_objects::variable_storage::VariableStore;
 
 fn debug_stack(name: &str, stack: &Stack, frame: &CallFrame, previous_frames: &Vec<CallFrame>) {
@@ -109,7 +109,8 @@ where
 
     fn global_variable(&mut self, i: usize) -> Result<(), InterpreterError> {
         if let Global::Identifier(var_name) = self.globals.get(i) {
-            self.variables.insert(var_name, self.stack.pop());
+            self.variables
+                .insert(var_name.name.as_str(), self.stack.pop());
         } else {
             return Err(InterpreterError::Impossible);
         }
@@ -219,7 +220,7 @@ where
 
     fn get_global(&mut self, i: usize) -> Result<(), InterpreterError> {
         match self.globals.get(i) {
-            Global::Identifier(s) => match self.variables.get(s.as_str()) {
+            Global::Identifier(s) => match self.variables.get(s.name.as_str()) {
                 None => {
                     return Err(InterpreterError::RuntimeError(
                         RuntimeErrorType::UndeclaredVariable(format!("{}", s)),
@@ -235,15 +236,15 @@ where
     }
 
     fn set_global(&mut self, i: usize) -> Result<(), InterpreterError> {
-        if let Global::Identifier(var_name) = self.globals.get(i) {
+        if let Global::Identifier(variable) = self.globals.get(i) {
             if !self.variables.insert(
-                var_name,
+                variable.name.as_str(),
                 self.stack.peek_last().clone(), // here we clone because the assignement might be part of a larger expression
                                                 // the value must stay on the stack
             ) {
                 return Err(InterpreterError::RuntimeError(
                     RuntimeErrorType::UndeclaredVariable(format!(
-                        "Can't assign to undeclared variable: {var_name}"
+                        "Can't assign to undeclared variable: {variable}"
                     )),
                 ));
             }

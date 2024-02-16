@@ -8,9 +8,9 @@ use vif_objects::ast;
 use vif_objects::function::Arity;
 use vif_objects::function::Function;
 use vif_objects::global_store::GlobalStore;
-use vif_objects::local::InheritedLocalPos;
-use vif_objects::local::Local;
-use vif_objects::local::VariableType;
+use vif_objects::variable::InheritedLocalPos;
+use vif_objects::variable::Variable;
+use vif_objects::variable::VariableType;
 
 pub struct Compiler<'function> {
     scope_depth: usize,
@@ -164,7 +164,7 @@ impl<'function> Compiler<'function> {
 
     fn function_declaration(&mut self, token: &ast::Function) -> Result<(), CompilerError> {
         log::debug!("Starting function declaration");
-        let index = self.register_variable(Box::new(token.name.clone()));
+        let index = self.register_variable(Box::new(token.name.clone()), false);
         self.function_statement(token)?;
         self.define_variable(index);
         Ok(())
@@ -180,8 +180,8 @@ impl<'function> Compiler<'function> {
             for (i, local) in self.function.locals.iter().enumerate() {
                 function
                     .inherited_locals
-                    .push(vif_objects::local::InheritedLocal {
-                        var_name: local.variable.clone(),
+                    .push(vif_objects::variable::InheritedLocal {
+                        var_name: local.name.clone(),
                         depth: self.scope_depth,
                         pos: i + 1,
                     });
@@ -192,7 +192,7 @@ impl<'function> Compiler<'function> {
         std::mem::swap(&mut compiler.globals, &mut self.globals);
 
         for variable in token.params.iter() {
-            compiler.register_function_parameter(Box::new(variable.clone()));
+            compiler.register_function_parameter(Box::new(variable.name.clone()), variable.mutable);
         }
 
         log::debug!("Function compiling starting");
@@ -232,7 +232,7 @@ impl<'function> Compiler<'function> {
 
     fn var_declaration(&mut self, token: &ast::Variable) -> Result<(), CompilerError> {
         log::debug!("Starting variable declaration");
-        let index = self.register_variable(Box::new(token.name.clone()));
+        let index = self.register_variable(Box::new(token.name.to_owned()), token.mutable);
         self.expression(&token.value)?;
         self.define_variable(index);
         Ok(())
@@ -259,20 +259,24 @@ impl<'function> Compiler<'function> {
         }
     }
 
-    fn register_variable(&mut self, variable_name: Box<String>) -> usize {
-        log::debug!("Register variable {}", variable_name);
+    fn register_variable(&mut self, name: Box<String>, mutable: bool) -> usize {
+        log::debug!("Register variable {}", name);
         if self.scope_depth > 0 {
-            self.function.locals.push(Local::new(variable_name, None));
+            self.function
+                .locals
+                .push(Variable::new(name, None, mutable));
             return self.function.locals.len();
         } else {
-            self.make_global(Global::Identifier(variable_name))
+            self.make_global(Global::Identifier(Variable::new(name, Some(0), mutable)))
         }
     }
 
-    fn register_function_parameter(&mut self, variable_name: Box<String>) {
-        self.function
-            .locals
-            .push(Local::new(variable_name, Some(self.scope_depth)));
+    fn register_function_parameter(&mut self, variable_name: Box<String>, mutable: bool) {
+        self.function.locals.push(Variable::new(
+            variable_name,
+            Some(self.scope_depth),
+            mutable,
+        ));
     }
 
     fn get_global_index(&mut self, variable: Global) -> Result<usize, CompilerError> {
@@ -400,9 +404,9 @@ impl<'function> Compiler<'function> {
         let op_code = match self.resolve_local(&var_name)? {
             VariableType::Local(index) => OpCode::SetLocal(index),
             VariableType::Inherited(v) => OpCode::SetInheritedLocal(v),
-            VariableType::None => OpCode::SetGlobal(
-                self.make_global(Global::Identifier(Box::new(var_name.to_owned()))),
-            ),
+            VariableType::None => OpCode::SetGlobal(self.make_global(Global::Identifier(
+                Variable::new(Box::new(var_name.to_owned()), Some(0), false),
+            ))),
         };
 
         self.emit_op_code(op_code);
@@ -425,9 +429,9 @@ impl<'function> Compiler<'function> {
                 "sleep" => OpCode::GetGlobal(self.make_global(Global::Native(
                     NativeFunction::new(NativeFunctionCallee::Sleep),
                 ))),
-                _ => OpCode::GetGlobal(
-                    self.get_global_index(Global::Identifier(Box::new(var_name.to_owned())))?,
-                ),
+                _ => OpCode::GetGlobal(self.get_global_index(Global::Identifier(
+                    Variable::new(Box::new(var_name.to_owned()), Some(0), false),
+                ))?),
             },
         };
 
@@ -439,7 +443,7 @@ impl<'function> Compiler<'function> {
         log::debug!("Resolve variable {}", var_name);
 
         for (i, local) in self.function.locals.iter().rev().enumerate() {
-            if local.variable.as_str() != var_name {
+            if local.name.as_str() != var_name {
                 continue;
             }
 

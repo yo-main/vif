@@ -1,5 +1,5 @@
 use crate::chunk::Chunk;
-use crate::local::{InheritedLocal, Local};
+use crate::variable::{InheritedLocal, Variable};
 
 #[derive(Clone, Copy)]
 pub enum Arity {
@@ -60,7 +60,7 @@ pub struct Function {
     pub arity: Arity,
     pub chunk: Chunk,
     pub name: String,
-    pub locals: Vec<Local>,
+    pub locals: Vec<Variable>,
     pub inherited_locals: Vec<InheritedLocal>,
 }
 

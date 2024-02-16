@@ -20,6 +20,11 @@ assert not ("coucou" == 1)
 var hello = 1
 assert hello == 1
 
+var mut mutable = True
+assert mutable == True
+mutable = False
+assert mutable == False
+
 hello = hello + 3
 assert hello == 4
 

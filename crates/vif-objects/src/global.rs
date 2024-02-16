@@ -1,12 +1,13 @@
 use crate::function::Function;
 use crate::function::NativeFunction;
+use crate::variable::Variable;
 
 #[derive(Debug, PartialEq)]
 pub enum Global {
     Integer(i64),
     Float(f64),
     String(Box<String>),
-    Identifier(Box<String>),
+    Identifier(Variable),
     Function(Box<Function>),
     Native(NativeFunction),
 }
