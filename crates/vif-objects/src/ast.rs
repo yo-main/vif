@@ -149,7 +149,13 @@ pub struct Logical {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum Expr {
+pub struct Expr {
+    pub body: ExprBody,
+    pub mutable: bool,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum ExprBody {
     Binary(Binary),
     Unary(Unary),
     Grouping(Grouping),
@@ -170,6 +176,12 @@ pub enum Stmt {
     While(While),
     Return(Return),
     Assert(Assert),
+}
+
+impl Expr {
+    pub fn new(body: ExprBody, mutable: bool) -> Self {
+        Expr { body, mutable }
+    }
 }
 
 impl std::fmt::Display for Return {
@@ -377,15 +389,21 @@ impl std::fmt::Display for Call {
 
 impl std::fmt::Display for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.body)
+    }
+}
+
+impl std::fmt::Display for ExprBody {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Expr::Binary(e) => write!(f, "{}", e),
-            Expr::Unary(e) => write!(f, "{}", e),
-            Expr::Grouping(e) => write!(f, "{}", e),
-            Expr::Value(e) => write!(f, "{}", e),
-            Expr::Assign(e) => write!(f, "{}", e),
-            Expr::Logical(e) => write!(f, "{}", e),
-            Expr::Call(e) => write!(f, "{}", e),
-            Expr::LoopKeyword(e) => write!(f, "{}", e),
+            Self::Binary(e) => write!(f, "{}", e),
+            Self::Unary(e) => write!(f, "{}", e),
+            Self::Grouping(e) => write!(f, "{}", e),
+            Self::Value(e) => write!(f, "{}", e),
+            Self::Assign(e) => write!(f, "{}", e),
+            Self::Logical(e) => write!(f, "{}", e),
+            Self::Call(e) => write!(f, "{}", e),
+            Self::LoopKeyword(e) => write!(f, "{}", e),
         }
     }
 }

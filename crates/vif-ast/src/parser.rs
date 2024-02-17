@@ -1,5 +1,5 @@
 use crate::error::AstError;
-use vif_objects::ast::{self, Value};
+use vif_objects::ast::{self, Expr, ExprBody, Value};
 use vif_scanner::Scanner;
 use vif_scanner::Token;
 use vif_scanner::TokenType;
@@ -124,10 +124,13 @@ impl<'a> Parser<'a> {
     }
 
     fn assert_statement(&mut self) -> Result<ast::Assert, AstError> {
+        //TODO: rework this to have expression value displayed when doing an assertion
         self.scanner.scan().unwrap();
 
         let value = match self.scanner.peek() {
-            Ok(t) if t.r#type == TokenType::NewLine => Box::new(ast::Expr::Value(Value::None)),
+            Ok(t) if t.r#type == TokenType::NewLine => {
+                Box::new(Expr::new(ExprBody::Value(Value::None), false))
+            }
             _ => self.expression()?,
         };
         let stmt = ast::Assert { value };
@@ -189,7 +192,7 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    fn unary(&mut self) -> Result<Box<ast::Expr>, AstError> {
+    fn unary(&mut self) -> Result<Box<Expr>, AstError> {
         for token in [&TokenType::Minus, &TokenType::Not] {
             if self.scanner.check(token) {
                 self.scanner.scan().unwrap();
@@ -199,7 +202,11 @@ impl<'a> Parser<'a> {
                     ast::UnaryOperator::Minus
                 };
                 let right = self.unary()?;
-                return Ok(Box::new(ast::Expr::Unary(ast::Unary { operator, right })));
+                let mutable = right.mutable;
+                return Ok(Box::new(Expr::new(
+                    ExprBody::Unary(ast::Unary { operator, right }),
+                    mutable,
+                )));
             }
         }
 
@@ -210,7 +217,9 @@ impl<'a> Parser<'a> {
         self.scanner.scan().unwrap();
 
         let value = match self.scanner.peek() {
-            Ok(t) if t.r#type == TokenType::NewLine => Box::new(ast::Expr::Value(Value::None)),
+            Ok(t) if t.r#type == TokenType::NewLine => {
+                Box::new(Expr::new(ExprBody::Value(Value::None), false))
+            }
             _ => self.expression()?,
         };
         let stmt = ast::Return { value };
@@ -283,7 +292,7 @@ impl<'a> Parser<'a> {
         Ok(stmts)
     }
 
-    fn expression(&mut self) -> Result<Box<ast::Expr>, AstError> {
+    fn expression(&mut self) -> Result<Box<Expr>, AstError> {
         // if self.r#match(&TokenType::Comma) {
         //     let operator = self.advance().unwrap();
         //     let right = self.expression()?;
@@ -291,16 +300,20 @@ impl<'a> Parser<'a> {
         // }
         self.assignment()
     }
-    fn assignment(&mut self) -> Result<Box<ast::Expr>, AstError> {
+    fn assignment(&mut self) -> Result<Box<Expr>, AstError> {
         let expr = self.or()?;
 
         if self.scanner.check(&TokenType::Equal) {
             self.scanner.scan().unwrap();
             let value = self.assignment()?;
+            let mutable = value.mutable;
 
-            match *expr {
-                ast::Expr::Value(Value::Variable(name)) => {
-                    return Ok(Box::new(ast::Expr::Assign(ast::Assign { name, value })))
+            match expr.body {
+                ExprBody::Value(Value::Variable(name)) => {
+                    return Ok(Box::new(Expr::new(
+                        ExprBody::Assign(ast::Assign { name, value }),
+                        mutable,
+                    )))
                 }
                 ref e => self.errors.push(AstError::ParsingError(format!(
                     "Invalid assignement target: {}",
@@ -312,39 +325,46 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
-    fn or(&mut self) -> Result<Box<ast::Expr>, AstError> {
+    fn or(&mut self) -> Result<Box<Expr>, AstError> {
         let left = self.and()?;
 
         if self.scanner.check(&TokenType::Or) {
             self.scanner.scan().unwrap();
             let right = self.or()?;
-            return Ok(Box::new(ast::Expr::Logical(ast::Logical {
-                left,
-                operator: ast::LogicalOperator::Or,
-                right,
-            })));
+            let mutable = left.mutable & right.mutable;
+            return Ok(Box::new(Expr::new(
+                ExprBody::Logical(ast::Logical {
+                    left,
+                    operator: ast::LogicalOperator::Or,
+                    right,
+                }),
+                mutable,
+            )));
         };
 
         Ok(left)
     }
 
-    fn and(&mut self) -> Result<Box<ast::Expr>, AstError> {
+    fn and(&mut self) -> Result<Box<Expr>, AstError> {
         let left = self.equality()?;
 
         if self.scanner.check(&TokenType::And) {
             self.scanner.scan().unwrap();
             let right = self.and()?;
-            return Ok(Box::new(ast::Expr::Logical(ast::Logical {
-                left,
-                operator: ast::LogicalOperator::And,
-                right,
-            })));
+            return Ok(Box::new(Expr::new(
+                ExprBody::Logical(ast::Logical {
+                    left,
+                    operator: ast::LogicalOperator::And,
+                    right,
+                }),
+                true,
+            )));
         };
 
         Ok(left)
     }
 
-    fn equality(&mut self) -> Result<Box<ast::Expr>, AstError> {
+    fn equality(&mut self) -> Result<Box<Expr>, AstError> {
         let left = self.comparison()?;
 
         for token_type in [&TokenType::BangEqual, &TokenType::EqualEqual] {
@@ -357,18 +377,21 @@ impl<'a> Parser<'a> {
                     ast::Operator::Equal
                 };
 
-                return Ok(Box::new(ast::Expr::Binary(ast::Binary {
-                    left,
-                    operator,
-                    right,
-                })));
+                return Ok(Box::new(Expr::new(
+                    ExprBody::Binary(ast::Binary {
+                        left,
+                        operator,
+                        right,
+                    }),
+                    true,
+                )));
             }
         }
 
         Ok(left)
     }
 
-    fn comparison(&mut self) -> Result<Box<ast::Expr>, AstError> {
+    fn comparison(&mut self) -> Result<Box<Expr>, AstError> {
         let left = self.addition()?;
 
         for token in [
@@ -389,54 +412,63 @@ impl<'a> Parser<'a> {
                     ast::Operator::LessEqual
                 };
                 let right = self.comparison()?;
-                return Ok(Box::new(ast::Expr::Binary(ast::Binary {
-                    left,
-                    operator,
-                    right,
-                })));
+                return Ok(Box::new(Expr::new(
+                    ExprBody::Binary(ast::Binary {
+                        left,
+                        operator,
+                        right,
+                    }),
+                    true,
+                )));
             }
         }
 
         Ok(left)
     }
 
-    fn addition(&mut self) -> Result<Box<ast::Expr>, AstError> {
+    fn addition(&mut self) -> Result<Box<Expr>, AstError> {
         let left = self.minus()?;
 
         for token in [&TokenType::Plus] {
             if self.scanner.check(token) {
                 self.scanner.scan().unwrap();
                 let right = self.addition()?;
-                return Ok(Box::new(ast::Expr::Binary(ast::Binary {
-                    left,
-                    operator: ast::Operator::Plus,
-                    right,
-                })));
+                return Ok(Box::new(Expr::new(
+                    ExprBody::Binary(ast::Binary {
+                        left,
+                        operator: ast::Operator::Plus,
+                        right,
+                    }),
+                    true,
+                )));
             }
         }
 
         Ok(left)
     }
 
-    fn minus(&mut self) -> Result<Box<ast::Expr>, AstError> {
+    fn minus(&mut self) -> Result<Box<Expr>, AstError> {
         let left = self.factor()?;
 
         for token in [&TokenType::Minus] {
             if self.scanner.check(token) {
                 self.scanner.scan().unwrap();
                 let right = self.minus()?;
-                return Ok(Box::new(ast::Expr::Binary(ast::Binary {
-                    left,
-                    operator: ast::Operator::Minus,
-                    right,
-                })));
+                return Ok(Box::new(Expr::new(
+                    ExprBody::Binary(ast::Binary {
+                        left,
+                        operator: ast::Operator::Minus,
+                        right,
+                    }),
+                    true,
+                )));
             }
         }
 
         Ok(left)
     }
 
-    fn factor(&mut self) -> Result<Box<ast::Expr>, AstError> {
+    fn factor(&mut self) -> Result<Box<Expr>, AstError> {
         let left = self.unary()?;
 
         for token in [&TokenType::Star, &TokenType::Slash, &TokenType::Modulo] {
@@ -451,18 +483,21 @@ impl<'a> Parser<'a> {
                     ast::Operator::Modulo
                 };
 
-                return Ok(Box::new(ast::Expr::Binary(ast::Binary {
-                    left,
-                    operator,
-                    right,
-                })));
+                return Ok(Box::new(Expr::new(
+                    ExprBody::Binary(ast::Binary {
+                        left,
+                        operator,
+                        right,
+                    }),
+                    true,
+                )));
             }
         }
 
         Ok(left)
     }
 
-    fn call(&mut self) -> Result<Box<ast::Expr>, AstError> {
+    fn call(&mut self) -> Result<Box<Expr>, AstError> {
         let mut expr = self.primary()?;
 
         loop {
@@ -476,7 +511,7 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
-    fn finish_call(&mut self, callee: Box<ast::Expr>) -> Result<Box<ast::Expr>, AstError> {
+    fn finish_call(&mut self, callee: Box<Expr>) -> Result<Box<Expr>, AstError> {
         let mut arguments = Vec::new();
 
         loop {
@@ -492,37 +527,52 @@ impl<'a> Parser<'a> {
 
         self.consume(TokenType::RightParen, "Expected ) after arguments")?;
 
-        Ok(Box::new(ast::Expr::Call(ast::Call { callee, arguments })))
+        Ok(Box::new(Expr::new(
+            ExprBody::Call(ast::Call { callee, arguments }),
+            false,
+        )))
     }
 
-    fn primary(&mut self) -> Result<Box<ast::Expr>, AstError> {
+    fn primary(&mut self) -> Result<Box<Expr>, AstError> {
         let next = self.scanner.scan().unwrap();
 
         Ok(match next.r#type {
-            TokenType::False => Box::new(ast::Expr::Value(Value::False)),
-            TokenType::True => Box::new(ast::Expr::Value(Value::True)),
-            TokenType::None => Box::new(ast::Expr::Value(Value::None)),
-            TokenType::Integer(i) => Box::new(ast::Expr::Value(Value::Integer(i))),
-            TokenType::Float(f) => Box::new(ast::Expr::Value(Value::Float(f))),
-            TokenType::String(s) => Box::new(ast::Expr::Value(Value::String(s))),
-            TokenType::Identifier(s) => Box::new(ast::Expr::Value(Value::Variable(s))),
+            TokenType::False => Box::new(Expr::new(ExprBody::Value(Value::False), true)),
+            TokenType::True => Box::new(Expr::new(ExprBody::Value(Value::True), true)),
+            TokenType::None => Box::new(Expr::new(ExprBody::Value(Value::None), true)),
+            TokenType::Integer(i) => Box::new(Expr::new(ExprBody::Value(Value::Integer(i)), true)),
+            TokenType::Float(f) => Box::new(Expr::new(ExprBody::Value(Value::Float(f)), true)),
+            TokenType::String(s) => Box::new(Expr::new(ExprBody::Value(Value::String(s)), true)),
+            TokenType::Identifier(s) => {
+                Box::new(Expr::new(ExprBody::Value(Value::Variable(s)), false))
+            }
             TokenType::Break => {
                 self.consume(TokenType::NewLine, "Expect new line after break")?;
-                Box::new(ast::Expr::LoopKeyword(ast::LoopKeyword::Break))
+                Box::new(Expr::new(
+                    ExprBody::LoopKeyword(ast::LoopKeyword::Break),
+                    false,
+                ))
             }
             TokenType::Continue => {
                 self.consume(TokenType::NewLine, "Expect new line after continue")?;
-                Box::new(ast::Expr::LoopKeyword(ast::LoopKeyword::Continue))
+                Box::new(Expr::new(
+                    ExprBody::LoopKeyword(ast::LoopKeyword::Continue),
+                    false,
+                ))
             }
             TokenType::EOF => return Err(AstError::EOF),
             TokenType::LeftParen => {
                 let expr = self.expression()?;
+                let mutable = expr.mutable;
                 self.consume(TokenType::RightParen, "expect ')' after expression")?;
-                Box::new(ast::Expr::Grouping(ast::Grouping {
-                    left: ast::Group::LeftParen,
-                    expr,
-                    right: ast::Group::RightParen,
-                }))
+                Box::new(Expr::new(
+                    ExprBody::Grouping(ast::Grouping {
+                        left: ast::Group::LeftParen,
+                        expr,
+                        right: ast::Group::RightParen,
+                    }),
+                    mutable,
+                ))
             }
             e => panic!("Parsing not yet implemented: {}", e),
         })
@@ -542,7 +592,6 @@ mod tests {
     use super::ast::Binary;
     use super::ast::Call;
     use super::ast::Condition;
-    use super::ast::Expr;
     use super::ast::Function;
     use super::ast::FunctionParameter;
     use super::ast::Logical;
@@ -554,6 +603,8 @@ mod tests {
     use super::ast::UnaryOperator;
     use super::ast::Value;
     use super::ast::Variable;
+    use super::Expr;
+    use super::ExprBody;
     use super::Parser;
     use super::Scanner;
     use super::Token;
@@ -570,9 +621,10 @@ mod tests {
         assert_eq!(parser.ast.len(), 1);
         assert_eq!(
             parser.ast[0],
-            Stmt::Expression(Box::new(Expr::Value(Value::String(
-                "This is a simple string".to_owned()
-            ))))
+            Stmt::Expression(Box::new(Expr::new(
+                ExprBody::Value(Value::String("This is a simple string".to_owned())),
+                true
+            )))
         );
     }
 
@@ -588,10 +640,13 @@ mod tests {
         assert_eq!(parser.ast.len(), 1);
         assert_eq!(
             parser.ast[0],
-            Stmt::Expression(Box::new(Expr::Unary(Unary {
-                operator: UnaryOperator::Minus,
-                right: Box::new(Expr::Value(Value::Integer(1)))
-            })))
+            Stmt::Expression(Box::new(Expr::new(
+                ExprBody::Unary(Unary {
+                    operator: UnaryOperator::Minus,
+                    right: Box::new(Expr::new(ExprBody::Value(Value::Integer(1)), true))
+                }),
+                true
+            )))
         );
     }
 
@@ -610,10 +665,13 @@ mod tests {
             Stmt::Var(Variable {
                 name: "coucou".to_owned(),
                 mutable: false,
-                value: Box::new(Expr::Unary(Unary {
-                    operator: UnaryOperator::Minus,
-                    right: Box::new(Expr::Value(Value::Integer(1)))
-                }))
+                value: Box::new(Expr::new(
+                    ExprBody::Unary(Unary {
+                        operator: UnaryOperator::Minus,
+                        right: Box::new(Expr::new(ExprBody::Value(Value::Integer(1)), true))
+                    }),
+                    true
+                ))
             })
         );
     }
@@ -633,10 +691,13 @@ mod tests {
             Stmt::Var(Variable {
                 name: "coucou".to_owned(),
                 mutable: true,
-                value: Box::new(Expr::Unary(Unary {
-                    operator: UnaryOperator::Minus,
-                    right: Box::new(Expr::Value(Value::Integer(1)))
-                }))
+                value: Box::new(Expr::new(
+                    ExprBody::Unary(Unary {
+                        operator: UnaryOperator::Minus,
+                        right: Box::new(Expr::new(ExprBody::Value(Value::Integer(1)), true))
+                    }),
+                    true
+                ))
             })
         );
     }
@@ -653,15 +714,21 @@ mod tests {
         assert_eq!(parser.ast.len(), 1);
         assert_eq!(
             parser.ast[0],
-            Stmt::Expression(Box::new(Expr::Binary(Binary {
-                left: Box::new(Expr::Value(Value::Integer(4))),
-                operator: Operator::Equal,
-                right: Box::new(Expr::Binary(Binary {
-                    left: Box::new(Expr::Value(Value::Integer(3))),
-                    operator: Operator::Plus,
-                    right: Box::new(Expr::Value(Value::Integer(1))),
-                }))
-            })))
+            Stmt::Expression(Box::new(Expr::new(
+                ExprBody::Binary(Binary {
+                    left: Box::new(Expr::new(ExprBody::Value(Value::Integer(4)), true)),
+                    operator: Operator::Equal,
+                    right: Box::new(Expr::new(
+                        ExprBody::Binary(Binary {
+                            left: Box::new(Expr::new(ExprBody::Value(Value::Integer(3)), true)),
+                            operator: Operator::Plus,
+                            right: Box::new(Expr::new(ExprBody::Value(Value::Integer(1)), true)),
+                        }),
+                        true
+                    ))
+                }),
+                true
+            )))
         );
     }
 
@@ -677,11 +744,14 @@ mod tests {
         assert_eq!(parser.ast.len(), 1);
         assert_eq!(
             parser.ast[0],
-            Stmt::Expression(Box::new(Expr::Logical(Logical {
-                left: Box::new(Expr::Value(Value::True)),
-                operator: LogicalOperator::And,
-                right: Box::new(Expr::Value(Value::False)),
-            })))
+            Stmt::Expression(Box::new(Expr::new(
+                ExprBody::Logical(Logical {
+                    left: Box::new(Expr::new(ExprBody::Value(Value::True), true)),
+                    operator: LogicalOperator::And,
+                    right: Box::new(Expr::new(ExprBody::Value(Value::False), true)),
+                }),
+                true
+            )))
         );
     }
 
@@ -697,11 +767,14 @@ mod tests {
         assert_eq!(parser.ast.len(), 1);
         assert_eq!(
             parser.ast[0],
-            Stmt::Expression(Box::new(Expr::Logical(Logical {
-                left: Box::new(Expr::Value(Value::True)),
-                operator: LogicalOperator::Or,
-                right: Box::new(Expr::Value(Value::False)),
-            })))
+            Stmt::Expression(Box::new(Expr::new(
+                ExprBody::Logical(Logical {
+                    left: Box::new(Expr::new(ExprBody::Value(Value::True), true)),
+                    operator: LogicalOperator::Or,
+                    right: Box::new(Expr::new(ExprBody::Value(Value::False), true)),
+                }),
+                true
+            )))
         );
     }
 
@@ -717,10 +790,16 @@ mod tests {
         assert_eq!(parser.ast.len(), 1);
         assert_eq!(
             parser.ast[0],
-            Stmt::Expression(Box::new(Expr::Call(Call {
-                callee: Box::new(Expr::Value(Value::Variable("my_function".to_owned()))),
-                arguments: Vec::new(),
-            },)))
+            Stmt::Expression(Box::new(Expr::new(
+                ExprBody::Call(Call {
+                    callee: Box::new(Expr::new(
+                        ExprBody::Value(Value::Variable("my_function".to_owned())),
+                        false
+                    )),
+                    arguments: Vec::new(),
+                }),
+                false
+            )))
         );
     }
 
@@ -736,14 +815,29 @@ mod tests {
         assert_eq!(parser.ast.len(), 1);
         assert_eq!(
             parser.ast[0],
-            Stmt::Expression(Box::new(Expr::Call(Call {
-                callee: Box::new(Expr::Value(Value::Variable("my_function".to_owned()))),
-                arguments: vec![
-                    Box::new(Expr::Value(Value::Variable("a".to_owned()))),
-                    Box::new(Expr::Value(Value::Variable("b".to_owned()))),
-                    Box::new(Expr::Value(Value::Variable("c".to_owned()))),
-                ]
-            },)))
+            Stmt::Expression(Box::new(Expr::new(
+                ExprBody::Call(Call {
+                    callee: Box::new(Expr::new(
+                        ExprBody::Value(Value::Variable("my_function".to_owned())),
+                        false
+                    )),
+                    arguments: vec![
+                        Box::new(Expr::new(
+                            ExprBody::Value(Value::Variable("a".to_owned())),
+                            false
+                        )),
+                        Box::new(Expr::new(
+                            ExprBody::Value(Value::Variable("b".to_owned())),
+                            false
+                        )),
+                        Box::new(Expr::new(
+                            ExprBody::Value(Value::Variable("c".to_owned())),
+                            false
+                        )),
+                    ]
+                }),
+                false
+            )))
         );
     }
 
@@ -776,7 +870,7 @@ mod tests {
                     },
                 ],
                 body: vec![Stmt::Return(Return {
-                    value: Box::new(Expr::Value(Value::None))
+                    value: Box::new(Expr::new(ExprBody::Value(Value::None), false))
                 })]
             })
         );
@@ -811,7 +905,7 @@ mod tests {
                     },
                 ],
                 body: vec![Stmt::Return(Return {
-                    value: Box::new(Expr::Value(Value::Float(1.5)))
+                    value: Box::new(Expr::new(ExprBody::Value(Value::Float(1.5)), true))
                 })]
             })
         );
@@ -830,9 +924,12 @@ mod tests {
         assert_eq!(
             parser.ast[0],
             Stmt::Condition(Condition {
-                expr: Box::new(Expr::Value(Value::True)),
+                expr: Box::new(Expr::new(ExprBody::Value(Value::True), true)),
                 then: Box::new(Stmt::Block(vec![Stmt::Return(Return {
-                    value: Box::new(Expr::Value(Value::String("coucou".to_owned())))
+                    value: Box::new(Expr::new(
+                        ExprBody::Value(Value::String("coucou".to_owned())),
+                        true
+                    ))
                 })])),
                 r#else: None
             })
@@ -852,12 +949,18 @@ mod tests {
         assert_eq!(
             parser.ast[0],
             Stmt::Condition(Condition {
-                expr: Box::new(Expr::Value(Value::True)),
+                expr: Box::new(Expr::new(ExprBody::Value(Value::True), true)),
                 then: Box::new(Stmt::Block(vec![Stmt::Return(Return {
-                    value: Box::new(Expr::Value(Value::String("coucou".to_owned())))
+                    value: Box::new(Expr::new(
+                        ExprBody::Value(Value::String("coucou".to_owned())),
+                        true
+                    ))
                 })])),
                 r#else: Some(Box::new(Stmt::Block(vec![Stmt::Return(Return {
-                    value: Box::new(Expr::Value(Value::String("bye".to_owned())))
+                    value: Box::new(Expr::new(
+                        ExprBody::Value(Value::String("bye".to_owned())),
+                        true
+                    ))
                 })])))
             })
         );
@@ -876,14 +979,20 @@ mod tests {
         assert_eq!(
             parser.ast[0],
             Stmt::Condition(Condition {
-                expr: Box::new(Expr::Value(Value::True)),
+                expr: Box::new(Expr::new(ExprBody::Value(Value::True), true)),
                 then: Box::new(Stmt::Block(vec![Stmt::Return(Return {
-                    value: Box::new(Expr::Value(Value::String("coucou".to_owned())))
+                    value: Box::new(Expr::new(
+                        ExprBody::Value(Value::String("coucou".to_owned())),
+                        true
+                    ))
                 })])),
                 r#else: Some(Box::new(Stmt::Condition(Condition {
-                    expr: Box::new(Expr::Value(Value::False)),
+                    expr: Box::new(Expr::new(ExprBody::Value(Value::False), true)),
                     then: Box::new(Stmt::Block(vec![Stmt::Return(Return {
-                        value: Box::new(Expr::Value(Value::String("bye".to_owned())))
+                        value: Box::new(Expr::new(
+                            ExprBody::Value(Value::String("bye".to_owned())),
+                            true
+                        ))
                     })])),
                     r#else: None
                 })))
@@ -904,17 +1013,26 @@ mod tests {
         assert_eq!(
             parser.ast[0],
             Stmt::Condition(Condition {
-                expr: Box::new(Expr::Value(Value::True)),
+                expr: Box::new(Expr::new(ExprBody::Value(Value::True), true)),
                 then: Box::new(Stmt::Block(vec![Stmt::Return(Return {
-                    value: Box::new(Expr::Value(Value::String("coucou".to_owned())))
+                    value: Box::new(Expr::new(
+                        ExprBody::Value(Value::String("coucou".to_owned())),
+                        true
+                    ))
                 })])),
                 r#else: Some(Box::new(Stmt::Condition(Condition {
-                    expr: Box::new(Expr::Value(Value::False)),
+                    expr: Box::new(Expr::new(ExprBody::Value(Value::False), true)),
                     then: Box::new(Stmt::Block(vec![Stmt::Return(Return {
-                        value: Box::new(Expr::Value(Value::String("bye".to_owned())))
+                        value: Box::new(Expr::new(
+                            ExprBody::Value(Value::String("bye".to_owned())),
+                            true
+                        ))
                     })])),
                     r#else: Some(Box::new(Stmt::Block(vec![Stmt::Return(Return {
-                        value: Box::new(Expr::Value(Value::String("hello".to_owned())))
+                        value: Box::new(Expr::new(
+                            ExprBody::Value(Value::String("hello".to_owned())),
+                            true
+                        ))
                     })])))
                 })))
             })

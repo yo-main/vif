@@ -305,15 +305,15 @@ impl<'function> Compiler<'function> {
     }
 
     fn expression(&mut self, token: &Box<ast::Expr>) -> Result<(), CompilerError> {
-        match token.as_ref() {
-            ast::Expr::Binary(t) => self.binary(t),
-            ast::Expr::Unary(t) => self.unary(t),
-            ast::Expr::Grouping(t) => self.grouping(t),
-            ast::Expr::Value(t) => self.value(t),
-            ast::Expr::Assign(t) => self.assign(t),
-            ast::Expr::Logical(t) => self.logical(t),
-            ast::Expr::Call(t) => self.call(t),
-            ast::Expr::LoopKeyword(t) => self.loop_keyword(t),
+        match &token.body {
+            ast::ExprBody::Binary(t) => self.binary(t),
+            ast::ExprBody::Unary(t) => self.unary(t),
+            ast::ExprBody::Grouping(t) => self.grouping(t),
+            ast::ExprBody::Value(t) => self.value(t),
+            ast::ExprBody::Assign(t) => self.assign(t),
+            ast::ExprBody::Logical(t) => self.logical(t),
+            ast::ExprBody::Call(t) => self.call(t),
+            ast::ExprBody::LoopKeyword(t) => self.loop_keyword(t),
         }
     }
 
