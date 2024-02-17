@@ -123,16 +123,16 @@ pub enum LoopKeyword {
 
 #[derive(Debug, PartialEq)]
 pub enum Value {
-    Operator(Operator),
+    // Operator(Operator),
     String(String),
     Integer(i64),
     Float(f64),
     Variable(String),
-    NewLine,
+    // NewLine,
     True,
     False,
     None,
-    Ignore,
+    // Ignore,
 }
 
 #[derive(Debug, PartialEq)]
@@ -261,7 +261,7 @@ impl std::fmt::Display for Number {
 impl std::fmt::Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Operator(v) => write!(f, "{}", v),
+            // Self::Operator(v) => write!(f, "{}", v),
             Self::String(v) => write!(f, "{}", v),
             Self::Variable(v) => write!(f, "{}", v),
             Self::Integer(v) => write!(f, "{}", v),
@@ -269,8 +269,8 @@ impl std::fmt::Display for Value {
             Self::True => write!(f, "True"),
             Self::False => write!(f, "False"),
             Self::None => write!(f, "None"),
-            Self::NewLine => write!(f, "\\n"),
-            Self::Ignore => write!(f, ""),
+            // Self::NewLine => write!(f, "\\n"),
+            // Self::Ignore => write!(f, ""),
         }
     }
 }

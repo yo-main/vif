@@ -331,16 +331,16 @@ impl<'function> Compiler<'function> {
 
     fn value(&mut self, token: &ast::Value) -> Result<(), CompilerError> {
         match token {
-            ast::Value::Operator(o) => self.operator(o),
+            // ast::Value::Operator(o) => self.operator(o),
             ast::Value::String(s) => self.emit_global(Global::String(Box::new(s.clone()))),
             ast::Value::Integer(i) => self.emit_global(Global::Integer(*i)),
             ast::Value::Float(f) => self.emit_global(Global::Float(*f)),
             ast::Value::Variable(s) => self.get_variable(s)?,
             ast::Value::True => self.emit_op_code(OpCode::True),
             ast::Value::False => self.emit_op_code(OpCode::False),
-            ast::Value::NewLine => (),
+            // ast::Value::NewLine => (),
             ast::Value::None => self.emit_op_code(OpCode::None),
-            ast::Value::Ignore => (),
+            // ast::Value::Ignore => (),
         };
 
         Ok(())
