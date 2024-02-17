@@ -1,5 +1,5 @@
 use crate::chunk::Chunk;
-use crate::variable::{InheritedLocal, Variable};
+use crate::variable::{InheritedVariable, Variable};
 
 #[derive(Clone, Copy)]
 pub enum Arity {
@@ -61,7 +61,7 @@ pub struct Function {
     pub chunk: Chunk,
     pub name: String,
     pub locals: Vec<Variable>,
-    pub inherited_locals: Vec<InheritedLocal>,
+    pub inherited_locals: Vec<InheritedVariable>,
 }
 
 impl PartialEq for Function {

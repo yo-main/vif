@@ -33,10 +33,11 @@ impl std::fmt::Display for Variable {
 }
 
 #[derive(Clone)]
-pub struct InheritedLocal {
+pub struct InheritedVariable {
     pub var_name: Box<String>,
     pub depth: usize,
     pub pos: usize,
+    pub mutable: bool,
 }
 
 #[derive(PartialEq, Debug)]
@@ -50,7 +51,7 @@ pub enum VariableType {
     Local(usize),
     MutableLocal(usize),
     Inherited(InheritedLocalPos),
-    // MutableInherited(InheritedLocalPos),
+    MutableInherited(InheritedLocalPos),
 }
 
 impl std::fmt::Display for InheritedLocalPos {

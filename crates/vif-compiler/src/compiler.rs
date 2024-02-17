@@ -180,10 +180,11 @@ impl<'function> Compiler<'function> {
             for (i, local) in self.function.locals.iter().enumerate() {
                 function
                     .inherited_locals
-                    .push(vif_objects::variable::InheritedLocal {
+                    .push(vif_objects::variable::InheritedVariable {
                         var_name: local.name.clone(),
                         depth: self.scope_depth,
                         pos: i + 1,
+                        mutable: local.mutable,
                     });
             }
         }
@@ -403,12 +404,17 @@ impl<'function> Compiler<'function> {
 
         let op_code = match self.resolve_local(&var_name)? {
             VariableType::MutableLocal(index) => OpCode::SetLocal(index),
-            VariableType::Local(index) => {
+            VariableType::Local(_) => {
                 return Err(CompilerError::SyntaxError(format!(
                     "Cannot assign to a non mutable variable"
                 )))
             }
             VariableType::Inherited(v) => OpCode::SetInheritedLocal(v),
+            VariableType::MutableInherited(_) => {
+                return Err(CompilerError::SyntaxError(format!(
+                    "Cannot assign to a non mutable variable"
+                )))
+            }
             VariableType::None => OpCode::SetGlobal(self.make_global(Global::Identifier(
                 Variable::new(Box::new(var_name.to_owned()), Some(0), false),
             ))),
@@ -425,6 +431,7 @@ impl<'function> Compiler<'function> {
             VariableType::Local(index) => OpCode::GetLocal(index),
             VariableType::MutableLocal(index) => OpCode::GetLocal(index),
             VariableType::Inherited(v) => OpCode::GetInheritedLocal(v),
+            VariableType::MutableInherited(v) => OpCode::GetInheritedLocal(v),
             VariableType::None => match var_name {
                 "get_time" => OpCode::GetGlobal(self.make_global(Global::Native(
                     NativeFunction::new(NativeFunctionCallee::GetTime),
