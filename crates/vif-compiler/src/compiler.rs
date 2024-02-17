@@ -313,6 +313,7 @@ impl<'function> Compiler<'function> {
             ast::Expr::Assign(t) => self.assign(t),
             ast::Expr::Logical(t) => self.logical(t),
             ast::Expr::Call(t) => self.call(t),
+            ast::Expr::LoopKeyword(t) => self.loop_keyword(t),
         }
     }
 
@@ -337,11 +338,18 @@ impl<'function> Compiler<'function> {
             ast::Value::Variable(s) => self.get_variable(s)?,
             ast::Value::True => self.emit_op_code(OpCode::True),
             ast::Value::False => self.emit_op_code(OpCode::False),
-            ast::Value::Break => self.break_loop()?,
-            ast::Value::Continue => self.continue_loop()?,
             ast::Value::NewLine => (),
             ast::Value::None => self.emit_op_code(OpCode::None),
             ast::Value::Ignore => (),
+        };
+
+        Ok(())
+    }
+
+    fn loop_keyword(&mut self, token: &ast::LoopKeyword) -> Result<(), CompilerError> {
+        match token {
+            ast::LoopKeyword::Break => self.break_loop()?,
+            ast::LoopKeyword::Continue => self.continue_loop()?,
         };
 
         Ok(())

@@ -116,6 +116,12 @@ pub struct While {
 }
 
 #[derive(Debug, PartialEq)]
+pub enum LoopKeyword {
+    Continue,
+    Break,
+}
+
+#[derive(Debug, PartialEq)]
 pub enum Value {
     Operator(Operator),
     String(String),
@@ -125,8 +131,6 @@ pub enum Value {
     NewLine,
     True,
     False,
-    Break,
-    Continue,
     None,
     Ignore,
 }
@@ -150,6 +154,7 @@ pub enum Expr {
     Unary(Unary),
     Grouping(Grouping),
     Value(Value),
+    LoopKeyword(LoopKeyword),
     Assign(Assign),
     Logical(Logical),
     Call(Call),
@@ -266,6 +271,13 @@ impl std::fmt::Display for Value {
             Self::None => write!(f, "None"),
             Self::NewLine => write!(f, "\\n"),
             Self::Ignore => write!(f, ""),
+        }
+    }
+}
+
+impl std::fmt::Display for LoopKeyword {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
             Self::Break => write!(f, "break"),
             Self::Continue => write!(f, "continue"),
         }
@@ -373,6 +385,7 @@ impl std::fmt::Display for Expr {
             Expr::Assign(e) => write!(f, "{}", e),
             Expr::Logical(e) => write!(f, "{}", e),
             Expr::Call(e) => write!(f, "{}", e),
+            Expr::LoopKeyword(e) => write!(f, "{}", e),
         }
     }
 }

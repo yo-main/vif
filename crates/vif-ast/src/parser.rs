@@ -508,11 +508,11 @@ impl<'a> Parser<'a> {
             TokenType::Identifier(s) => Box::new(ast::Expr::Value(Value::Variable(s))),
             TokenType::Break => {
                 self.consume(TokenType::NewLine, "Expect new line after break")?;
-                Box::new(ast::Expr::Value(Value::Break))
+                Box::new(ast::Expr::LoopKeyword(ast::LoopKeyword::Break))
             }
             TokenType::Continue => {
                 self.consume(TokenType::NewLine, "Expect new line after continue")?;
-                Box::new(ast::Expr::Value(Value::Continue))
+                Box::new(ast::Expr::LoopKeyword(ast::LoopKeyword::Continue))
             }
             TokenType::EOF => return Err(AstError::EOF),
             TokenType::LeftParen => {
