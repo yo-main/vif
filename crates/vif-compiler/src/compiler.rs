@@ -406,18 +406,21 @@ impl<'function> Compiler<'function> {
             VariableType::MutableLocal(index) => OpCode::SetLocal(index),
             VariableType::Local(_) => {
                 return Err(CompilerError::SyntaxError(format!(
-                    "Cannot assign to a non mutable variable"
+                    "Cannot assign to a non mutable variable: {var_name}"
                 )))
             }
             VariableType::Inherited(v) => OpCode::SetInheritedLocal(v),
             VariableType::MutableInherited(_) => {
                 return Err(CompilerError::SyntaxError(format!(
-                    "Cannot assign to a non mutable variable"
+                    "Cannot assign to a non mutable variable: {var_name}"
                 )))
             }
-            VariableType::None => OpCode::SetGlobal(self.make_global(Global::Identifier(
-                Variable::new(Box::new(var_name.to_owned()), Some(0), false),
-            ))),
+            VariableType::MutableGlobal(i) => OpCode::SetGlobal(i),
+            VariableType::Global(_) => {
+                return Err(CompilerError::SyntaxError(format!(
+                    "Cannot assign to a non mutable global: {var_name}"
+                )))
+            }
         };
 
         self.emit_op_code(op_code);
@@ -427,12 +430,14 @@ impl<'function> Compiler<'function> {
     pub fn get_variable(&mut self, var_name: &str) -> Result<(), CompilerError> {
         log::debug!("Starting variable");
 
-        let op_code = match self.resolve_local(var_name)? {
-            VariableType::Local(index) => OpCode::GetLocal(index),
-            VariableType::MutableLocal(index) => OpCode::GetLocal(index),
-            VariableType::Inherited(v) => OpCode::GetInheritedLocal(v),
-            VariableType::MutableInherited(v) => OpCode::GetInheritedLocal(v),
-            VariableType::None => match var_name {
+        let op_code = match self.resolve_local(var_name) {
+            Ok(VariableType::Local(index)) => OpCode::GetLocal(index),
+            Ok(VariableType::MutableLocal(index)) => OpCode::GetLocal(index),
+            Ok(VariableType::Inherited(v)) => OpCode::GetInheritedLocal(v),
+            Ok(VariableType::MutableInherited(v)) => OpCode::GetInheritedLocal(v),
+            Ok(VariableType::Global(v)) => OpCode::GetGlobal(v),
+            Ok(VariableType::MutableGlobal(v)) => OpCode::GetGlobal(v),
+            Err(e) => match var_name {
                 "get_time" => OpCode::GetGlobal(self.make_global(Global::Native(
                     NativeFunction::new(NativeFunctionCallee::GetTime),
                 ))),
@@ -442,9 +447,7 @@ impl<'function> Compiler<'function> {
                 "sleep" => OpCode::GetGlobal(self.make_global(Global::Native(
                     NativeFunction::new(NativeFunctionCallee::Sleep),
                 ))),
-                _ => OpCode::GetGlobal(self.get_global_index(Global::Identifier(
-                    Variable::new(Box::new(var_name.to_owned()), Some(0), false),
-                ))?),
+                _ => return Err(e),
             },
         };
 
@@ -482,7 +485,23 @@ impl<'function> Compiler<'function> {
             }));
         }
 
-        return Ok(VariableType::None);
+        for (i, global) in self.globals.as_vec().iter().enumerate() {
+            match global {
+                Global::Identifier(v) => {
+                    if v.name.as_str() == var_name {
+                        return match v.mutable {
+                            true => Ok(VariableType::MutableGlobal(i)),
+                            false => Ok(VariableType::Global(i)),
+                        };
+                    }
+                }
+                _ => continue,
+            }
+        }
+
+        return Err(CompilerError::ConstantNotFound(format!(
+            "Unknown variable: {var_name}"
+        )));
     }
 
     fn unary(&mut self, token: &ast::Unary) -> Result<(), CompilerError> {

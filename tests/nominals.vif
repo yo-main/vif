@@ -17,7 +17,7 @@ assert not not ("cou" != "coucou")
 
 assert not ("coucou" == 1)
 
-var hello = 1
+var mut hello = 1
 assert hello == 1
 
 var mut mutable = True

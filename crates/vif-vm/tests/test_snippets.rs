@@ -26,7 +26,7 @@ fn test_variable_declaration() {
 #[test]
 fn test_simple() {
     let string = "
-        var i = 1
+        var mut i = 1
         while i < 5:
             print(i)
             i = i + 1

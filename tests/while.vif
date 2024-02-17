@@ -1,12 +1,12 @@
-var i = 0
+var mut i = 0
 while i < 5:
     i = i + 1
 
 assert i == 5
 
 
-var iteration = 0
-var b = 0
+var mut iteration = 0
+var mut b = 0
 while True:
     iteration = iteration + 1
     if iteration%2 == 0:
