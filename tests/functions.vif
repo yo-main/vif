@@ -9,7 +9,7 @@ def test():
 	var i = 9
 	assert i == 9
 
-def test_with_arg(a, b):
+def test_with_arg(a, mut b):
 	assert a == 2
 	assert b == 3
 

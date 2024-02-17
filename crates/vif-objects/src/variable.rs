@@ -48,7 +48,9 @@ pub struct InheritedLocalPos {
 pub enum VariableType {
     None,
     Local(usize),
+    MutableLocal(usize),
     Inherited(InheritedLocalPos),
+    // MutableInherited(InheritedLocalPos),
 }
 
 impl std::fmt::Display for InheritedLocalPos {

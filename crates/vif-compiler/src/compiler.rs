@@ -402,7 +402,12 @@ impl<'function> Compiler<'function> {
         log::debug!("Starting variable assignment");
 
         let op_code = match self.resolve_local(&var_name)? {
-            VariableType::Local(index) => OpCode::SetLocal(index),
+            VariableType::MutableLocal(index) => OpCode::SetLocal(index),
+            VariableType::Local(index) => {
+                return Err(CompilerError::SyntaxError(format!(
+                    "Cannot assign to a non mutable variable"
+                )))
+            }
             VariableType::Inherited(v) => OpCode::SetInheritedLocal(v),
             VariableType::None => OpCode::SetGlobal(self.make_global(Global::Identifier(
                 Variable::new(Box::new(var_name.to_owned()), Some(0), false),
@@ -418,6 +423,7 @@ impl<'function> Compiler<'function> {
 
         let op_code = match self.resolve_local(var_name)? {
             VariableType::Local(index) => OpCode::GetLocal(index),
+            VariableType::MutableLocal(index) => OpCode::GetLocal(index),
             VariableType::Inherited(v) => OpCode::GetInheritedLocal(v),
             VariableType::None => match var_name {
                 "get_time" => OpCode::GetGlobal(self.make_global(Global::Native(
@@ -453,16 +459,20 @@ impl<'function> Compiler<'function> {
                 )));
             }
 
-            return Ok(VariableType::Local(self.function.locals.len() - i));
+            return match local.mutable {
+                true => Ok(VariableType::MutableLocal(self.function.locals.len() - i)),
+                false => Ok(VariableType::Local(self.function.locals.len() - i)),
+            };
         }
 
         for local in self.function.inherited_locals.iter().rev() {
-            if local.var_name.as_str() == var_name {
-                return Ok(VariableType::Inherited(InheritedLocalPos {
-                    pos: local.pos,
-                    depth: local.depth,
-                }));
-            }
+            if local.var_name.as_str() != var_name {
+                continue;
+            };
+            return Ok(VariableType::Inherited(InheritedLocalPos {
+                pos: local.pos,
+                depth: local.depth,
+            }));
         }
 
         return Ok(VariableType::None);

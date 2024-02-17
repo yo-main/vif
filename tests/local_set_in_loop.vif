@@ -1,5 +1,5 @@
 def main():
-	var index = 0
+	var mut index = 0
 
 	while index < 5:
 		var should_be_updated = index
