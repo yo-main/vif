@@ -218,7 +218,7 @@ impl<'a> Parser<'a> {
 
         let value = match self.scanner.peek() {
             Ok(t) if t.r#type == TokenType::NewLine => {
-                Box::new(Expr::new(ExprBody::Value(Value::None), false))
+                Box::new(Expr::new(ExprBody::Value(Value::None), true))
             }
             _ => self.expression()?,
         };
@@ -870,7 +870,7 @@ mod tests {
                     },
                 ],
                 body: vec![Stmt::Return(Return {
-                    value: Box::new(Expr::new(ExprBody::Value(Value::None), false))
+                    value: Box::new(Expr::new(ExprBody::Value(Value::None), true))
                 })]
             })
         );

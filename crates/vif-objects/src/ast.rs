@@ -109,6 +109,18 @@ pub struct Function {
     pub body: Vec<Stmt>,
 }
 
+impl Function {
+    pub fn is_result_mutable(&self) -> bool {
+        self.body
+            .iter()
+            .filter_map(|s| match s {
+                Stmt::Return(r) => Some(r),
+                _ => None,
+            })
+            .all(|r| r.value.mutable)
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct While {
     pub condition: Box<Expr>,

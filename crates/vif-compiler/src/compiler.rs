@@ -164,7 +164,7 @@ impl<'function> Compiler<'function> {
 
     fn function_declaration(&mut self, token: &ast::Function) -> Result<(), CompilerError> {
         log::debug!("Starting function declaration");
-        let index = self.register_variable(Box::new(token.name.clone()), false);
+        let index = self.register_variable(Box::new(token.name.clone()), token.is_result_mutable());
         self.function_statement(token)?;
         self.define_variable(index);
         Ok(())
@@ -310,7 +310,7 @@ impl<'function> Compiler<'function> {
             ast::ExprBody::Unary(t) => self.unary(t),
             ast::ExprBody::Grouping(t) => self.grouping(t),
             ast::ExprBody::Value(t) => self.value(t),
-            ast::ExprBody::Assign(t) => self.assign(t),
+            ast::ExprBody::Assign(t) => return self.assign(t),
             ast::ExprBody::Logical(t) => self.logical(t),
             ast::ExprBody::Call(t) => self.call(t),
             ast::ExprBody::LoopKeyword(t) => self.loop_keyword(t),
@@ -325,6 +325,12 @@ impl<'function> Compiler<'function> {
     }
 
     fn assign(&mut self, token: &ast::Assign) -> Result<(), CompilerError> {
+        if !token.value.mutable {
+            return Err(CompilerError::SyntaxError(format!(
+                "Can't assign a non mutable value to a mutable variable: {}",
+                token.name
+            )));
+        };
         self.expression(&token.value)?;
         self.set_variable(token.name.as_str())
     }
