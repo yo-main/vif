@@ -233,6 +233,12 @@ impl<'function> Compiler<'function> {
 
     fn var_declaration(&mut self, token: &ast::Variable) -> Result<(), CompilerError> {
         log::debug!("Starting variable declaration");
+        if token.mutable && !token.value.mutable {
+            return Err(CompilerError::SyntaxError(format!(
+                "Can't declare a mutable variable with non mutable value: {}",
+                token.name
+            )));
+        }
         let index = self.register_variable(Box::new(token.name.to_owned()), token.mutable);
         self.expression(&token.value)?;
         self.define_variable(index);
@@ -325,6 +331,7 @@ impl<'function> Compiler<'function> {
     }
 
     fn assign(&mut self, token: &ast::Assign) -> Result<(), CompilerError> {
+        println!("coucou {} {} {}", token, token.value, token.value.mutable);
         if !token.value.mutable {
             return Err(CompilerError::SyntaxError(format!(
                 "Can't assign a non mutable value to a mutable variable: {}",
