@@ -1,8 +1,8 @@
 pub mod errors;
 pub mod io;
 pub mod time;
-use vif_compiler::NativeFunction;
-use vif_compiler::NativeFunctionCallee;
+use vif_objects::function::NativeFunction;
+use vif_objects::function::NativeFunctionCallee;
 use vif_objects::stack::Stack;
 use vif_objects::stack_value::StackValue;
 

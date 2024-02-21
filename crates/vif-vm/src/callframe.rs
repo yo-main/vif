@@ -1,4 +1,4 @@
-use vif_compiler::Function;
+use vif_objects::function::Function;
 use vif_objects::op_code::OpCode;
 
 pub struct CallFrame<'stack, 'function>
