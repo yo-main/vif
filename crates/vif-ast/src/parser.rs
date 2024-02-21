@@ -313,9 +313,12 @@ impl<'a> Parser<'a> {
             let mutable = value.mutable;
 
             match expr.body {
-                ExprBody::Value(Value::Variable(name)) => {
+                ExprBody::Value(Value::Variable(var)) => {
                     return Ok(Box::new(Expr::new(
-                        ExprBody::Assign(ast::Assign { name, value }),
+                        ExprBody::Assign(ast::Assign {
+                            name: var.name,
+                            value,
+                        }),
                         mutable,
                     )))
                 }
@@ -547,9 +550,13 @@ impl<'a> Parser<'a> {
             TokenType::Integer(i) => Box::new(Expr::new(ExprBody::Value(Value::Integer(i)), true)),
             TokenType::Float(f) => Box::new(Expr::new(ExprBody::Value(Value::Float(f)), true)),
             TokenType::String(s) => Box::new(Expr::new(ExprBody::Value(Value::String(s)), true)),
-            TokenType::Identifier(s) => {
-                Box::new(Expr::new(ExprBody::Value(Value::Variable(s)), false))
-            }
+            TokenType::Identifier(s) => Box::new(Expr::new(
+                ExprBody::Value(Value::Variable(ast::VariableReference {
+                    name: s,
+                    mutable: false, // mutable flag will be set later, when checking typing
+                })),
+                false,
+            )),
             TokenType::Break => {
                 self.consume(TokenType::NewLine, "Expect new line after break")?;
                 Box::new(Expr::new(
@@ -593,6 +600,8 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod tests {
+    use vif_objects::ast;
+
     use super::ast::Binary;
     use super::ast::Call;
     use super::ast::Condition;
@@ -607,6 +616,7 @@ mod tests {
     use super::ast::UnaryOperator;
     use super::ast::Value;
     use super::ast::Variable;
+    use super::ast::VariableReference;
     use super::Expr;
     use super::ExprBody;
     use super::Parser;
@@ -797,7 +807,10 @@ mod tests {
             Stmt::Expression(Box::new(Expr::new(
                 ExprBody::Call(Call {
                     callee: Box::new(Expr::new(
-                        ExprBody::Value(Value::Variable("my_function".to_owned())),
+                        ExprBody::Value(Value::Variable(ast::VariableReference {
+                            name: "my_function".to_owned(),
+                            mutable: false
+                        })),
                         false
                     )),
                     arguments: Vec::new(),
@@ -822,20 +835,32 @@ mod tests {
             Stmt::Expression(Box::new(Expr::new(
                 ExprBody::Call(Call {
                     callee: Box::new(Expr::new(
-                        ExprBody::Value(Value::Variable("my_function".to_owned())),
+                        ExprBody::Value(Value::Variable(VariableReference {
+                            name: "my_function".to_owned(),
+                            mutable: false
+                        })),
                         false
                     )),
                     arguments: vec![
                         Box::new(Expr::new(
-                            ExprBody::Value(Value::Variable("a".to_owned())),
+                            ExprBody::Value(Value::Variable(VariableReference {
+                                name: "a".to_owned(),
+                                mutable: false
+                            })),
                             false
                         )),
                         Box::new(Expr::new(
-                            ExprBody::Value(Value::Variable("b".to_owned())),
+                            ExprBody::Value(Value::Variable(VariableReference {
+                                name: "b".to_owned(),
+                                mutable: false
+                            })),
                             false
                         )),
                         Box::new(Expr::new(
-                            ExprBody::Value(Value::Variable("c".to_owned())),
+                            ExprBody::Value(Value::Variable(VariableReference {
+                                name: "c".to_owned(),
+                                mutable: false
+                            })),
                             false
                         )),
                     ]

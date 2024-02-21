@@ -62,6 +62,12 @@ pub struct Grouping {
 }
 
 #[derive(Debug, PartialEq)]
+pub struct VariableReference {
+    pub name: String,
+    pub mutable: bool,
+}
+
+#[derive(Debug, PartialEq)]
 pub struct Variable {
     pub name: String,
     pub mutable: bool,
@@ -139,7 +145,7 @@ pub enum Value {
     String(String),
     Integer(i64),
     Float(f64),
-    Variable(String),
+    Variable(VariableReference),
     // NewLine,
     True,
     False,
@@ -279,6 +285,16 @@ impl std::fmt::Display for Number {
                 Self::Float(f) => f.to_string(),
             }
         )
+    }
+}
+
+impl std::fmt::Display for VariableReference {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.mutable {
+            write!(f, "mut {}", self.name)
+        } else {
+            write!(f, "{}", self.name)
+        }
     }
 }
 
