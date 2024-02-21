@@ -29,8 +29,8 @@ impl<'function> Compiler<'function> {
         }
     }
 
-    pub fn compile(&mut self, ast: &Vec<ast::Stmt>) -> Result<(), CompilerError> {
-        for token in ast.iter() {
+    pub fn compile(&mut self, function: &ast::Function) -> Result<(), CompilerError> {
+        for token in function.body.iter() {
             self.statement(token)?;
         }
         Ok(())
@@ -197,7 +197,7 @@ impl<'function> Compiler<'function> {
         }
 
         log::debug!("Function compiling starting");
-        compiler.compile(&token.body)?;
+        compiler.compile(&token)?;
 
         let mut globals = compiler.end();
         std::mem::swap(&mut globals, &mut self.globals);

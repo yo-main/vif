@@ -16,12 +16,11 @@ use vif_objects::global_store::GlobalStore;
 pub use vif_objects::op_code::OpCode;
 
 pub fn compile(content: String) -> Result<(Function, GlobalStore), CompilerError> {
-    let ast = build_ast(content).unwrap();
-    let mut function = Function::new(Arity::None, "Main".to_owned());
-    // let mut scanner = Scanner::new(content.as_str());
+    let ast_entrypoint = build_ast(content).unwrap();
+    let mut function = Function::new(Arity::None, ast_entrypoint.name.clone());
     let mut compiler = Compiler::new(&mut function, 0);
 
-    compiler.compile(&ast)?;
+    compiler.compile(&ast_entrypoint)?;
 
     let globals = compiler.end();
     Ok((function, globals))

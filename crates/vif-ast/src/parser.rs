@@ -1,5 +1,5 @@
 use crate::error::AstError;
-use vif_objects::ast::{self, Expr, ExprBody, Value};
+use vif_objects::ast::{self, Expr, ExprBody, Function, Value};
 use vif_scanner::Scanner;
 use vif_scanner::Token;
 use vif_scanner::TokenType;
@@ -19,8 +19,12 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn get_ast(self) -> Vec<ast::Stmt> {
-        self.ast
+    pub fn get_ast(self) -> Function {
+        Function {
+            name: "Main".to_owned(),
+            params: Vec::new(),
+            body: self.ast,
+        }
     }
 
     pub fn get_errors(self) -> Vec<AstError> {
