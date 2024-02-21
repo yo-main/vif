@@ -621,7 +621,6 @@ mod tests {
     use super::ExprBody;
     use super::Parser;
     use super::Scanner;
-    use super::Token;
 
     #[test]
     fn simple_string() {

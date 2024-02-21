@@ -14,13 +14,14 @@ pub use vif_objects::function::NativeFunctionCallee;
 pub use vif_objects::global::Global;
 use vif_objects::global_store::GlobalStore;
 pub use vif_objects::op_code::OpCode;
+use vif_typing::run_typing_checks;
 
 pub fn compile(content: String) -> Result<(Function, GlobalStore), CompilerError> {
-    let ast_entrypoint = build_ast(content).unwrap();
-    let mut function = Function::new(Arity::None, ast_entrypoint.name.clone());
+    let ast = run_typing_checks(build_ast(content).unwrap());
+    let mut function = Function::new(Arity::None, ast.name.clone());
     let mut compiler = Compiler::new(&mut function, 0);
 
-    compiler.compile(&ast_entrypoint)?;
+    compiler.compile(&ast)?;
 
     let globals = compiler.end();
     Ok((function, globals))
