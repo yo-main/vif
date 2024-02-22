@@ -24,6 +24,7 @@ impl<'a> Parser<'a> {
             name: "Main".to_owned(),
             params: Vec::new(),
             body: self.ast,
+            mutable: false,
         }
     }
 
@@ -50,12 +51,12 @@ impl<'a> Parser<'a> {
                 self.declaration()
             }
             t if t.r#type == TokenType::Var => self.var_declaration(),
-            t if t.r#type == TokenType::Def => self.function(),
+            t if t.r#type == TokenType::Def => self.function_declaration(),
             _ => self.statement(),
         }
     }
 
-    fn function(&mut self) -> Result<ast::Stmt, AstError> {
+    fn function_declaration(&mut self) -> Result<ast::Stmt, AstError> {
         self.scanner.scan()?;
 
         let name = match self.scanner.scan() {
@@ -113,6 +114,7 @@ impl<'a> Parser<'a> {
             name,
             params: parameters,
             body: self.block()?,
+            mutable: false,
         }))
     }
 
@@ -315,10 +317,7 @@ impl<'a> Parser<'a> {
             match expr.body {
                 ExprBody::Value(Value::Variable(var)) => {
                     return Ok(Box::new(Expr::new(
-                        ExprBody::Assign(ast::Assign {
-                            name: var.name,
-                            value,
-                        }),
+                        ExprBody::Assign(ast::Assign { name: var, value }),
                         mutable,
                     )))
                 }
@@ -533,10 +532,11 @@ impl<'a> Parser<'a> {
         }
 
         self.consume(TokenType::RightParen, "Expected ) after arguments")?;
+        let mutable = callee.mutable;
 
         Ok(Box::new(Expr::new(
             ExprBody::Call(ast::Call { callee, arguments }),
-            false,
+            mutable,
         )))
     }
 
@@ -551,10 +551,7 @@ impl<'a> Parser<'a> {
             TokenType::Float(f) => Box::new(Expr::new(ExprBody::Value(Value::Float(f)), true)),
             TokenType::String(s) => Box::new(Expr::new(ExprBody::Value(Value::String(s)), true)),
             TokenType::Identifier(s) => Box::new(Expr::new(
-                ExprBody::Value(Value::Variable(ast::VariableReference {
-                    name: s,
-                    mutable: false, // mutable flag will be set later, when checking typing
-                })),
+                ExprBody::Value(Value::Variable(s.to_owned())),
                 false,
             )),
             TokenType::Break => {
@@ -806,10 +803,7 @@ mod tests {
             Stmt::Expression(Box::new(Expr::new(
                 ExprBody::Call(Call {
                     callee: Box::new(Expr::new(
-                        ExprBody::Value(Value::Variable(ast::VariableReference {
-                            name: "my_function".to_owned(),
-                            mutable: false
-                        })),
+                        ExprBody::Value(Value::Variable("my_function".to_owned())),
                         false
                     )),
                     arguments: Vec::new(),
@@ -834,32 +828,20 @@ mod tests {
             Stmt::Expression(Box::new(Expr::new(
                 ExprBody::Call(Call {
                     callee: Box::new(Expr::new(
-                        ExprBody::Value(Value::Variable(VariableReference {
-                            name: "my_function".to_owned(),
-                            mutable: false
-                        })),
+                        ExprBody::Value(Value::Variable("my_function".to_owned())),
                         false
                     )),
                     arguments: vec![
                         Box::new(Expr::new(
-                            ExprBody::Value(Value::Variable(VariableReference {
-                                name: "a".to_owned(),
-                                mutable: false
-                            })),
+                            ExprBody::Value(Value::Variable("a".to_owned())),
                             false
                         )),
                         Box::new(Expr::new(
-                            ExprBody::Value(Value::Variable(VariableReference {
-                                name: "b".to_owned(),
-                                mutable: false
-                            })),
+                            ExprBody::Value(Value::Variable("b".to_owned())),
                             false
                         )),
                         Box::new(Expr::new(
-                            ExprBody::Value(Value::Variable(VariableReference {
-                                name: "c".to_owned(),
-                                mutable: false
-                            })),
+                            ExprBody::Value(Value::Variable("c".to_owned())),
                             false
                         )),
                     ]
@@ -899,7 +881,8 @@ mod tests {
                 ],
                 body: vec![Stmt::Return(Return {
                     value: Box::new(Expr::new(ExprBody::Value(Value::None), true))
-                })]
+                })],
+                mutable: false
             })
         );
     }
@@ -934,7 +917,8 @@ mod tests {
                 ],
                 body: vec![Stmt::Return(Return {
                     value: Box::new(Expr::new(ExprBody::Value(Value::Float(1.5)), true))
-                })]
+                })],
+                mutable: false
             })
         );
     }

@@ -113,18 +113,7 @@ pub struct Function {
     pub name: String,
     pub params: Vec<FunctionParameter>,
     pub body: Vec<Stmt>,
-}
-
-impl Function {
-    pub fn is_result_mutable(&self) -> bool {
-        self.body
-            .iter()
-            .filter_map(|s| match s {
-                Stmt::Return(r) => Some(r),
-                _ => None,
-            })
-            .all(|r| r.value.mutable)
-    }
+    pub mutable: bool,
 }
 
 #[derive(Debug, PartialEq)]
@@ -145,7 +134,7 @@ pub enum Value {
     String(String),
     Integer(i64),
     Float(f64),
-    Variable(VariableReference),
+    Variable(String),
     // NewLine,
     True,
     False,
@@ -303,7 +292,7 @@ impl std::fmt::Display for Value {
         match self {
             // Self::Operator(v) => write!(f, "{}", v),
             Self::String(v) => write!(f, "{}", v),
-            Self::Variable(v) => write!(f, "{}", v),
+            Self::Variable(v) => write!(f, "var[{}]", v),
             Self::Integer(v) => write!(f, "{}", v),
             Self::Float(v) => write!(f, "{}", v),
             Self::True => write!(f, "True"),
@@ -427,10 +416,10 @@ impl std::fmt::Display for ExprBody {
             Self::Binary(e) => write!(f, "{}", e),
             Self::Unary(e) => write!(f, "{}", e),
             Self::Grouping(e) => write!(f, "{}", e),
-            Self::Value(e) => write!(f, "{}", e),
-            Self::Assign(e) => write!(f, "{}", e),
+            Self::Value(e) => write!(f, "Value[{}]", e),
+            Self::Assign(e) => write!(f, "Assign[{}]", e),
             Self::Logical(e) => write!(f, "{}", e),
-            Self::Call(e) => write!(f, "{}", e),
+            Self::Call(e) => write!(f, "Call[{}]", e),
             Self::LoopKeyword(e) => write!(f, "{}", e),
         }
     }

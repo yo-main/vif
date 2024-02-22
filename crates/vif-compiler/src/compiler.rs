@@ -81,10 +81,11 @@ impl<'function> Compiler<'function> {
 
     pub fn call(&mut self, token: &ast::Call) -> Result<(), CompilerError> {
         log::debug!("Starting call");
+
         self.expression(&token.callee)?;
 
-        for arg in token.arguments.iter() {
-            self.expression(arg)?;
+        for (i, arg) in token.arguments.iter().enumerate() {
+            self.function_parameter(arg)?;
         }
         self.emit_op_code(OpCode::Call(token.arguments.len()));
         Ok(())
@@ -164,7 +165,7 @@ impl<'function> Compiler<'function> {
 
     fn function_declaration(&mut self, token: &ast::Function) -> Result<(), CompilerError> {
         log::debug!("Starting function declaration");
-        let index = self.register_variable(Box::new(token.name.clone()), token.is_result_mutable());
+        let index = self.register_variable(Box::new(token.name.clone()), token.mutable);
         self.function_statement(token)?;
         self.define_variable(index);
         Ok(())
@@ -233,6 +234,14 @@ impl<'function> Compiler<'function> {
 
     fn var_declaration(&mut self, token: &ast::Variable) -> Result<(), CompilerError> {
         log::debug!("Starting variable declaration");
+        // println!("{} {}", token.name, token.mutable);
+        // println!("{} {}", token.value.body, token.value.mutable);
+
+        match &token.value.body {
+            ast::ExprBody::Call(c) => println!("CHECK {} {}", c.callee, c.callee.mutable),
+            _ => (),
+        }
+
         if token.mutable && !token.value.mutable {
             return Err(CompilerError::SyntaxError(format!(
                 "Can't declare a mutable variable with non mutable value: {}",
@@ -323,6 +332,19 @@ impl<'function> Compiler<'function> {
         }
     }
 
+    fn function_parameter(&mut self, token: &Box<ast::Expr>) -> Result<(), CompilerError> {
+        match &token.body {
+            ast::ExprBody::Binary(t) => self.binary(t),
+            ast::ExprBody::Unary(t) => self.unary(t),
+            ast::ExprBody::Grouping(t) => self.grouping(t),
+            ast::ExprBody::Value(t) => self.value(t),
+            ast::ExprBody::Assign(t) => return self.assign(t),
+            ast::ExprBody::Logical(t) => self.logical(t),
+            ast::ExprBody::Call(t) => self.call(t),
+            ast::ExprBody::LoopKeyword(t) => self.loop_keyword(t),
+        }
+    }
+
     fn logical(&mut self, token: &ast::Logical) -> Result<(), CompilerError> {
         match token.operator {
             ast::LogicalOperator::And => self.and(token),
@@ -331,7 +353,6 @@ impl<'function> Compiler<'function> {
     }
 
     fn assign(&mut self, token: &ast::Assign) -> Result<(), CompilerError> {
-        println!("coucou {} {} {}", token, token.value, token.value.mutable);
         if !token.value.mutable {
             return Err(CompilerError::SyntaxError(format!(
                 "Can't assign a non mutable value to a mutable variable: {}",
@@ -348,7 +369,7 @@ impl<'function> Compiler<'function> {
             ast::Value::String(s) => self.emit_global(Global::String(Box::new(s.clone()))),
             ast::Value::Integer(i) => self.emit_global(Global::Integer(*i)),
             ast::Value::Float(f) => self.emit_global(Global::Float(*f)),
-            ast::Value::Variable(s) => self.get_variable(&s.name)?,
+            ast::Value::Variable(s) => self.get_variable(&s)?,
             ast::Value::True => self.emit_op_code(OpCode::True),
             ast::Value::False => self.emit_op_code(OpCode::False),
             // ast::Value::NewLine => (),
