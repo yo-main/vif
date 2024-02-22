@@ -325,7 +325,7 @@ impl<'function> Compiler<'function> {
             ast::ExprBody::Unary(t) => self.unary(t),
             ast::ExprBody::Grouping(t) => self.grouping(t),
             ast::ExprBody::Value(t) => self.value(t),
-            ast::ExprBody::Assign(t) => return self.assign(t),
+            ast::ExprBody::Assign(t) => self.assign(t),
             ast::ExprBody::Logical(t) => self.logical(t),
             ast::ExprBody::Call(t) => self.call(t),
             ast::ExprBody::LoopKeyword(t) => self.loop_keyword(t),
@@ -338,10 +338,14 @@ impl<'function> Compiler<'function> {
             ast::ExprBody::Unary(t) => self.unary(t),
             ast::ExprBody::Grouping(t) => self.grouping(t),
             ast::ExprBody::Value(t) => self.value(t),
-            ast::ExprBody::Assign(t) => return self.assign(t),
+            ast::ExprBody::Assign(t) => self.assign(t),
             ast::ExprBody::Logical(t) => self.logical(t),
             ast::ExprBody::Call(t) => self.call(t),
-            ast::ExprBody::LoopKeyword(t) => self.loop_keyword(t),
+            ast::ExprBody::LoopKeyword(t) => {
+                return Err(CompilerError::SyntaxError(format!(
+                    "{t} not accepted as function parameter"
+                )))
+            }
         }
     }
 
