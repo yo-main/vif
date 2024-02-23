@@ -237,11 +237,6 @@ impl<'function> Compiler<'function> {
         // println!("{} {}", token.name, token.mutable);
         // println!("{} {}", token.value.body, token.value.mutable);
 
-        match &token.value.body {
-            ast::ExprBody::Call(c) => println!("CHECK {} {}", c.callee, c.callee.mutable),
-            _ => (),
-        }
-
         if token.mutable && !token.value.mutable {
             return Err(CompilerError::SyntaxError(format!(
                 "Can't declare a mutable variable with non mutable value: {}",

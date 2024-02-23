@@ -169,7 +169,6 @@ fn check_function(function: &mut Function, references: &mut References) -> Resul
         parameters,
     ));
 
-    println!("FUNCTION {} {}", function.name, function.mutable);
     Ok(())
 }
 
@@ -236,10 +235,8 @@ fn check_expression(expr: &mut Expr, references: &mut References) -> Result<(), 
             };
 
             let parameters = parameters.unwrap();
-            println!("{}", c);
 
             if c.arguments.len() != parameters.len() {
-                println!("{:?} vs {:?}", c.arguments, parameters);
                 return Err(TypingError::Mutability(format!(
                     "Wrong arguments numbers for function {}",
                     c.callee
@@ -254,8 +251,6 @@ fn check_expression(expr: &mut Expr, references: &mut References) -> Result<(), 
                     )));
                 }
             }
-
-            println!("CALL {} {}", c, expr.mutable);
         }
         ExprBody::Binary(b) => {
             check_expression(&mut b.left, references)?;
@@ -326,45 +321,28 @@ fn get_function_parameters<'a>(
     expr: &Expr,
     references: &'a References,
 ) -> Option<&'a Vec<VariableReference>> {
-    println!("GET PARAM {}", expr);
-    println!("REFERENCES {}", references);
     match &expr.body {
         ExprBody::Value(Value::Variable(s)) => references
             .get_function(s.as_str())
             .and_then(|f| Some(&f.parameters)),
-        ExprBody::Value(_) => {
-            println!("WHY AM I PRINTING THIS");
-            None
-        }
+        ExprBody::Value(_) => None,
         ExprBody::Call(c) => {
-            println!("CALLABLE CHECK MUT {} {:?}", c.callee, c.arguments);
-            println!("CALLABLE CHECK REFERENCES {}", references);
             return get_function_parameters(&c.callee, references);
         }
         ExprBody::Unary(u) => get_function_parameters(&u.right, references),
         ExprBody::Binary(b) => {
             let right = get_function_parameters(&b.right, references);
             let left = get_function_parameters(&b.left, references);
-            if right != left {
-                println!("DEFINE WHAT TO DO HERE");
-            }
+            if right != left {}
             return left;
         }
         ExprBody::Grouping(g) => get_function_parameters(&g.expr, references),
-        ExprBody::Assign(_) => {
-            println!("THAT DOES NOT MAKE ANY SENSE");
-            None
-        }
-        ExprBody::LoopKeyword(_) => {
-            println!("THAT MAKES EVEN LESS SENSE");
-            None
-        }
+        ExprBody::Assign(_) => None,
+        ExprBody::LoopKeyword(_) => None,
         ExprBody::Logical(l) => {
             let right = get_function_parameters(&l.right, references);
             let left = get_function_parameters(&l.left, references);
-            if right != left {
-                println!("DEFINE WHAT TO DO HERE ALSO");
-            }
+            if right != left {}
             return left;
         }
     }

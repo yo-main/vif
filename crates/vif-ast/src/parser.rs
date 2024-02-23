@@ -530,7 +530,6 @@ impl<'a> Parser<'a> {
                 _ => arguments.push(self.expression()?),
             }
         }
-        println!("COUCOUCOUCOUCOU {} {:?}", callee, arguments);
 
         self.consume(TokenType::RightParen, "Expected ) after arguments")?;
         let mutable = callee.mutable;
