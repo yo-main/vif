@@ -329,6 +329,7 @@ dependencies = [
 name = "vif-typing"
 version = "0.1.0"
 dependencies = [
+ "vif-ast",
  "vif-loader",
  "vif-objects",
 ]

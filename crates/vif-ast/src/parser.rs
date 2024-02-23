@@ -530,6 +530,7 @@ impl<'a> Parser<'a> {
                 _ => arguments.push(self.expression()?),
             }
         }
+        println!("COUCOUCOUCOUCOU {} {:?}", callee, arguments);
 
         self.consume(TokenType::RightParen, "Expected ) after arguments")?;
         let mutable = callee.mutable;
@@ -853,7 +854,10 @@ mod tests {
 
     #[test]
     fn function_definition() {
-        let string = "def my_function(a, b, mut c):\n    return\n";
+        let string = "
+            def my_function(a, b, mut c):
+                return
+        ";
         let scanner = Scanner::new(string);
         let mut parser = Parser::new(scanner);
 
@@ -889,7 +893,10 @@ mod tests {
 
     #[test]
     fn function_with_return() {
-        let string = "def my_function(a, mut b, c):\n    return 1.5\n";
+        let string = "
+            def my_function(a, mut b, c):
+                return 1.5
+        ";
         let scanner = Scanner::new(string);
         let mut parser = Parser::new(scanner);
 
@@ -980,7 +987,12 @@ mod tests {
 
     #[test]
     fn if_statement_with_elif() {
-        let string = "if True:\n    return \"coucou\"\nelif False:\n    return \"bye\"\n";
+        let string = "
+            if True:
+                return \"coucou\"
+            elif False:
+                return \"bye\"
+        ";
         let scanner = Scanner::new(string);
         let mut parser = Parser::new(scanner);
 
@@ -1014,7 +1026,14 @@ mod tests {
 
     #[test]
     fn if_statement_with_elif_else() {
-        let string = "if True:\n    return \"coucou\"\nelif False:\n    return \"bye\"\nelse:\n    return \"hello\"\n";
+        let string = "
+            if True:
+                return \"coucou\"
+            elif False:
+                return \"bye\"
+            else:
+                return \"hello\"
+        ";
         let scanner = Scanner::new(string);
         let mut parser = Parser::new(scanner);
 

@@ -8,3 +8,6 @@ edition = "2021"
 [dependencies]
 vif-loader = { version = "0.1.0", path = "../vif-loader" }
 vif-objects = { version = "0.1.0", path = "../vif-objects" }
+
+[dev-dependencies]
+vif-ast = { path = "../vif-ast" }

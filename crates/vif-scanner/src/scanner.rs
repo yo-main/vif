@@ -66,7 +66,7 @@ impl<'a> Tokenizer<'a> {
             source: source.chars().peekable(),
             line: 0,
             line_start: true,
-            indent_stack: vec![0],
+            indent_stack: Vec::new(),
         }
     }
 
@@ -198,7 +198,6 @@ impl<'a> Tokenizer<'a> {
 
     fn parse_indentation(&mut self) -> Result<TokenType, ScanningError> {
         let mut stack = 0;
-        let current_stack = *self.indent_stack.last().unwrap();
 
         loop {
             match self.peek() {
@@ -214,9 +213,17 @@ impl<'a> Tokenizer<'a> {
                     self.advance().unwrap();
                     return Ok(TokenType::IgnoreNewLine);
                 }
+                &'\0' => {
+                    return Ok(TokenType::EOF);
+                }
                 _ => break,
             }
         }
+
+        if self.indent_stack.is_empty() {
+            self.indent_stack.push(stack);
+        }
+        let current_stack = *self.indent_stack.last().unwrap();
 
         log::debug!("Scanning indentation: {} {}", stack, current_stack);
         if stack == current_stack {

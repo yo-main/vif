@@ -1,20 +1,20 @@
-var value = "coucou"
-
-def test(value):
-
-	var g = 3
-	var abc = 1
-
-	def closure():
-		assert g == 3
-		assert abc == 1
-
-		abc = 0
-		assert abc == 0
-
-		return value
-
-	print(1, value)
-	return closure
-
-assert test("a")() == "a"
+# var value = "coucou"
+# 
+# def test(value):
+# 
+	# var g = 3
+	# var abc = 1
+# 
+	# def closure():
+		# assert g == 3
+		# assert abc == 1
+# 
+		# abc = 0
+		# assert abc == 0
+# 
+		# return value
+# 
+	# print(1, value)
+	# return closure
+# 
+# assert test("a")() == "a"

@@ -57,8 +57,17 @@ impl Reference {
 impl std::fmt::Display for Reference {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Variable(v) => write!(f, "{}", v.name),
-            Self::Function(v) => write!(f, "{}", v.name),
+            Self::Variable(v) => write!(f, "var {}", v.name),
+            Self::Function(v) => write!(f, "func {} {:?}", v.name, v.parameters),
+        }
+    }
+}
+
+impl std::fmt::Debug for Reference {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Variable(v) => write!(f, "var {}", v.name),
+            Self::Function(v) => write!(f, "func {} {:?}", v.name, v.parameters),
         }
     }
 }
@@ -74,11 +83,8 @@ impl std::fmt::Display for References {
             "{}",
             self.references
                 .iter()
-                .map(|r| match r {
-                    Reference::Variable(v) => v.name.as_str(),
-                    Reference::Function(v) => v.name.as_str(),
-                })
-                .collect::<Vec<&str>>()
+                .map(|r| format!("{r}"))
+                .collect::<Vec<String>>()
                 .join(", ")
         )
     }
@@ -208,7 +214,6 @@ fn check_expression(expr: &mut Expr, references: &mut References) -> Result<(), 
             if references.contain_mutable_reference(v.as_str()) {
                 expr.mutable = true;
             }
-            println!("VARIABLE {} {}", v, expr.mutable);
         }
         ExprBody::Call(c) => {
             check_expression(&mut c.callee, references)?;
@@ -223,6 +228,7 @@ fn check_expression(expr: &mut Expr, references: &mut References) -> Result<(), 
             };
 
             let parameters = parameters.unwrap();
+            println!("{}", c);
 
             if c.arguments.len() != parameters.len() {
                 println!("{:?} vs {:?}", c.arguments, parameters);
@@ -316,7 +322,11 @@ fn get_function_parameters<'a>(
             println!("WHY AM I PRINTING THIS");
             None
         }
-        ExprBody::Call(c) => get_function_parameters(&c.callee, references),
+        ExprBody::Call(c) => {
+            println!("CALLABLE CHECK MUT {} {:?}", c.callee, c.arguments);
+            println!("CALLABLE CHECL REFERENCES {}", references);
+            return get_function_parameters(&c.callee, references);
+        }
         ExprBody::Unary(u) => get_function_parameters(&u.right, references),
         ExprBody::Binary(b) => {
             let right = get_function_parameters(&b.right, references);
@@ -343,5 +353,237 @@ fn get_function_parameters<'a>(
             }
             return left;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::check_mutability;
+    use super::TypingError;
+    use vif_ast::build_ast;
+
+    #[test]
+    fn simple_variable() {
+        let string = "
+            var i = 0
+        "
+        .to_owned();
+
+        let ast = check_mutability(build_ast(string).unwrap()).unwrap();
+        assert_eq!(ast.body.len(), 1);
+    }
+
+    #[test]
+    fn cannot_override_non_mutable() {
+        let string = "
+            var i = 0
+            i = 2
+        "
+        .to_owned();
+
+        let result = check_mutability(build_ast(string).unwrap());
+        assert!(result.is_err());
+        let err_msg = match result.unwrap_err() {
+            TypingError::Mutability(s) => s,
+        };
+        assert_eq!(err_msg, "coucou");
+    }
+
+    #[test]
+    fn can_override_mutable() {
+        let string = "
+            var mut i = 0
+            i = 2
+        "
+        .to_owned();
+
+        let ast = check_mutability(build_ast(string).unwrap()).unwrap();
+        assert_eq!(ast.body.len(), 2);
+    }
+
+    #[test]
+    fn cannot_assign_const_to_mut() {
+        let string = "
+            var i = 0
+            var mut j = i
+        "
+        .to_owned();
+
+        let result = check_mutability(build_ast(string).unwrap());
+        assert!(result.is_err());
+        let err_msg = match result.unwrap_err() {
+            TypingError::Mutability(s) => s,
+        };
+        assert_eq!(
+            err_msg,
+            "Cannot set non mutable expression to mutable variable j"
+        );
+    }
+
+    #[test]
+    fn can_assign_mut_to_const() {
+        let string = "
+            var mut i = 0
+            var j = i
+        "
+        .to_owned();
+
+        let ast = check_mutability(build_ast(string).unwrap()).unwrap();
+        assert_eq!(ast.body.len(), 2);
+    }
+
+    #[test]
+    fn can_use_function_with_simple_values() {
+        let string = "
+            def coucou(a, mut b):
+                return a + b
+
+            coucou(1, 2)
+        "
+        .to_owned();
+
+        let ast = check_mutability(build_ast(string).unwrap()).unwrap();
+        assert_eq!(ast.body.len(), 2);
+    }
+
+    #[test]
+    fn can_use_function_with_variables() {
+        let string = "
+            def coucou(a, mut b):
+                return a + b
+
+            var i = 1
+            var mut j = 2
+            coucou(i, j)
+        "
+        .to_owned();
+
+        let ast = check_mutability(build_ast(string).unwrap()).unwrap();
+        assert_eq!(ast.body.len(), 4);
+    }
+
+    #[test]
+    fn cannot_use_function_with_const_on_mut() {
+        let string = "
+            def coucou(a, mut b):
+                return a + b
+
+            var i = 1
+            var mut j = 2
+            coucou(j, i)
+        "
+        .to_owned();
+
+        let result = check_mutability(build_ast(string).unwrap());
+        assert!(result.is_err());
+        let err_msg = match result.unwrap_err() {
+            TypingError::Mutability(s) => s,
+        };
+        assert_eq!(
+            err_msg,
+            "Cannot pass Value[var[i]] argument (non mutable) to b parameter (mutable)"
+        );
+    }
+
+    #[test]
+    fn cannot_use_const_value_to_mut_variable() {
+        let string = "
+            def coucou(a):
+                return a
+
+            var i = 1
+            var mut k = coucou(i)
+        "
+        .to_owned();
+
+        let result = check_mutability(build_ast(string).unwrap());
+        assert!(result.is_err());
+        let err_msg = match result.unwrap_err() {
+            TypingError::Mutability(s) => s,
+        };
+        assert_eq!(
+            err_msg,
+            "Cannot set non mutable expression to mutable variable k"
+        );
+    }
+
+    #[test]
+    fn callable_variable_are_working_well() {
+        let string = "
+            def coucou(mut a):
+                return a
+
+            var i = coucou
+            i(1)
+        "
+        .to_owned();
+
+        let ast = check_mutability(build_ast(string).unwrap()).unwrap();
+        assert_eq!(ast.body.len(), 3);
+    }
+
+    #[test]
+    fn callable_variable_fail_passed_const_instead_of_mut() {
+        let string = "
+            def coucou(mut a):
+                return a
+
+            var i = coucou
+            var j = 2
+            i(j)
+        "
+        .to_owned();
+
+        let result = check_mutability(build_ast(string).unwrap());
+        assert!(result.is_err());
+        let err_msg = match result.unwrap_err() {
+            TypingError::Mutability(s) => s,
+        };
+        assert_eq!(
+            err_msg,
+            "Cannot pass Value[var[j]] argument (non mutable) to a parameter (mutable)"
+        );
+    }
+
+    #[test]
+    fn callable_returned_by_function_are_ok() {
+        let string = "
+            def coucou(mut a):
+                return a
+
+            def test(mut p):
+                return coucou
+
+            test(2)(2)
+        "
+        .to_owned();
+
+        let ast = check_mutability(build_ast(string).unwrap()).unwrap();
+        assert_eq!(ast.body.len(), 3);
+    }
+
+    #[test]
+    fn callable_returned_by_function_fail_when_passed_const() {
+        let string = "
+            def coucou(mut a):
+                return a
+
+            def test(mut p):
+                return coucou
+
+            var i = 2
+            test(i)(i)
+        "
+        .to_owned();
+
+        let result = check_mutability(build_ast(string).unwrap());
+        assert!(result.is_err());
+        let err_msg = match result.unwrap_err() {
+            TypingError::Mutability(s) => s,
+        };
+        assert_eq!(
+            err_msg,
+            "Cannot pass Value[var[i]] argument (non mutable) to p parameter (mutable)"
+        );
     }
 }
