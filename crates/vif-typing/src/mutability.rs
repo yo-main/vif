@@ -263,6 +263,12 @@ fn check_expression(expr: &mut Expr, references: &mut References) -> Result<(), 
             expr.mutable = g.expr.mutable;
         }
         ExprBody::Assign(a) => {
+            if !references.contain_mutable_reference(&a.name) {
+                return Err(TypingError::Mutability(format!(
+                    "Cannot assign a value to {} (non mutable variable)",
+                    a.name
+                )));
+            }
             check_expression(&mut a.value, references)?;
             expr.mutable = a.value.mutable;
         }
@@ -386,7 +392,7 @@ mod tests {
         let err_msg = match result.unwrap_err() {
             TypingError::Mutability(s) => s,
         };
-        assert_eq!(err_msg, "coucou");
+        assert_eq!(err_msg, "Cannot assign a value to i (non mutable variable)");
     }
 
     #[test]
