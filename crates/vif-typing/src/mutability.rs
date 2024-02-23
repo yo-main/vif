@@ -11,7 +11,7 @@ use vif_objects::ast::Stmt;
 use vif_objects::ast::Value;
 use vif_objects::ast::While;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct VariableReference {
     name: String,
     mutable: bool,
@@ -196,6 +196,14 @@ fn check_statement(stmt: &mut Stmt, references: &mut References) -> Result<(), T
                 references.push(Reference::new_variable(v.name.clone(), true));
             }
 
+            if let Some(params) = get_function_parameters(&v.value, references) {
+                references.push(Reference::new_function(
+                    v.name.clone(),
+                    v.value.mutable,
+                    params.clone(),
+                ));
+            }
+
             Ok(())
         }
         Stmt::Function(f) => check_function(f, references),
@@ -330,7 +338,7 @@ fn get_function_parameters<'a>(
         }
         ExprBody::Call(c) => {
             println!("CALLABLE CHECK MUT {} {:?}", c.callee, c.arguments);
-            println!("CALLABLE CHECL REFERENCES {}", references);
+            println!("CALLABLE CHECK REFERENCES {}", references);
             return get_function_parameters(&c.callee, references);
         }
         ExprBody::Unary(u) => get_function_parameters(&u.right, references),

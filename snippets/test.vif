@@ -1,7 +1,7 @@
-def coucou(mut hello):
-	return hello
+def coucou(mut a):
+    return a
 
-var mut a = "coucou"
-var mut b = coucou(a)
+var i = coucou
+var j = 2
+i(j)
 
-print(a)
