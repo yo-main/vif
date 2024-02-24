@@ -85,23 +85,28 @@ where
         let result = self.stack.pop();
 
         if self.previous_frames.len() > 0 {
-            match result {
-                // function hasn't been called yet, don't get rid of its variable
-                // it's a hack that won't work all the time (especially after we add classes)
-                // TODO: store inherited variables on the function itself, not the stack
-                //
-                // careful about
-                //
-                // def coucou():
-                //     var x = 1
-                //     x = 2
-                //     def closure():
-                //         x = 1
-                //
-                // when x=2, we need to know it's a inherited variable
-                StackValue::Function(_) => (),
-                _ => self.stack.truncate(self.frame.get_position()),
-            }
+            //// TODO: the code seems working without that piece of code. To be deleted ?
+            //
+            //
+            // match result {
+            // function hasn't been called yet, don't get rid of its variable
+            // it's a hack that won't work all the time (especially after we add classes)
+            // TODO: store inherited variables on the function itself, not the stack
+            //
+            // careful about
+            //
+            // def coucou():
+            //     var x = 1
+            //     x = 2
+            //     def closure():
+            //         x = 1
+            //
+            // when x=2, we need to know it's a inherited variable
+            // StackValue::Function(_) => (),
+            // _ => self.stack.truncate(self.frame.get_position()),
+            // }
+
+            self.stack.truncate(self.frame.get_position());
             self.frame = self.previous_frames.pop().unwrap();
             self.stack.push(result);
         }

@@ -1,11 +1,17 @@
-def coucou(mut n):
-    return n
+def coucou():
+    var mut x = 2
+    x = 2
 
-def test(mut a):
-    return coucou(a)
+    def closure():
+        return x + 1
 
-var i = test
-var mut p = i(2)
+    return closure
+
+
+
+var callable = coucou()
+
+var p = callable()
 
 print(p)
 
