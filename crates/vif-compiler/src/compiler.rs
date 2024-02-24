@@ -84,7 +84,7 @@ impl<'function> Compiler<'function> {
 
         self.expression(&token.callee)?;
 
-        for (i, arg) in token.arguments.iter().enumerate() {
+        for arg in token.arguments.iter() {
             self.function_parameter(arg)?;
         }
         self.emit_op_code(OpCode::Call(token.arguments.len()));
@@ -165,7 +165,7 @@ impl<'function> Compiler<'function> {
 
     fn function_declaration(&mut self, token: &ast::Function) -> Result<(), CompilerError> {
         log::debug!("Starting function declaration");
-        let index = self.register_variable(Box::new(token.name.clone()), token.mutable);
+        let index = self.register_variable(Box::new(token.name.clone()));
         self.function_statement(token)?;
         self.define_variable(index);
         Ok(())
@@ -185,7 +185,6 @@ impl<'function> Compiler<'function> {
                         var_name: local.name.clone(),
                         depth: self.scope_depth,
                         pos: i + 1,
-                        mutable: local.mutable,
                     });
             }
         }
@@ -194,7 +193,7 @@ impl<'function> Compiler<'function> {
         std::mem::swap(&mut compiler.globals, &mut self.globals);
 
         for variable in token.params.iter() {
-            compiler.register_function_parameter(Box::new(variable.name.clone()), variable.mutable);
+            compiler.register_function_parameter(Box::new(variable.name.clone()));
         }
 
         log::debug!("Function compiling starting");
@@ -234,16 +233,7 @@ impl<'function> Compiler<'function> {
 
     fn var_declaration(&mut self, token: &ast::Variable) -> Result<(), CompilerError> {
         log::debug!("Starting variable declaration");
-        // println!("{} {}", token.name, token.mutable);
-        // println!("{} {}", token.value.body, token.value.mutable);
-
-        if token.mutable && !token.value.mutable {
-            return Err(CompilerError::SyntaxError(format!(
-                "Can't declare a mutable variable with non mutable value: {}",
-                token.name
-            )));
-        }
-        let index = self.register_variable(Box::new(token.name.to_owned()), token.mutable);
+        let index = self.register_variable(Box::new(token.name.to_owned()));
         self.expression(&token.value)?;
         self.define_variable(index);
         Ok(())
@@ -270,24 +260,20 @@ impl<'function> Compiler<'function> {
         }
     }
 
-    fn register_variable(&mut self, name: Box<String>, mutable: bool) -> usize {
+    fn register_variable(&mut self, name: Box<String>) -> usize {
         log::debug!("Register variable {}", name);
         if self.scope_depth > 0 {
-            self.function
-                .locals
-                .push(Variable::new(name, None, mutable));
+            self.function.locals.push(Variable::new(name, None));
             return self.function.locals.len();
         } else {
-            self.make_global(Global::Identifier(Variable::new(name, Some(0), mutable)))
+            self.make_global(Global::Identifier(Variable::new(name, Some(0))))
         }
     }
 
-    fn register_function_parameter(&mut self, variable_name: Box<String>, mutable: bool) {
-        self.function.locals.push(Variable::new(
-            variable_name,
-            Some(self.scope_depth),
-            mutable,
-        ));
+    fn register_function_parameter(&mut self, variable_name: Box<String>) {
+        self.function
+            .locals
+            .push(Variable::new(variable_name, Some(self.scope_depth)));
     }
 
     fn get_global_index(&mut self, variable: Global) -> Result<usize, CompilerError> {
@@ -352,12 +338,6 @@ impl<'function> Compiler<'function> {
     }
 
     fn assign(&mut self, token: &ast::Assign) -> Result<(), CompilerError> {
-        if !token.value.mutable {
-            return Err(CompilerError::SyntaxError(format!(
-                "Can't assign a non mutable value to a mutable variable: {}",
-                token.name
-            )));
-        };
         self.expression(&token.value)?;
         self.set_variable(token.name.as_str())
     }
@@ -444,24 +424,9 @@ impl<'function> Compiler<'function> {
         log::debug!("Starting variable assignment");
 
         let op_code = match self.resolve_local(&var_name)? {
-            VariableType::MutableLocal(index) => OpCode::SetLocal(index),
-            VariableType::Local(_) => {
-                return Err(CompilerError::SyntaxError(format!(
-                    "Cannot assign to a non mutable variable: {var_name}"
-                )))
-            }
+            VariableType::Local(index) => OpCode::SetLocal(index),
             VariableType::Inherited(v) => OpCode::SetInheritedLocal(v),
-            VariableType::MutableInherited(_) => {
-                return Err(CompilerError::SyntaxError(format!(
-                    "Cannot assign to a non mutable variable: {var_name}"
-                )))
-            }
-            VariableType::MutableGlobal(i) => OpCode::SetGlobal(i),
-            VariableType::Global(_) => {
-                return Err(CompilerError::SyntaxError(format!(
-                    "Cannot assign to a non mutable global: {var_name}"
-                )))
-            }
+            VariableType::Global(i) => OpCode::SetGlobal(i),
         };
 
         self.emit_op_code(op_code);
@@ -473,11 +438,8 @@ impl<'function> Compiler<'function> {
 
         let op_code = match self.resolve_local(var_name) {
             Ok(VariableType::Local(index)) => OpCode::GetLocal(index),
-            Ok(VariableType::MutableLocal(index)) => OpCode::GetLocal(index),
             Ok(VariableType::Inherited(v)) => OpCode::GetInheritedLocal(v),
-            Ok(VariableType::MutableInherited(v)) => OpCode::GetInheritedLocal(v),
             Ok(VariableType::Global(v)) => OpCode::GetGlobal(v),
-            Ok(VariableType::MutableGlobal(v)) => OpCode::GetGlobal(v),
             Err(e) => match var_name {
                 "get_time" => OpCode::GetGlobal(self.make_global(Global::Native(
                     NativeFunction::new(NativeFunctionCallee::GetTime),
@@ -508,12 +470,9 @@ impl<'function> Compiler<'function> {
                 return Err(CompilerError::Unknown(format!(
                     "Can't read local variable in its own initializer"
                 )));
-            }
-
-            return match local.mutable {
-                true => Ok(VariableType::MutableLocal(self.function.locals.len() - i)),
-                false => Ok(VariableType::Local(self.function.locals.len() - i)),
             };
+
+            return Ok(VariableType::Local(self.function.locals.len() - i));
         }
 
         for local in self.function.inherited_locals.iter().rev() {
@@ -530,11 +489,8 @@ impl<'function> Compiler<'function> {
             match global {
                 Global::Identifier(v) => {
                     if v.name.as_str() == var_name {
-                        return match v.mutable {
-                            true => Ok(VariableType::MutableGlobal(i)),
-                            false => Ok(VariableType::Global(i)),
-                        };
-                    }
+                        return Ok(VariableType::Global(i));
+                    };
                 }
                 _ => continue,
             }

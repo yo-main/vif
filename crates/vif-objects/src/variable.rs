@@ -2,7 +2,6 @@
 pub struct Variable {
     pub name: Box<String>,
     pub depth: Option<usize>,
-    pub mutable: bool,
 }
 
 impl PartialEq for Variable {
@@ -12,12 +11,8 @@ impl PartialEq for Variable {
 }
 
 impl Variable {
-    pub fn new(name: Box<String>, depth: Option<usize>, mutable: bool) -> Self {
-        Self {
-            name,
-            depth,
-            mutable,
-        }
+    pub fn new(name: Box<String>, depth: Option<usize>) -> Self {
+        Self { name, depth }
     }
 }
 
@@ -37,7 +32,6 @@ pub struct InheritedVariable {
     pub var_name: Box<String>,
     pub depth: usize,
     pub pos: usize,
-    pub mutable: bool,
 }
 
 #[derive(PartialEq, Debug)]
@@ -48,11 +42,8 @@ pub struct InheritedLocalPos {
 
 pub enum VariableType {
     Local(usize),
-    MutableLocal(usize),
     Inherited(InheritedLocalPos),
-    MutableInherited(InheritedLocalPos),
     Global(usize),
-    MutableGlobal(usize),
 }
 
 impl std::fmt::Display for InheritedLocalPos {

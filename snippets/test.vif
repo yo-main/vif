@@ -1,9 +1,11 @@
-def coucou(a):
-    return a
+def coucou(mut n):
+    return n
 
-var i = coucou
-var mut j = 2
-var p = i(j)
+def test(mut a):
+    return coucou(a)
+
+var i = test
+var mut p = i(2)
 
 print(p)
 
