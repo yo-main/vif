@@ -4,8 +4,9 @@ use crate::function::Function;
 use crate::function::NativeFunction;
 use crate::value_error;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum StackValue<'c> {
+    LocalReference(usize),
     Integer(i64),
     Float(f64),
     String(Box<String>),
@@ -18,12 +19,28 @@ pub enum StackValue<'c> {
 impl std::fmt::Display for StackValue<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::LocalReference(i) => write!(f, "&{}", i),
             Self::Integer(i) => write!(f, "{}", i),
             Self::Float(i) => write!(f, "{}", i),
             Self::Boolean(b) => write!(f, "{}", b),
             Self::String(s) => write!(f, "{}", s),
             Self::Native(s) => write!(f, "{}", s),
             Self::Function(s) => write!(f, "{}", s),
+            Self::None => write!(f, "None"),
+        }
+    }
+}
+
+impl std::fmt::Debug for StackValue<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::LocalReference(i) => write!(f, "Ref[{}]", i),
+            Self::Integer(i) => write!(f, "Int[{}]", i),
+            Self::Float(i) => write!(f, "Float[{}]", i),
+            Self::Boolean(b) => write!(f, "Bool[{}]", b),
+            Self::String(s) => write!(f, "Str[{}]", s),
+            Self::Native(s) => write!(f, "Nat[{}]", s),
+            Self::Function(s) => write!(f, "Func[{}]", s),
             Self::None => write!(f, "None"),
         }
     }

@@ -85,28 +85,24 @@ where
         let result = self.stack.pop();
 
         if self.previous_frames.len() > 0 {
-            //// TODO: the code seems working without that piece of code. To be deleted ?
-            //
-            //
-            // match result {
-            // function hasn't been called yet, don't get rid of its variable
-            // it's a hack that won't work all the time (especially after we add classes)
-            // TODO: store inherited variables on the function itself, not the stack
-            //
-            // careful about
-            //
-            // def coucou():
-            //     var x = 1
-            //     x = 2
-            //     def closure():
-            //         x = 1
-            //
-            // when x=2, we need to know it's a inherited variable
-            // StackValue::Function(_) => (),
-            // _ => self.stack.truncate(self.frame.get_position()),
-            // }
+            match result {
+                // function hasn't been called yet, don't get rid of its variable
+                // it's a hack that won't work all the time (especially after we add classes)
+                // TODO: store inherited variables on the function itself, not the stack
+                //
+                // careful about
+                //
+                // def coucou():
+                //     var x = 1
+                //     x = 2
+                //     def closure():
+                //         x = 1
+                //
+                // when x=2, we need to know it's a inherited variable
+                StackValue::Function(_) => (),
+                _ => self.stack.truncate(self.frame.get_position()),
+            }
 
-            self.stack.truncate(self.frame.get_position());
             self.frame = self.previous_frames.pop().unwrap();
             self.stack.push(result);
         }
@@ -201,26 +197,24 @@ where
 
     fn get_local(&mut self, i: usize) {
         self.stack
-            .push(self.stack.peek(i + self.frame.get_position()).clone())
+            .push(StackValue::LocalReference(i + self.frame.get_position()));
     }
+
     fn set_local(&mut self, i: usize) {
-        self.stack.set(
-            i + self.frame.get_position(),
-            self.stack.peek_last().clone(),
-        )
+        let value = self.stack.peek_last_mut().clone();
+        self.stack.set(i + self.frame.get_position(), value);
     }
+
     fn get_inherited_local(&mut self, pos: &InheritedLocalPos) {
         let frame = self.previous_frames.iter().nth(pos.depth - 1).unwrap();
         self.stack
-            .push(self.stack.peek(pos.pos + frame.get_position()).clone())
+            .push(StackValue::LocalReference(pos.pos + frame.get_position()))
     }
 
     fn set_inherited_local(&mut self, pos: &InheritedLocalPos) {
         let frame = self.previous_frames.iter().nth(pos.depth - 1).unwrap();
-        self.stack.set(
-            pos.pos + frame.get_position(),
-            self.stack.peek_last().clone(),
-        )
+        let value = self.stack.peek_last_mut().clone();
+        self.stack.set(pos.pos + frame.get_position(), value);
     }
 
     fn get_global(&mut self, i: usize) -> Result<(), InterpreterError> {
@@ -412,9 +406,10 @@ where
 
     pub fn interpret(&mut self, op_code: &OpCode) -> Result<(), InterpreterError> {
         // println!(
-        //     "{:>50} | {:<10} | stack: {}",
+        //     "{:>50} | {:<10} | stack({}): {}",
         //     format!("{op_code}"),
         //     format!("{}", self.frame.get_function_name(),),
+        //     self.stack.top,
         //     self.stack,
         //     //     self.globals,
         //     //     self.variables
