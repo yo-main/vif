@@ -157,7 +157,7 @@ impl<'value> Stack<'value> {
         let value = self.peek_raw(n);
 
         if let StackValue::LocalReference(i) = value {
-            self.peek_raw(*i)
+            self.peek(*i)
         } else {
             return value;
         }
@@ -167,7 +167,7 @@ impl<'value> Stack<'value> {
         let value = self.peek_last_raw();
 
         if let StackValue::LocalReference(i) = value {
-            self.peek_raw(*i)
+            self.peek(*i)
         } else {
             return value;
         }
@@ -177,7 +177,7 @@ impl<'value> Stack<'value> {
         let value = self.peek_raw(n);
 
         if let StackValue::LocalReference(i) = value {
-            self.peek_mut_raw(*i)
+            self.peek_mut(*i)
         } else {
             return self.peek_mut_raw(n);
         }
@@ -187,8 +187,7 @@ impl<'value> Stack<'value> {
         let value = self.peek_last_raw();
 
         if let StackValue::LocalReference(i) = value {
-            let v = self.peek_mut_raw(*i);
-            return v;
+            return self.peek_mut(*i);
         } else {
             return self.peek_last_mut_raw();
         }
@@ -228,11 +227,13 @@ impl std::fmt::Display for Stack<'_> {
             "[{}]",
             self.stack
                 .iter()
-                .filter(|v| match v {
+                .enumerate()
+                .filter(|(i, _)| i < &self.top)
+                .filter(|(_, v)| match v {
                     None => false,
                     _ => true,
                 })
-                .map(|v| format!("{}", v.as_ref().unwrap()))
+                .map(|(_, v)| format!("{}", v.as_ref().unwrap()))
                 .collect::<Vec<String>>()
                 .join(", ")
         )

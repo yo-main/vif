@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use crate::callframe::CallFrame;
 use crate::error::InterpreterError;
 use crate::error::RuntimeErrorType;
@@ -13,22 +15,16 @@ use vif_objects::stack_value::StackValue;
 use vif_objects::variable::InheritedLocalPos;
 use vif_objects::variable_storage::VariableStore;
 
-fn debug_stack(name: &str, stack: &Stack, frame: &CallFrame, previous_frames: &Vec<CallFrame>) {
-    let mut items: Vec<String> = Vec::new();
-    let mut frames = previous_frames.iter().collect::<Vec<&CallFrame>>();
-    frames.push(frame);
-    frames.remove(0);
-
-    for (i, value) in stack.get_items().iter().enumerate() {
-        if Some(i) == frames.first().and_then(|f| Some(f.get_position())) {
-            items.push(format!("| {value}"));
-            frames.remove(0);
-        } else {
-            items.push(format!("{value}"));
-        };
-    }
-
-    println!("{}: [{}]", name, items.join(", "));
+fn debug_stack(op_code: &OpCode, stack: &Stack, frame: &CallFrame) {
+    println!(
+        "{:>50} | {:<10} | stack({}): {}",
+        format!("{op_code}"),
+        format!("{}", frame.get_function_name(),),
+        stack.top,
+        stack,
+        //     self.globals,
+        //     self.variables
+    );
 }
 
 pub struct VM<'function, 'stack, 'value, 'variables, 'globals>
@@ -73,6 +69,51 @@ where
                 break;
             }
         }
+
+        Ok(())
+    }
+
+    pub fn interpret(&mut self, op_code: &OpCode) -> Result<(), InterpreterError> {
+        debug_stack(op_code, self.stack, &self.frame);
+
+        match op_code {
+            OpCode::Print => {
+                println!("printing {}", self.stack.pop());
+            }
+            OpCode::Pop => self.pop(),
+            OpCode::Return => self.r#return(),
+            OpCode::GlobalVariable(i) => self.global_variable(*i)?,
+            OpCode::Call(arg_count) => self.call(*arg_count)?,
+            OpCode::Goto(i) => self.reset_ip(*i),
+            OpCode::Jump(i) => self.advance_by(*i),
+            OpCode::JumpIfFalse(i) => self.jump_if_false(*i),
+            // WTF is that ?? It's working though but wow. I'll need to spend more time studying how
+            OpCode::GetLocal(i) => self.get_local(*i),
+            OpCode::SetLocal(i) => self.set_local(*i),
+            OpCode::GetInheritedLocal(v) => self.get_inherited_local(v),
+            OpCode::SetInheritedLocal(v) => self.set_inherited_local(v),
+            OpCode::GetGlobal(i) => self.get_global(*i)?,
+            OpCode::SetGlobal(i) => self.set_global(*i)?,
+            OpCode::Global(i) => self.global(*i)?,
+            OpCode::AssertTrue => self.assert_true()?,
+            OpCode::Not => self.not()?,
+            OpCode::Negate => self.negate()?,
+            OpCode::True => self.r#true(),
+            OpCode::False => self.r#false(),
+            OpCode::None => self.r#none(),
+            OpCode::Equal => self.equal(),
+            OpCode::NotEqual => self.not_equal(),
+            OpCode::Greater => self.greater()?,
+            OpCode::GreaterOrEqual => self.greater_or_equal()?,
+            OpCode::Less => self.less()?,
+            OpCode::LessOrEqual => self.less_or_equal()?,
+            OpCode::Add => self.add()?,
+            OpCode::Substract => self.substract()?,
+            OpCode::Multiply => self.multiply()?,
+            OpCode::Divide => self.divide()?,
+            OpCode::Modulo => self.modulo()?,
+            OpCode::NotImplemented => panic!("Not implemented"),
+        };
 
         Ok(())
     }
@@ -385,6 +426,7 @@ where
     }
     fn substract(&mut self) -> Result<(), InterpreterError> {
         let other = self.stack.pop();
+
         self.stack.peek_last_mut().substract(other)?;
         Ok(())
     }
@@ -401,59 +443,6 @@ where
     fn modulo(&mut self) -> Result<(), InterpreterError> {
         let other = self.stack.pop();
         self.stack.peek_last_mut().modulo(other)?;
-        Ok(())
-    }
-
-    pub fn interpret(&mut self, op_code: &OpCode) -> Result<(), InterpreterError> {
-        // println!(
-        //     "{:>50} | {:<10} | stack({}): {}",
-        //     format!("{op_code}"),
-        //     format!("{}", self.frame.get_function_name(),),
-        //     self.stack.top,
-        //     self.stack,
-        //     //     self.globals,
-        //     //     self.variables
-        // );
-
-        match op_code {
-            OpCode::Print => {
-                println!("printing {}", self.stack.pop());
-            }
-            OpCode::Pop => self.pop(),
-            OpCode::Return => self.r#return(),
-            OpCode::GlobalVariable(i) => self.global_variable(*i)?,
-            OpCode::Call(arg_count) => self.call(*arg_count)?,
-            OpCode::Goto(i) => self.reset_ip(*i),
-            OpCode::Jump(i) => self.advance_by(*i),
-            OpCode::JumpIfFalse(i) => self.jump_if_false(*i),
-            // WTF is that ?? It's working though but wow. I'll need to spend more time studying how
-            OpCode::GetLocal(i) => self.get_local(*i),
-            OpCode::SetLocal(i) => self.set_local(*i),
-            OpCode::GetInheritedLocal(v) => self.get_inherited_local(v),
-            OpCode::SetInheritedLocal(v) => self.set_inherited_local(v),
-            OpCode::GetGlobal(i) => self.get_global(*i)?,
-            OpCode::SetGlobal(i) => self.set_global(*i)?,
-            OpCode::Global(i) => self.global(*i)?,
-            OpCode::AssertTrue => self.assert_true()?,
-            OpCode::Not => self.not()?,
-            OpCode::Negate => self.negate()?,
-            OpCode::True => self.r#true(),
-            OpCode::False => self.r#false(),
-            OpCode::None => self.r#none(),
-            OpCode::Equal => self.equal(),
-            OpCode::NotEqual => self.not_equal(),
-            OpCode::Greater => self.greater()?,
-            OpCode::GreaterOrEqual => self.greater_or_equal()?,
-            OpCode::Less => self.less()?,
-            OpCode::LessOrEqual => self.less_or_equal()?,
-            OpCode::Add => self.add()?,
-            OpCode::Substract => self.substract()?,
-            OpCode::Multiply => self.multiply()?,
-            OpCode::Divide => self.divide()?,
-            OpCode::Modulo => self.modulo()?,
-            OpCode::NotImplemented => panic!("Not implemented"),
-        };
-
         Ok(())
     }
 }
