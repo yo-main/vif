@@ -121,7 +121,12 @@ impl<'value> Stack<'value> {
     }
 
     pub fn set(&mut self, n: usize, value: StackValue<'value>) {
-        let _ = self.stack[n].insert(value);
+        match self.stack.get(n).unwrap() {
+            Some(StackValue::LocalReference(i)) => self.set(*i, value),
+            _ => {
+                self.stack[n].insert(value);
+            }
+        };
     }
 
     #[inline]

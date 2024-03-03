@@ -17,9 +17,10 @@ use vif_objects::variable_storage::VariableStore;
 
 fn debug_stack(op_code: &OpCode, stack: &Stack, frame: &CallFrame) {
     println!(
-        "{:>50} | {:<10} | stack({}): {}",
+        "{:>50} | {:<10} | {} | stack({}): {}",
         format!("{op_code}"),
         format!("{}", frame.get_function_name(),),
+        frame.get_position(),
         stack.top,
         stack,
         //     self.globals,
@@ -83,7 +84,10 @@ where
             OpCode::Pop => self.pop(),
             OpCode::Return => self.r#return(),
             OpCode::GlobalVariable(i) => self.global_variable(*i)?,
-            OpCode::Call(arg_count) => self.call(*arg_count)?,
+            OpCode::Call(arg_count) => {
+                debug_stack(op_code, self.stack, &self.frame);
+                self.call(*arg_count)?
+            }
             OpCode::Goto(i) => self.reset_ip(*i),
             OpCode::Jump(i) => self.advance_by(*i),
             OpCode::JumpIfFalse(i) => self.jump_if_false(*i),

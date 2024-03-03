@@ -21,12 +21,27 @@ pub struct Compiler<'function> {
 
 impl<'function> Compiler<'function> {
     pub fn new(function: &'function mut Function, scope_depth: usize) -> Self {
-        Compiler {
+        let mut compiler = Compiler {
             function,
             scope_depth,
             loop_details: Vec::new(),
             globals: GlobalStore::new(),
-        }
+        };
+
+        if scope_depth == 0 {
+            compiler.make_global(Global::Native(NativeFunction::new(
+                NativeFunctionCallee::GetTime,
+            )));
+            compiler.make_global(Global::Native(NativeFunction::new(
+                NativeFunctionCallee::Print,
+            )));
+            compiler.make_global(Global::Native(NativeFunction::new(
+                NativeFunctionCallee::Sleep,
+            )));
+            println!("COUCOU {:?}", compiler.globals);
+        };
+
+        compiler
     }
 
     pub fn compile(&mut self, function: &ast::Function) -> Result<(), CompilerError> {
@@ -171,6 +186,17 @@ impl<'function> Compiler<'function> {
         Ok(())
     }
 
+    fn build_in_function_declaration(
+        &mut self,
+        token: &ast::Function,
+    ) -> Result<(), CompilerError> {
+        log::debug!("Starting function declaration");
+        let index = self.register_variable(Box::new(token.name.clone()));
+        self.function_statement(token)?;
+        self.define_variable(index);
+        Ok(())
+    }
+
     fn function_statement(&mut self, token: &ast::Function) -> Result<(), CompilerError> {
         log::debug!("Starting function statement");
         let mut function = Function::new(Arity::Fixed(token.params.len()), token.name.clone());
@@ -187,6 +213,11 @@ impl<'function> Compiler<'function> {
                         pos: i + 1,
                     });
             }
+        } else {
+            function.locals.push(Variable::new(
+                Box::new(token.name.clone()),
+                Some(self.scope_depth),
+            ));
         }
 
         let mut compiler = Compiler::new(&mut function, self.scope_depth + 1);
@@ -248,7 +279,7 @@ impl<'function> Compiler<'function> {
 
     fn define_variable(&mut self, variable_index: usize) {
         log::debug!("Starting define variable");
-        if self.scope_depth > 0 {
+        if self.scope_depth >= 0 {
             self.initialize_variable();
             if !self.loop_details.is_empty() {
                 // in a loop we want to override the previously writen local
@@ -262,7 +293,7 @@ impl<'function> Compiler<'function> {
 
     fn register_variable(&mut self, name: Box<String>) -> usize {
         log::debug!("Register variable {}", name);
-        if self.scope_depth > 0 {
+        if self.scope_depth >= 0 {
             self.function.locals.push(Variable::new(name, None));
             return self.function.locals.len();
         } else {
@@ -440,18 +471,7 @@ impl<'function> Compiler<'function> {
             Ok(VariableType::Local(index)) => OpCode::GetLocal(index),
             Ok(VariableType::Inherited(v)) => OpCode::GetInheritedLocal(v),
             Ok(VariableType::Global(v)) => OpCode::GetGlobal(v),
-            Err(e) => match var_name {
-                "get_time" => OpCode::GetGlobal(self.make_global(Global::Native(
-                    NativeFunction::new(NativeFunctionCallee::GetTime),
-                ))),
-                "print" => OpCode::GetGlobal(self.make_global(Global::Native(
-                    NativeFunction::new(NativeFunctionCallee::Print),
-                ))),
-                "sleep" => OpCode::GetGlobal(self.make_global(Global::Native(
-                    NativeFunction::new(NativeFunctionCallee::Sleep),
-                ))),
-                _ => return Err(e),
-            },
+            Err(e) => return Err(e),
         };
 
         self.emit_op_code(op_code);
@@ -468,11 +488,23 @@ impl<'function> Compiler<'function> {
 
             if local.depth.is_none() {
                 return Err(CompilerError::Unknown(format!(
-                    "Can't read local variable in its own initializer"
+                    "Can't read local variable in its own initializer: {}",
+                    var_name
                 )));
             };
 
-            return Ok(VariableType::Local(self.function.locals.len() - i));
+            let index = if self.scope_depth > 0 {
+                self.function.locals.len() - i - 1
+            } else {
+                self.function.locals.len() - i - 1
+            };
+
+            // println!("{} {} {:?}", var_name, index, self.function.locals);
+
+            if self.scope_depth == 0 {
+                return Ok(VariableType::Local(index));
+            };
+            return Ok(VariableType::Local(index));
         }
 
         for local in self.function.inherited_locals.iter().rev() {
@@ -492,10 +524,14 @@ impl<'function> Compiler<'function> {
                         return Ok(VariableType::Global(i));
                     };
                 }
+                Global::Native(f) if f.name == var_name => {
+                    return Ok(VariableType::Global(i));
+                }
                 _ => continue,
             }
         }
 
+        // println!("{:?}", self.function.locals);
         return Err(CompilerError::ConstantNotFound(format!(
             "Unknown variable: {var_name}"
         )));
