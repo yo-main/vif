@@ -1,5 +1,12 @@
-with import <nixpkgs> {};
-stdenv.mkDerivation {
-  name = "vif-env";
-  nativeBuildInputs = [ stdenv rust-analyzer hyperfine mdbook rustup ];
+{ pkgs ? import <nixpkgs> {} }:
+pkgs.mkShellNoCC {
+
+  packages = with pkgs; [ 
+    gcc
+    rust-analyzer
+    rustup
+    hyperfine
+    mdbook 
+  ];
+
 }
