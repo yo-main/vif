@@ -74,7 +74,7 @@ where
     }
 
     pub fn interpret(&mut self, op_code: &OpCode) -> Result<(), InterpreterError> {
-        debug_stack(op_code, self.stack, &self.frame);
+        // debug_stack(op_code, self.stack, &self.frame);
 
         match op_code {
             OpCode::Print => {
@@ -348,12 +348,12 @@ where
     }
 
     fn not(&mut self) -> Result<(), InterpreterError> {
-        let value = self.stack.peek_last_mut();
+        let value = self.stack.pop();
         match value {
-            StackValue::Integer(ref mut i) => *value = StackValue::Boolean(i == &0),
-            StackValue::Float(ref mut f) => *value = StackValue::Boolean(f == &0.0),
-            StackValue::Boolean(ref mut b) => *b = !*b,
-            StackValue::None => *value = StackValue::Boolean(true),
+            StackValue::Integer(i) => self.stack.push(StackValue::Boolean(i == 0)),
+            StackValue::Float(f) => self.stack.push(StackValue::Boolean(f == 0.0)),
+            StackValue::Boolean(b) => self.stack.push(StackValue::Boolean(!b)),
+            StackValue::None => self.stack.push(StackValue::Boolean(true)),
             _ => return value_error!("Can't compare {value}"),
         };
 
@@ -385,64 +385,73 @@ where
 
     fn equal(&mut self) {
         let a = self.stack.pop();
-        let b = self.stack.peek_last_mut();
-        *b = StackValue::Boolean(a.eq(&b))
+        let b = self.stack.pop();
+        self.stack.push(StackValue::Boolean(b.eq(&a)));
     }
 
     fn not_equal(&mut self) {
         let a = self.stack.pop();
-        let b = self.stack.peek_last_mut();
-        *b = StackValue::Boolean(a.neq(&b))
+        let b = self.stack.pop();
+        self.stack.push(StackValue::Boolean(b.neq(&a)));
     }
 
     fn greater(&mut self) -> Result<(), InterpreterError> {
         let a = self.stack.pop();
-        let b = self.stack.peek_last_mut();
-        *b = StackValue::Boolean(b.gt(&a)?);
+        let b = self.stack.pop();
+        self.stack.push(StackValue::Boolean(b.gt(&a)?));
         Ok(())
     }
     fn greater_or_equal(&mut self) -> Result<(), InterpreterError> {
         let a = self.stack.pop();
-        let b = self.stack.peek_last_mut();
-        *b = StackValue::Boolean(b.gte(&a)?);
+        let b = self.stack.pop();
+        self.stack.push(StackValue::Boolean(b.gte(&a)?));
         Ok(())
     }
     fn less(&mut self) -> Result<(), InterpreterError> {
         let a = self.stack.pop();
-        let b = self.stack.peek_last_mut();
-        *b = StackValue::Boolean(b.lt(&a)?);
+        let b = self.stack.pop();
+        self.stack.push(StackValue::Boolean(b.lt(&a)?));
         Ok(())
     }
     fn less_or_equal(&mut self) -> Result<(), InterpreterError> {
         let a = self.stack.pop();
-        let b = self.stack.peek_last_mut();
-        *b = StackValue::Boolean(b.lte(&a)?);
+        let b = self.stack.pop();
+        self.stack.push(StackValue::Boolean(b.lte(&a)?));
         Ok(())
     }
     fn add(&mut self) -> Result<(), InterpreterError> {
-        let other = self.stack.pop();
-        self.stack.peek_last_mut().add(other)?;
+        let a = self.stack.pop();
+        let mut b = self.stack.pop();
+        b.add(a)?;
+        self.stack.push(b);
         Ok(())
     }
     fn substract(&mut self) -> Result<(), InterpreterError> {
-        let other = self.stack.pop();
-
-        self.stack.peek_last_mut().substract(other)?;
+        let a = self.stack.pop();
+        let mut b = self.stack.pop();
+        b.substract(a)?;
+        self.stack.push(b);
         Ok(())
     }
     fn multiply(&mut self) -> Result<(), InterpreterError> {
-        let other = self.stack.pop();
-        self.stack.peek_last_mut().multiply(other)?;
+        let a = self.stack.pop();
+        let mut b = self.stack.pop();
+        b.multiply(a)?;
+        self.stack.push(b);
         Ok(())
     }
     fn divide(&mut self) -> Result<(), InterpreterError> {
-        let other = self.stack.pop();
-        self.stack.peek_last_mut().divide(other)?;
+        let a = self.stack.pop();
+        let mut b = self.stack.pop();
+        b.divide(a)?;
+        self.stack.push(b);
         Ok(())
     }
     fn modulo(&mut self) -> Result<(), InterpreterError> {
-        let other = self.stack.pop();
-        self.stack.peek_last_mut().modulo(other)?;
+        let a = self.stack.pop();
+        let mut b = self.stack.pop();
+        b.modulo(a)?;
+        self.stack.push(b);
         Ok(())
     }
 }

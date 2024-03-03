@@ -97,6 +97,7 @@ impl<'value> Stack<'value> {
         self.top -= 1;
 
         let value = self.stack[self.top].take().unwrap();
+
         match value {
             StackValue::LocalReference(i) => self.peek(i).clone(),
             v => v,
