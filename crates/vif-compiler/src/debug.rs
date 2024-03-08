@@ -50,6 +50,7 @@ fn disassemble_instruction(offset: usize, op_code: &OpCode, chunk: &Chunk, globa
         OpCode::GetGlobal(i) => constant_instruction("OP_GET_GLOBAL", chunk, *i, globals),
         OpCode::SetGlobal(i) => constant_instruction("OP_SET_GLOBAL", chunk, *i, globals),
         OpCode::GetLocal(i) => simple_instruction(format!("OP_GET_LOCAL({i})").as_str()),
+        OpCode::CreateLocal(i) => simple_instruction(format!("OP_CREATE_LOCAL({i})").as_str()),
         OpCode::SetLocal(i) => simple_instruction(format!("OP_SET_LOCAL({i})").as_str()),
         OpCode::GetInheritedLocal(v) => {
             simple_instruction(format!("OP_GET_INHERITED_LOCAL({v})").as_str())

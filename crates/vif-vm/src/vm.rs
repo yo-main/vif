@@ -17,7 +17,7 @@ use vif_objects::variable_storage::VariableStore;
 
 fn debug_stack(op_code: &OpCode, stack: &Stack, frame: &CallFrame) {
     println!(
-        "{:>50} | {:<10} | {} | stack({}): {}",
+        "{:>20} | {:<10} | {} | stack({}): {}",
         format!("{op_code}"),
         format!("{}", frame.get_function_name(),),
         frame.get_position(),
@@ -75,7 +75,7 @@ where
     }
 
     pub fn interpret(&mut self, op_code: &OpCode) -> Result<(), InterpreterError> {
-        // debug_stack(op_code, self.stack, &self.frame);
+        debug_stack(op_code, self.stack, &self.frame);
 
         match op_code {
             OpCode::Print => {
@@ -85,7 +85,7 @@ where
             OpCode::Return => self.r#return(),
             OpCode::GlobalVariable(i) => self.global_variable(*i)?,
             OpCode::Call(arg_count) => {
-                debug_stack(op_code, self.stack, &self.frame);
+                // debug_stack(op_code, self.stack, &self.frame);
                 self.call(*arg_count)?
             }
             OpCode::Goto(i) => self.reset_ip(*i),
@@ -93,7 +93,12 @@ where
             OpCode::JumpIfFalse(i) => self.jump_if_false(*i),
             // WTF is that ?? It's working though but wow. I'll need to spend more time studying how
             OpCode::GetLocal(i) => self.get_local(*i),
-            OpCode::SetLocal(i) => self.set_local(*i),
+            OpCode::CreateLocal(i) => {
+                self.create_local(*i);
+            }
+            OpCode::SetLocal(i) => {
+                self.set_local(*i);
+            }
             OpCode::GetInheritedLocal(v) => self.get_inherited_local(v),
             OpCode::SetInheritedLocal(v) => self.set_inherited_local(v),
             OpCode::GetGlobal(i) => self.get_global(*i)?,
@@ -245,6 +250,16 @@ where
             .push(StackValue::LocalReference(i + self.frame.get_position()));
     }
 
+    fn create_local(&mut self, i: usize) {
+        let value = self.stack.peek_last_mut().clone();
+        let index = i + self.frame.get_position();
+        if index < self.stack.top {
+            self.stack.set(index, value);
+        } else {
+            self.stack.push(value);
+        }
+    }
+
     fn set_local(&mut self, i: usize) {
         let value = self.stack.peek_last_mut().clone();
         self.stack.set(i + self.frame.get_position(), value);
@@ -317,7 +332,6 @@ where
     }
 
     fn assert_true(&mut self) -> Result<(), InterpreterError> {
-        // debug_stack("assert", self.stack, &self.frame, &self.previous_frames);
         let value = self.stack.peek_last();
         match value {
             StackValue::Integer(0) => {

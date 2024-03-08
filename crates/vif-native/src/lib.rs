@@ -16,7 +16,7 @@ pub fn execute_native_call<'v>(
     let res = match func.function {
         NativeFunctionCallee::GetTime => StackValue::Integer(time::get_time()?),
         NativeFunctionCallee::Print => {
-            io::print(stack.get_slice(stack_start + 1))?;
+            io::print(stack.get_slice(stack_start))?;
             StackValue::None
         }
         NativeFunctionCallee::Sleep => {

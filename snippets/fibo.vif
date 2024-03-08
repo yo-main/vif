@@ -5,7 +5,7 @@ def fib(mut n):
 
 var mut i = 0
 
-while i < 3:
+while i < 38:
     var start = get_time()
     var value = fib(i)
     var duration = (get_time() - start) / 1000000

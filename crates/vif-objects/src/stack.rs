@@ -121,6 +121,10 @@ impl<'value> Stack<'value> {
     }
 
     pub fn set(&mut self, n: usize, value: StackValue<'value>) {
+        // if n >= self.top {
+        //     panic!("Badadoom {value} {n} {}", self.top);
+        // }
+        // println!("SET {n} TO {value} {}", self.top);
         match self.stack.get(n).unwrap() {
             Some(StackValue::LocalReference(i)) => self.set(*i, value),
             _ => {

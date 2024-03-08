@@ -182,7 +182,7 @@ impl<'function> Compiler<'function> {
         log::debug!("Starting function declaration");
         let index = self.register_variable(Box::new(token.name.clone()));
         self.function_statement(token)?;
-        self.define_variable(index);
+        self.update_variable(index);
         Ok(())
     }
 
@@ -264,8 +264,10 @@ impl<'function> Compiler<'function> {
 
     fn var_declaration(&mut self, token: &ast::Variable) -> Result<(), CompilerError> {
         log::debug!("Starting variable declaration");
+        println!("COUCOU {}", token.name);
         let index = self.register_variable(Box::new(token.name.to_owned()));
         self.expression(&token.value)?;
+        println!("DECL {index}");
         self.define_variable(index);
         Ok(())
     }
@@ -277,15 +279,29 @@ impl<'function> Compiler<'function> {
         }
     }
 
+    fn update_variable(&mut self, variable_index: usize) {
+        log::debug!("Starting define variable");
+        if self.scope_depth >= 0 {
+            self.initialize_variable();
+            // if !self.loop_details.is_empty() {
+            // in a loop we want to override the previously writen local
+            // if we don't do that the VM is not aware of it
+            self.emit_op_code(OpCode::SetLocal(variable_index - 1))
+            // };
+        } else {
+            self.emit_op_code(OpCode::GlobalVariable(variable_index))
+        }
+    }
+
     fn define_variable(&mut self, variable_index: usize) {
         log::debug!("Starting define variable");
         if self.scope_depth >= 0 {
             self.initialize_variable();
-            if !self.loop_details.is_empty() {
-                // in a loop we want to override the previously writen local
-                // if we don't do that the VM is not aware of it
-                self.emit_op_code(OpCode::SetLocal(variable_index))
-            };
+            // if !self.loop_details.is_empty() {
+            // in a loop we want to override the previously writen local
+            // if we don't do that the VM is not aware of it
+            self.emit_op_code(OpCode::CreateLocal(variable_index - 1))
+            // };
         } else {
             self.emit_op_code(OpCode::GlobalVariable(variable_index))
         }
@@ -294,8 +310,14 @@ impl<'function> Compiler<'function> {
     fn register_variable(&mut self, name: Box<String>) -> usize {
         log::debug!("Register variable {}", name);
         if self.scope_depth >= 0 {
-            self.function.locals.push(Variable::new(name, None));
+            let variable = Variable::new(name, None);
+            // match self.function.locals.iter().position(|v| v == &variable) {
+            //     Some(i) => return i,
+            //     None => {
+            self.function.locals.push(variable);
             return self.function.locals.len();
+            //     }
+            // }
         } else {
             self.make_global(Global::Identifier(Variable::new(name, Some(0))))
         }
@@ -481,7 +503,7 @@ impl<'function> Compiler<'function> {
     fn resolve_local(&mut self, var_name: &str) -> Result<VariableType, CompilerError> {
         log::debug!("Resolve variable {}", var_name);
 
-        for (i, local) in self.function.locals.iter().rev().enumerate() {
+        for (i, local) in self.function.locals.iter().enumerate().rev() {
             if local.name.as_str() != var_name {
                 continue;
             }
@@ -493,18 +515,15 @@ impl<'function> Compiler<'function> {
                 )));
             };
 
-            let index = if self.scope_depth > 0 {
-                self.function.locals.len() - i - 1
-            } else {
-                self.function.locals.len() - i - 1
-            };
+            // let index = if self.scope_depth > 0 { i } else { i };
+            let index = i;
 
-            // println!("{} {} {:?}", var_name, index, self.function.locals);
+            println!("RESOLVE {} {} {:?}", var_name, index, self.function.locals);
 
             if self.scope_depth == 0 {
-                return Ok(VariableType::Local(index));
+                return Ok(VariableType::Local(index as usize));
             };
-            return Ok(VariableType::Local(index));
+            return Ok(VariableType::Local(index as usize));
         }
 
         for local in self.function.inherited_locals.iter().rev() {
