@@ -181,10 +181,6 @@ impl<'function> Compiler<'function> {
     fn function_declaration(&mut self, token: &ast::Function) -> Result<(), CompilerError> {
         log::debug!("Starting function declaration");
         let index = self.register_variable(Box::new(token.name.clone()));
-        println!(
-            "FUNC DDECL {} {} {:?}",
-            token.name, index, self.function.locals
-        );
         self.function_statement(token)?;
         self.define_variable(index);
         Ok(())
@@ -203,26 +199,31 @@ impl<'function> Compiler<'function> {
 
     fn function_statement(&mut self, token: &ast::Function) -> Result<(), CompilerError> {
         log::debug!("Starting function statement");
-        let mut function = Function::new(Arity::Fixed(token.params.len()), token.name.clone());
-
-        if self.scope_depth >= 0 {
-            // TODO: manage self.function.inherited_locals as well
-
-            for (i, local) in self.function.locals.iter().enumerate() {
-                function
-                    .inherited_locals
-                    .push(vif_objects::variable::InheritedVariable {
-                        var_name: local.name.clone(),
-                        depth: self.scope_depth,
-                        pos: i + 1,
-                    });
-            }
+        let arity = if self.scope_depth > 0 {
+            token.params.len()
         } else {
-            function.locals.push(Variable::new(
-                Box::new(token.name.clone()),
-                Some(self.scope_depth),
-            ));
+            token.params.len()
+        };
+
+        let mut function = Function::new(Arity::Fixed(arity), token.name.clone());
+
+        // if self.scope_depth > 0 {
+        function.locals.push(Variable::new(
+            Box::new(token.name.clone()),
+            Some(self.scope_depth),
+        ));
+
+        // TODO: manage self.function.inherited_locals as well
+        for (i, local) in self.function.locals.iter().enumerate() {
+            function
+                .inherited_locals
+                .push(vif_objects::variable::InheritedVariable {
+                    var_name: local.name.clone(),
+                    depth: self.scope_depth,
+                    pos: i + 1,
+                });
         }
+        // }
 
         let mut compiler = Compiler::new(&mut function, self.scope_depth + 1);
         std::mem::swap(&mut compiler.globals, &mut self.globals);
@@ -304,7 +305,11 @@ impl<'function> Compiler<'function> {
             // if !self.loop_details.is_empty() {
             // in a loop we want to override the previously writen local
             // if we don't do that the VM is not aware of it
-            self.emit_op_code(OpCode::CreateLocal(variable_index))
+            if self.scope_depth == 0 {
+                self.emit_op_code(OpCode::CreateLocal(variable_index - 1))
+            } else {
+                self.emit_op_code(OpCode::CreateLocal(variable_index - 1))
+            }
             // };
         } else {
             self.emit_op_code(OpCode::GlobalVariable(variable_index))
@@ -525,9 +530,9 @@ impl<'function> Compiler<'function> {
             // println!("RESOLVE {} {} {:?}", var_name, index, self.function.locals);
 
             if self.scope_depth == 0 {
-                return Ok(VariableType::Local(index as usize + 1));
+                return Ok(VariableType::Local(index as usize));
             };
-            return Ok(VariableType::Local(index as usize + 1));
+            return Ok(VariableType::Local(index as usize));
         }
 
         for local in self.function.inherited_locals.iter().rev() {

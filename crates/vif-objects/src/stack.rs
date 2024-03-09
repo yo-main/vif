@@ -93,12 +93,14 @@ impl<'value> Stack<'value> {
         }
     }
 
-    pub fn pop(&mut self) -> StackValue<'value> {
+    pub fn pop_raw(&mut self) -> StackValue<'value> {
         self.top -= 1;
 
-        let value = self.stack[self.top].take().unwrap();
+        self.stack[self.top].take().unwrap()
+    }
 
-        match value {
+    pub fn pop(&mut self) -> StackValue<'value> {
+        match self.pop_raw() {
             StackValue::LocalReference(i) => self.peek(i).clone(),
             v => v,
         }
@@ -154,7 +156,7 @@ impl<'value> Stack<'value> {
     }
 
     #[inline]
-    fn peek_last_raw(&self) -> &StackValue<'value> {
+    pub fn peek_last_raw(&self) -> &StackValue<'value> {
         unsafe { self.stack.get_unchecked(self.top - 1).as_ref().unwrap() }
     }
 

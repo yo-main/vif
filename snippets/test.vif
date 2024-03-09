@@ -1,24 +1,42 @@
-def test(mut a):
-    a = 3
-    
-var mut coucou = 123
+#def test(mut a):
+#    a = 3
+#    
+#var mut coucou = 123
+#print(coucou)
+#
+#
+#test(coucou)
+#
+#assert coucou == 3
+#
+#def fib(mut n):
+#    if n <= 1:
+#        return n
+#    return fib(n-2) + fib(n-1)
+#
+#var mut i = 0
+#
+#while i < 10:
+#    var start = get_time()
+#    var value = fib(i)
+#    var duration = (get_time() - start) / 1000000
+#
+#    print("Got", value, "after", duration, "seconds")
+#
+#    i = i + 1
 
-test(coucou)
+def main():
+	var mut index = 0
 
-assert coucou == 3
+	while index < 2:
+		var should_be_updated = index
+		index = index + 1
 
-def fib(mut n):
-    if n <= 1:
-        return n
-    return fib(n-2) + fib(n-1)
+	assert index == 1
+	print(should_be_updated)
+	assert should_be_updated == 1 # passed by reference !!!!
 
-var mut i = 0
+	return True
 
-while i < 38:
-    var start = get_time()
-    var value = fib(i)
-    var duration = (get_time() - start) / 1000000
-
-    print("Got", value, "after", duration, "seconds")
-
-    i = i + 1
+assert main() == True
+		
