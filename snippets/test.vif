@@ -5,4 +5,20 @@ var mut coucou = 123
 
 test(coucou)
 
-print(coucou)
+assert coucou == 3
+
+def fib(mut n):
+    if n <= 1:
+        return n
+    return fib(n-2) + fib(n-1)
+
+var mut i = 0
+
+while i < 38:
+    var start = get_time()
+    var value = fib(i)
+    var duration = (get_time() - start) / 1000000
+
+    print("Got", value, "after", duration, "seconds")
+
+    i = i + 1

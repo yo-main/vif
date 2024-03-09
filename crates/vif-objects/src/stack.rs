@@ -208,7 +208,7 @@ impl<'value> Stack<'value> {
             .iter()
             .filter_map(Option::as_ref)
             .map(|v| match v {
-                StackValue::LocalReference(i) => self.peek_raw(*i),
+                StackValue::LocalReference(i) => self.peek(*i),
                 v => v,
             })
             .collect()

@@ -6,6 +6,7 @@ def main():
 		index = index + 1
 
 	assert index == 5
+	print(should_be_updated)
 	assert should_be_updated == 5 # passed by reference !!!!
 
 	return True

@@ -11,7 +11,7 @@ pub fn execute_native_call<'v>(
     arg_count: usize,
     func: &NativeFunction,
 ) -> Result<StackValue<'v>, errors::NativeError> {
-    let stack_start = stack.len() - arg_count - 1;
+    let stack_start = stack.len() - arg_count;
 
     let res = match func.function {
         NativeFunctionCallee::GetTime => StackValue::Integer(time::get_time()?),

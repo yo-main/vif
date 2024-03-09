@@ -38,7 +38,7 @@ impl<'function> Compiler<'function> {
             compiler.make_global(Global::Native(NativeFunction::new(
                 NativeFunctionCallee::Sleep,
             )));
-            println!("COUCOU {:?}", compiler.globals);
+            // println!("COUCOU {:?}", compiler.globals);
         };
 
         compiler
@@ -181,8 +181,12 @@ impl<'function> Compiler<'function> {
     fn function_declaration(&mut self, token: &ast::Function) -> Result<(), CompilerError> {
         log::debug!("Starting function declaration");
         let index = self.register_variable(Box::new(token.name.clone()));
+        println!(
+            "FUNC DDECL {} {} {:?}",
+            token.name, index, self.function.locals
+        );
         self.function_statement(token)?;
-        self.update_variable(index);
+        self.define_variable(index);
         Ok(())
     }
 
@@ -201,7 +205,7 @@ impl<'function> Compiler<'function> {
         log::debug!("Starting function statement");
         let mut function = Function::new(Arity::Fixed(token.params.len()), token.name.clone());
 
-        if self.scope_depth > 0 {
+        if self.scope_depth >= 0 {
             // TODO: manage self.function.inherited_locals as well
 
             for (i, local) in self.function.locals.iter().enumerate() {
@@ -264,10 +268,10 @@ impl<'function> Compiler<'function> {
 
     fn var_declaration(&mut self, token: &ast::Variable) -> Result<(), CompilerError> {
         log::debug!("Starting variable declaration");
-        println!("COUCOU {}", token.name);
+        // println!("COUCOU {}", token.name);
         let index = self.register_variable(Box::new(token.name.to_owned()));
         self.expression(&token.value)?;
-        println!("DECL {index}");
+        // println!("DECL {index}");
         self.define_variable(index);
         Ok(())
     }
@@ -286,7 +290,7 @@ impl<'function> Compiler<'function> {
             // if !self.loop_details.is_empty() {
             // in a loop we want to override the previously writen local
             // if we don't do that the VM is not aware of it
-            self.emit_op_code(OpCode::SetLocal(variable_index - 1))
+            self.emit_op_code(OpCode::SetLocal(variable_index))
             // };
         } else {
             self.emit_op_code(OpCode::GlobalVariable(variable_index))
@@ -300,7 +304,7 @@ impl<'function> Compiler<'function> {
             // if !self.loop_details.is_empty() {
             // in a loop we want to override the previously writen local
             // if we don't do that the VM is not aware of it
-            self.emit_op_code(OpCode::CreateLocal(variable_index - 1))
+            self.emit_op_code(OpCode::CreateLocal(variable_index))
             // };
         } else {
             self.emit_op_code(OpCode::GlobalVariable(variable_index))
@@ -518,12 +522,12 @@ impl<'function> Compiler<'function> {
             // let index = if self.scope_depth > 0 { i } else { i };
             let index = i;
 
-            println!("RESOLVE {} {} {:?}", var_name, index, self.function.locals);
+            // println!("RESOLVE {} {} {:?}", var_name, index, self.function.locals);
 
             if self.scope_depth == 0 {
-                return Ok(VariableType::Local(index as usize));
+                return Ok(VariableType::Local(index as usize + 1));
             };
-            return Ok(VariableType::Local(index as usize));
+            return Ok(VariableType::Local(index as usize + 1));
         }
 
         for local in self.function.inherited_locals.iter().rev() {
@@ -536,6 +540,7 @@ impl<'function> Compiler<'function> {
             }));
         }
 
+        // println!("{var_name} {:?}", self.function.inherited_locals);
         for (i, global) in self.globals.as_vec().iter().enumerate() {
             match global {
                 Global::Identifier(v) => {
