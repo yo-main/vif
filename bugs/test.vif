@@ -1,0 +1,8 @@
+# I expect this to fail because I cannot modify the value b which is a const in the function scope
+
+var mut b = 2
+
+def coucou(b):  ## const
+	b = 100000  ## wrong
+
+coucou(b)

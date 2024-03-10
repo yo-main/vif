@@ -38,7 +38,6 @@ impl<'function> Compiler<'function> {
             compiler.make_global(Global::Native(NativeFunction::new(
                 NativeFunctionCallee::Sleep,
             )));
-            // println!("COUCOU {:?}", compiler.globals);
         };
 
         compiler
@@ -186,17 +185,6 @@ impl<'function> Compiler<'function> {
         Ok(())
     }
 
-    fn build_in_function_declaration(
-        &mut self,
-        token: &ast::Function,
-    ) -> Result<(), CompilerError> {
-        log::debug!("Starting function declaration");
-        let index = self.register_variable(Box::new(token.name.clone()));
-        self.function_statement(token)?;
-        self.define_variable(index);
-        Ok(())
-    }
-
     fn function_statement(&mut self, token: &ast::Function) -> Result<(), CompilerError> {
         log::debug!("Starting function statement");
         let arity = if self.scope_depth > 0 {
@@ -207,7 +195,6 @@ impl<'function> Compiler<'function> {
 
         let mut function = Function::new(Arity::Fixed(arity), token.name.clone());
 
-        // if self.scope_depth > 0 {
         function.locals.push(Variable::new(
             Box::new(token.name.clone()),
             Some(self.scope_depth),
@@ -223,7 +210,6 @@ impl<'function> Compiler<'function> {
                     pos: i + 1,
                 });
         }
-        // }
 
         let mut compiler = Compiler::new(&mut function, self.scope_depth + 1);
         std::mem::swap(&mut compiler.globals, &mut self.globals);
@@ -269,10 +255,8 @@ impl<'function> Compiler<'function> {
 
     fn var_declaration(&mut self, token: &ast::Variable) -> Result<(), CompilerError> {
         log::debug!("Starting variable declaration");
-        // println!("COUCOU {}", token.name);
         let index = self.register_variable(Box::new(token.name.to_owned()));
         self.expression(&token.value)?;
-        // println!("DECL {index}");
         self.define_variable(index);
         Ok(())
     }
@@ -286,63 +270,27 @@ impl<'function> Compiler<'function> {
 
     fn update_variable(&mut self, variable_index: usize) {
         log::debug!("Starting define variable");
-        if self.scope_depth >= 0 {
-            self.initialize_variable();
-            // if !self.loop_details.is_empty() {
-            // in a loop we want to override the previously writen local
-            // if we don't do that the VM is not aware of it
-            self.emit_op_code(OpCode::SetLocal(variable_index))
-            // };
-        } else {
-            self.emit_op_code(OpCode::GlobalVariable(variable_index))
-        }
+        self.initialize_variable();
+        self.emit_op_code(OpCode::SetLocal(variable_index))
     }
 
     fn define_variable(&mut self, variable_index: usize) {
         log::debug!("Starting define variable");
-        if self.scope_depth >= 0 {
-            self.initialize_variable();
-            // if !self.loop_details.is_empty() {
-            // in a loop we want to override the previously writen local
-            // if we don't do that the VM is not aware of it
-            if self.scope_depth == 0 {
-                self.emit_op_code(OpCode::CreateLocal(variable_index - 1))
-            } else {
-                self.emit_op_code(OpCode::CreateLocal(variable_index - 1))
-            }
-            // };
-        } else {
-            self.emit_op_code(OpCode::GlobalVariable(variable_index))
-        }
+        self.initialize_variable();
+        self.emit_op_code(OpCode::CreateLocal(variable_index - 1))
     }
 
     fn register_variable(&mut self, name: Box<String>) -> usize {
         log::debug!("Register variable {}", name);
-        if self.scope_depth >= 0 {
-            let variable = Variable::new(name, None);
-            // match self.function.locals.iter().position(|v| v == &variable) {
-            //     Some(i) => return i,
-            //     None => {
-            self.function.locals.push(variable);
-            return self.function.locals.len();
-            //     }
-            // }
-        } else {
-            self.make_global(Global::Identifier(Variable::new(name, Some(0))))
-        }
+        let variable = Variable::new(name, None);
+        self.function.locals.push(variable);
+        return self.function.locals.len();
     }
 
     fn register_function_parameter(&mut self, variable_name: Box<String>) {
         self.function
             .locals
             .push(Variable::new(variable_name, Some(self.scope_depth)));
-    }
-
-    fn get_global_index(&mut self, variable: Global) -> Result<usize, CompilerError> {
-        match self.globals.find(&variable) {
-            Some(index) => Ok(index),
-            None => Err(CompilerError::ConstantNotFound(format!("{}", variable))),
-        }
     }
 
     fn make_global(&mut self, variable: Global) -> usize {
@@ -406,16 +354,13 @@ impl<'function> Compiler<'function> {
 
     fn value(&mut self, token: &ast::Value) -> Result<(), CompilerError> {
         match token {
-            // ast::Value::Operator(o) => self.operator(o),
             ast::Value::String(s) => self.emit_global(Global::String(Box::new(s.clone()))),
             ast::Value::Integer(i) => self.emit_global(Global::Integer(*i)),
             ast::Value::Float(f) => self.emit_global(Global::Float(*f)),
             ast::Value::Variable(s) => self.get_variable(&s)?,
             ast::Value::True => self.emit_op_code(OpCode::True),
             ast::Value::False => self.emit_op_code(OpCode::False),
-            // ast::Value::NewLine => (),
             ast::Value::None => self.emit_op_code(OpCode::None),
-            // ast::Value::Ignore => (),
         };
 
         Ok(())
@@ -524,15 +469,7 @@ impl<'function> Compiler<'function> {
                 )));
             };
 
-            // let index = if self.scope_depth > 0 { i } else { i };
-            let index = i;
-
-            // println!("RESOLVE {} {} {:?}", var_name, index, self.function.locals);
-
-            if self.scope_depth == 0 {
-                return Ok(VariableType::Local(index as usize));
-            };
-            return Ok(VariableType::Local(index as usize));
+            return Ok(VariableType::Local(i));
         }
 
         for local in self.function.inherited_locals.iter().rev() {
@@ -545,7 +482,6 @@ impl<'function> Compiler<'function> {
             )));
         }
 
-        // println!("{var_name} {:?}", self.function.inherited_locals);
         for (i, global) in self.globals.as_vec().iter().enumerate() {
             match global {
                 Global::Identifier(v) => {
@@ -560,7 +496,6 @@ impl<'function> Compiler<'function> {
             }
         }
 
-        // println!("{:?}", self.function.locals);
         return Err(CompilerError::ConstantNotFound(format!(
             "Unknown variable: {var_name}"
         )));

@@ -73,3 +73,12 @@ test_with_arg(2, r)
 assert r == 5
 
 
+var mut abc = 3
+
+def coucou(mut j):
+	def coucou_2():
+		j = 1
+
+coucou(abc)
+
+print(abc)

@@ -84,14 +84,10 @@ where
             OpCode::Pop => self.pop(),
             OpCode::Return => self.r#return(),
             OpCode::GlobalVariable(i) => self.global_variable(*i)?,
-            OpCode::Call(arg_count) => {
-                // debug_stack(op_code, self.stack, &self.frame);
-                self.call(*arg_count)?
-            }
+            OpCode::Call(arg_count) => self.call(*arg_count)?,
             OpCode::Goto(i) => self.reset_ip(*i),
             OpCode::Jump(i) => self.advance_by(*i),
             OpCode::JumpIfFalse(i) => self.jump_if_false(*i),
-            // WTF is that ?? It's working though but wow. I'll need to spend more time studying how
             OpCode::GetLocal(i) => self.get_local(*i),
             OpCode::CreateLocal(i) => {
                 self.create_local(*i);
@@ -133,6 +129,7 @@ where
 
     fn r#return(&mut self) {
         let result = self.stack.pop_till_scope(self.frame.get_position());
+        // let result = self.stack.pop_raw();
 
         if self.previous_frames.len() > 0 {
             match result {
@@ -253,16 +250,11 @@ where
     fn create_local(&mut self, i: usize) {
         let value = self.stack.pop_raw();
         let index = i + self.frame.get_position();
-        // println!("COUCOU {index} {}", self.stack.top);
         self.stack.set(index, value);
+
         if index == self.stack.top {
             self.stack.top += 1;
-            // self.stack.set(index, value);
-            // self.stack.push(value);
         }
-        // } else {
-        // self.stack.set(index, value);
-        // }
     }
 
     fn set_local(&mut self, i: usize) {

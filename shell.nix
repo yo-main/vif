@@ -7,6 +7,7 @@ pkgs.mkShellNoCC {
     rustup
     hyperfine
     mdbook 
+    cargo-flamegraph
   ];
 
 }

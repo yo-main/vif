@@ -186,43 +186,35 @@ impl<'value> Stack<'value> {
         unsafe { self.stack.get_unchecked_mut(self.top - 1).as_mut().unwrap() }
     }
 
+    #[inline]
     pub fn peek(&self, n: usize) -> &StackValue<'value> {
-        let value = self.peek_raw(n);
-
-        if let StackValue::StackReference(i) = value {
-            self.peek(*i)
-        } else {
-            return value;
+        match self.peek_raw(n) {
+            StackValue::StackReference(i) => self.peek(*i),
+            value => value,
         }
     }
 
+    #[inline]
     pub fn peek_last(&self) -> &StackValue<'value> {
-        let value = self.peek_last_raw();
-
-        if let StackValue::StackReference(i) = value {
-            self.peek(*i)
-        } else {
-            return value;
+        match self.peek_last_raw() {
+            StackValue::StackReference(i) => self.peek(*i),
+            value => value,
         }
     }
 
+    #[inline]
     pub fn peek_mut(&mut self, n: usize) -> &mut StackValue<'value> {
-        let value = self.peek_raw(n);
-
-        if let StackValue::StackReference(i) = value {
-            self.peek_mut(*i)
-        } else {
-            return self.peek_mut_raw(n);
+        match self.peek_raw(n) {
+            StackValue::StackReference(i) => self.peek_mut(*i),
+            _ => self.peek_mut_raw(n),
         }
     }
 
+    #[inline]
     pub fn peek_last_mut(&mut self) -> &mut StackValue<'value> {
-        let value = self.peek_last_raw();
-
-        if let StackValue::StackReference(i) = value {
-            return self.peek_mut(*i);
-        } else {
-            return self.peek_last_mut_raw();
+        match self.peek_last_raw() {
+            StackValue::StackReference(i) => self.peek_mut(*i),
+            _ => self.peek_last_mut_raw(),
         }
     }
 

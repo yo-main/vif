@@ -7,7 +7,9 @@ members = [
   "crates/vif-typing",
   "crates/vif-scanner",
   "crates/vif-compiler",
-  "crates/vif-ast", "crates/vif-loader", "crates/vif-typing",
+  "crates/vif-ast",
+  "crates/vif-loader",
+  "crates/vif-typing",
 ]
 default-members = ["crates/vif-cli"]
 resolver = "2"

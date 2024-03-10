@@ -1,0 +1,12 @@
+var mut abc = 3
+
+def coucou(mut j):
+	def coucou_2():
+		assert j == 3
+		j = 1
+
+	return coucou_2
+
+coucou(abc)()
+
+assert abc == 1
