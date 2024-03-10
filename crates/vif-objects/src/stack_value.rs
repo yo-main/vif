@@ -6,7 +6,7 @@ use crate::value_error;
 
 #[derive(Clone)]
 pub enum StackValue<'c> {
-    LocalReference(usize),
+    StackReference(usize),
     Integer(i64),
     Float(f64),
     String(Box<String>),
@@ -19,7 +19,7 @@ pub enum StackValue<'c> {
 impl std::fmt::Display for StackValue<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::LocalReference(i) => write!(f, "&{}", i),
+            Self::StackReference(i) => write!(f, "&{}", i),
             Self::Integer(i) => write!(f, "{}", i),
             Self::Float(i) => write!(f, "{}", i),
             Self::Boolean(b) => write!(f, "{}", b),
@@ -34,7 +34,7 @@ impl std::fmt::Display for StackValue<'_> {
 impl std::fmt::Debug for StackValue<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::LocalReference(i) => write!(f, "Ref[{}]", i),
+            Self::StackReference(i) => write!(f, "Ref[{}]", i),
             Self::Integer(i) => write!(f, "Int[{}]", i),
             Self::Float(i) => write!(f, "Float[{}]", i),
             Self::Boolean(b) => write!(f, "Bool[{}]", b),

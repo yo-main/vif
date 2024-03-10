@@ -75,11 +75,11 @@ where
     }
 
     pub fn interpret(&mut self, op_code: &OpCode) -> Result<(), InterpreterError> {
-        debug_stack(op_code, self.stack, &self.frame);
+        // debug_stack(op_code, self.stack, &self.frame);
 
         match op_code {
             OpCode::Print => {
-                println!("printing {}", self.stack.pop());
+                println!("printing {}", self.stack.pop_and_get_value());
             }
             OpCode::Pop => self.pop(),
             OpCode::Return => self.r#return(),
@@ -132,7 +132,7 @@ where
     }
 
     fn r#return(&mut self) {
-        let result = self.stack.pop_raw();
+        let result = self.stack.pop_till_scope(self.frame.get_position());
 
         if self.previous_frames.len() > 0 {
             match result {
@@ -161,7 +161,7 @@ where
     fn global_variable(&mut self, i: usize) -> Result<(), InterpreterError> {
         if let Global::Identifier(var_name) = self.globals.get(i) {
             self.variables
-                .insert(var_name.name.as_str(), self.stack.pop());
+                .insert(var_name.name.as_str(), self.stack.pop_and_get_value());
         } else {
             return Err(InterpreterError::Impossible);
         }
@@ -247,18 +247,22 @@ where
 
     fn get_local(&mut self, i: usize) {
         self.stack
-            .push(StackValue::LocalReference(i + self.frame.get_position()));
+            .push(StackValue::StackReference(i + self.frame.get_position()));
     }
 
     fn create_local(&mut self, i: usize) {
         let value = self.stack.pop_raw();
         let index = i + self.frame.get_position();
-        println!("COUCOU {index} {}", self.stack.top);
-        if index < self.stack.top {
-            self.stack.set(index, value);
-        } else {
-            self.stack.push(value);
+        // println!("COUCOU {index} {}", self.stack.top);
+        self.stack.set(index, value);
+        if index == self.stack.top {
+            self.stack.top += 1;
+            // self.stack.set(index, value);
+            // self.stack.push(value);
         }
+        // } else {
+        // self.stack.set(index, value);
+        // }
     }
 
     fn set_local(&mut self, i: usize) {
@@ -268,7 +272,7 @@ where
 
     fn get_inherited_local(&mut self, pos: &InheritedLocalPos) {
         let frame = self.previous_frames.iter().nth(pos.depth).unwrap();
-        self.stack.push(StackValue::LocalReference(
+        self.stack.push(StackValue::StackReference(
             pos.pos + frame.get_position() - 1,
         ))
     }
@@ -368,7 +372,7 @@ where
     }
 
     fn not(&mut self) -> Result<(), InterpreterError> {
-        let value = self.stack.pop();
+        let value = self.stack.pop_and_get_value();
         match value {
             StackValue::Integer(i) => self.stack.push(StackValue::Boolean(i == 0)),
             StackValue::Float(f) => self.stack.push(StackValue::Boolean(f == 0.0)),
@@ -404,72 +408,72 @@ where
     }
 
     fn equal(&mut self) {
-        let a = self.stack.pop();
-        let b = self.stack.pop();
+        let a = self.stack.pop_and_get_value();
+        let b = self.stack.pop_and_get_value();
         self.stack.push(StackValue::Boolean(b.eq(&a)));
     }
 
     fn not_equal(&mut self) {
-        let a = self.stack.pop();
-        let b = self.stack.pop();
+        let a = self.stack.pop_and_get_value();
+        let b = self.stack.pop_and_get_value();
         self.stack.push(StackValue::Boolean(b.neq(&a)));
     }
 
     fn greater(&mut self) -> Result<(), InterpreterError> {
-        let a = self.stack.pop();
-        let b = self.stack.pop();
+        let a = self.stack.pop_and_get_value();
+        let b = self.stack.pop_and_get_value();
         self.stack.push(StackValue::Boolean(b.gt(&a)?));
         Ok(())
     }
     fn greater_or_equal(&mut self) -> Result<(), InterpreterError> {
-        let a = self.stack.pop();
-        let b = self.stack.pop();
+        let a = self.stack.pop_and_get_value();
+        let b = self.stack.pop_and_get_value();
         self.stack.push(StackValue::Boolean(b.gte(&a)?));
         Ok(())
     }
     fn less(&mut self) -> Result<(), InterpreterError> {
-        let a = self.stack.pop();
-        let b = self.stack.pop();
+        let a = self.stack.pop_and_get_value();
+        let b = self.stack.pop_and_get_value();
         self.stack.push(StackValue::Boolean(b.lt(&a)?));
         Ok(())
     }
     fn less_or_equal(&mut self) -> Result<(), InterpreterError> {
-        let a = self.stack.pop();
-        let b = self.stack.pop();
+        let a = self.stack.pop_and_get_value();
+        let b = self.stack.pop_and_get_value();
         self.stack.push(StackValue::Boolean(b.lte(&a)?));
         Ok(())
     }
     fn add(&mut self) -> Result<(), InterpreterError> {
-        let a = self.stack.pop();
-        let mut b = self.stack.pop();
+        let a = self.stack.pop_and_get_value();
+        let mut b = self.stack.pop_and_get_value();
         b.add(a)?;
         self.stack.push(b);
         Ok(())
     }
     fn substract(&mut self) -> Result<(), InterpreterError> {
-        let a = self.stack.pop();
-        let mut b = self.stack.pop();
+        let a = self.stack.pop_and_get_value();
+        let mut b = self.stack.pop_and_get_value();
         b.substract(a)?;
         self.stack.push(b);
         Ok(())
     }
     fn multiply(&mut self) -> Result<(), InterpreterError> {
-        let a = self.stack.pop();
-        let mut b = self.stack.pop();
+        let a = self.stack.pop_and_get_value();
+        let mut b = self.stack.pop_and_get_value();
         b.multiply(a)?;
         self.stack.push(b);
         Ok(())
     }
     fn divide(&mut self) -> Result<(), InterpreterError> {
-        let a = self.stack.pop();
-        let mut b = self.stack.pop();
+        let a = self.stack.pop_and_get_value();
+        let mut b = self.stack.pop_and_get_value();
         b.divide(a)?;
         self.stack.push(b);
         Ok(())
     }
     fn modulo(&mut self) -> Result<(), InterpreterError> {
-        let a = self.stack.pop();
-        let mut b = self.stack.pop();
+        let a = self.stack.pop_and_get_value();
+        let mut b = self.stack.pop_and_get_value();
         b.modulo(a)?;
         self.stack.push(b);
         Ok(())

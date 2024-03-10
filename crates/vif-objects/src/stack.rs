@@ -95,13 +95,27 @@ impl<'value> Stack<'value> {
 
     pub fn pop_raw(&mut self) -> StackValue<'value> {
         self.top -= 1;
-
         self.stack[self.top].take().unwrap()
     }
 
-    pub fn pop(&mut self) -> StackValue<'value> {
+    pub fn pop_and_get_value(&mut self) -> StackValue<'value> {
         match self.pop_raw() {
-            StackValue::LocalReference(i) => self.peek(i).clone(),
+            StackValue::StackReference(i) => self.peek(i).clone(),
+            v => v,
+        }
+    }
+
+    pub fn peek_till_scope(&mut self, index: usize, scope: usize) -> StackValue<'value> {
+        match self.peek_raw(index) {
+            StackValue::StackReference(i) if scope >= *i => self.peek_raw(*i).clone(),
+            StackValue::StackReference(i) if scope < *i => self.peek_till_scope(*i, scope),
+            v => v.clone(),
+        }
+    }
+    pub fn pop_till_scope(&mut self, scope: usize) -> StackValue<'value> {
+        match self.pop_raw() {
+            StackValue::StackReference(i) if scope >= i => self.peek_raw(i).clone(),
+            StackValue::StackReference(i) if scope < i => self.peek_till_scope(i, scope),
             v => v,
         }
     }
@@ -127,10 +141,17 @@ impl<'value> Stack<'value> {
         //     panic!("Badadoom {value} {n} {}", self.top);
         // }
         // println!("SET {n} TO {value} {}", self.top);
+        let value_ref = match value {
+            StackValue::StackReference(i) => Some(i),
+            _ => None,
+        };
+
         match self.stack.get(n).unwrap() {
-            Some(StackValue::LocalReference(i)) => self.set(*i, value),
+            Some(StackValue::StackReference(i)) => self.set(*i, value),
             _ => {
-                self.stack[n].insert(value);
+                if value_ref != Some(n) {
+                    self.stack[n].insert(value);
+                }
             }
         };
     }
@@ -168,7 +189,7 @@ impl<'value> Stack<'value> {
     pub fn peek(&self, n: usize) -> &StackValue<'value> {
         let value = self.peek_raw(n);
 
-        if let StackValue::LocalReference(i) = value {
+        if let StackValue::StackReference(i) = value {
             self.peek(*i)
         } else {
             return value;
@@ -178,7 +199,7 @@ impl<'value> Stack<'value> {
     pub fn peek_last(&self) -> &StackValue<'value> {
         let value = self.peek_last_raw();
 
-        if let StackValue::LocalReference(i) = value {
+        if let StackValue::StackReference(i) = value {
             self.peek(*i)
         } else {
             return value;
@@ -188,7 +209,7 @@ impl<'value> Stack<'value> {
     pub fn peek_mut(&mut self, n: usize) -> &mut StackValue<'value> {
         let value = self.peek_raw(n);
 
-        if let StackValue::LocalReference(i) = value {
+        if let StackValue::StackReference(i) = value {
             self.peek_mut(*i)
         } else {
             return self.peek_mut_raw(n);
@@ -198,7 +219,7 @@ impl<'value> Stack<'value> {
     pub fn peek_last_mut(&mut self) -> &mut StackValue<'value> {
         let value = self.peek_last_raw();
 
-        if let StackValue::LocalReference(i) = value {
+        if let StackValue::StackReference(i) = value {
             return self.peek_mut(*i);
         } else {
             return self.peek_last_mut_raw();
@@ -210,7 +231,7 @@ impl<'value> Stack<'value> {
             .iter()
             .filter_map(Option::as_ref)
             .map(|v| match v {
-                StackValue::LocalReference(i) => self.peek(*i),
+                StackValue::StackReference(i) => self.peek(*i),
                 v => v,
             })
             .collect()
