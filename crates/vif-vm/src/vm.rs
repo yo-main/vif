@@ -75,7 +75,7 @@ where
     }
 
     pub fn interpret(&mut self, op_code: &OpCode) -> Result<(), InterpreterError> {
-        debug_stack(op_code, self.stack, &self.frame);
+        // debug_stack(op_code, self.stack, &self.frame);
 
         match op_code {
             OpCode::Print => {
@@ -279,7 +279,7 @@ where
 
     fn set_inherited_local(&mut self, pos: &InheritedLocalPos) {
         let frame = self.previous_frames.iter().nth(pos.get_depth()).unwrap();
-        let value = self.stack.pop_raw();
+        let value = self.stack.peek_last_raw().clone();
         self.stack
             .set(pos.get_pos() + frame.get_position() - 1, value);
     }

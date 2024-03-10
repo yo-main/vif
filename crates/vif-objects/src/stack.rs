@@ -261,12 +261,12 @@ impl std::fmt::Display for Stack<'_> {
             self.stack
                 .iter()
                 .enumerate()
-                .filter(|(i, _)| i < &self.top)
-                .filter(|(_, v)| match v {
-                    None => false,
-                    _ => true,
+                .map_while(|(_, v)| {
+                    if v.is_none() {
+                        return None;
+                    }
+                    Some(format!("{}", v.as_ref().unwrap()))
                 })
-                .map(|(_, v)| format!("{}", v.as_ref().unwrap()))
                 .collect::<Vec<String>>()
                 .join(", ")
         )

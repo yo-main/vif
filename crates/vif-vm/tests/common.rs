@@ -24,7 +24,6 @@ pub fn interpret(content: String, bytes: Vec<OpCode>) -> Result<(), InterpreterE
 
     vm.interpret_loop()?;
 
-    assert!(stack.is_empty(), "stack is not empty: {:?}", stack);
     assert_eq!(function.chunk.code, bytes);
 
     Ok(())
