@@ -75,7 +75,7 @@ where
     }
 
     pub fn interpret(&mut self, op_code: &OpCode) -> Result<(), InterpreterError> {
-        // debug_stack(op_code, self.stack, &self.frame);
+        debug_stack(op_code, self.stack, &self.frame);
 
         match op_code {
             OpCode::Print => {
@@ -271,16 +271,17 @@ where
     }
 
     fn get_inherited_local(&mut self, pos: &InheritedLocalPos) {
-        let frame = self.previous_frames.iter().nth(pos.depth).unwrap();
+        let frame = self.previous_frames.iter().nth(pos.get_depth()).unwrap();
         self.stack.push(StackValue::StackReference(
-            pos.pos + frame.get_position() - 1,
+            pos.get_pos() + frame.get_position() - 1,
         ))
     }
 
     fn set_inherited_local(&mut self, pos: &InheritedLocalPos) {
-        let frame = self.previous_frames.iter().nth(pos.depth).unwrap();
+        let frame = self.previous_frames.iter().nth(pos.get_depth()).unwrap();
         let value = self.stack.pop_raw();
-        self.stack.set(pos.pos + frame.get_position() - 1, value);
+        self.stack
+            .set(pos.get_pos() + frame.get_position() - 1, value);
     }
 
     fn get_global(&mut self, i: usize) -> Result<(), InterpreterError> {

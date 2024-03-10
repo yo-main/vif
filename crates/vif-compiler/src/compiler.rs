@@ -539,10 +539,10 @@ impl<'function> Compiler<'function> {
             if local.var_name.as_str() != var_name {
                 continue;
             };
-            return Ok(VariableType::Inherited(InheritedLocalPos {
-                pos: local.pos,
-                depth: local.depth,
-            }));
+            return Ok(VariableType::Inherited(InheritedLocalPos::new(
+                local.pos,
+                local.depth,
+            )));
         }
 
         // println!("{var_name} {:?}", self.function.inherited_locals);

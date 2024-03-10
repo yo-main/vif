@@ -36,8 +36,26 @@ pub struct InheritedVariable {
 
 #[derive(PartialEq)]
 pub struct InheritedLocalPos {
-    pub pos: usize,
-    pub depth: usize,
+    pos: usize,
+    depth: usize,
+}
+
+impl InheritedLocalPos {
+    pub fn new(pos: usize, depth: usize) -> Self {
+        InheritedLocalPos { pos, depth }
+    }
+
+    pub fn get_index(&self) -> usize {
+        self.pos + self.depth - 1
+    }
+
+    pub fn get_depth(&self) -> usize {
+        self.depth
+    }
+
+    pub fn get_pos(&self) -> usize {
+        self.pos
+    }
 }
 
 pub enum VariableType {
@@ -48,7 +66,7 @@ pub enum VariableType {
 
 impl std::fmt::Display for InheritedLocalPos {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "pos={}, depth={}", self.pos, self.depth)
+        write!(f, "{}", self.get_index())
     }
 }
 

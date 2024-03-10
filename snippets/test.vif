@@ -1,46 +1,77 @@
-def test(mut a):
-    a = 3
-    
-var mut coucou = 123
-print(coucou)
+#def test(mut a):
+#    a = 3
+#    
+#var mut coucou = 123
+#print(coucou)
+#
+#
+#test(coucou)
+#
+#assert coucou == 3
+#print(coucou)
+#
+#
+#def fib(mut n):
+#    if n <= 1:
+#        return n
+#    return fib(n-2) + fib(n-1)
+#
+#var mut i = 0
+#
+#while i < 5:
+#    var start = get_time()
+#    var value = fib(i)
+#    var duration = (get_time() - start) / 1000000
+#
+#    print("Got", value, "after", duration, "seconds")
+#
+#    i = i + 1
+#
+#def main():
+#	var mut index = 0
+#
+#	while index < 5:
+#		var should_be_updated = index
+#		index = index + 1
+#
+#	assert index == 5
+#	print(should_be_updated)
+#	assert should_be_updated == 5 # passed by reference !!!!
+#
+#	return True
+#
+#assert main() == True
+#		
+#
+#
+#
+var mut r = 0
+
+def test():
+	#assert r == 0
+	r = r + 1
+	#print(r)
+	#assert r == 1
+
+	var r = 9
+	assert r == 9
+
+#def test_with_arg(a, mut b):
+#	assert a == 2
+#	assert b == 3
+#
+#	b = b + 2
+#
+#	assert b == 5
 
 
-test(coucou)
 
-assert coucou == 3
-print(coucou)
+#assert r == 0
+test()
+#assert r == 0
 
-
-def fib(mut n):
-    if n <= 1:
-        return n
-    return fib(n-2) + fib(n-1)
-
-var mut i = 0
-
-while i < 3:
-    var start = get_time()
-    var value = fib(i)
-    var duration = (get_time() - start) / 1000000
-
-    print("Got", value, "after", duration, "seconds")
-
-    i = i + 1
-
-def main():
-	var mut index = 0
-
-	while index < 5:
-		var should_be_updated = index
-		index = index + 1
-
-	assert index == 5
-	print(should_be_updated)
-	assert should_be_updated == 5 # passed by reference !!!!
-
-	return True
-
-assert main() == True
-		
+#r = 3
+#test_with_arg(2, r)
+#assert r == 5
 
 

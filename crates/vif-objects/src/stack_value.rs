@@ -24,8 +24,8 @@ impl std::fmt::Display for StackValue<'_> {
             Self::Float(i) => write!(f, "{}", i),
             Self::Boolean(b) => write!(f, "{}", b),
             Self::String(s) => write!(f, "{}", s),
-            Self::Native(s) => write!(f, "{}", s),
-            Self::Function(s) => write!(f, "{}", s),
+            Self::Native(s) => write!(f, "&{}", s),
+            Self::Function(s) => write!(f, "&{}", s),
             Self::None => write!(f, "None"),
         }
     }
