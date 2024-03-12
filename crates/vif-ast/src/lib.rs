@@ -1,5 +1,7 @@
+mod debug;
 mod error;
 mod parser;
+pub use debug::print_ast_tree;
 use parser::Parser;
 use vif_loader::log;
 use vif_objects::ast::Function;

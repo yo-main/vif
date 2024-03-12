@@ -12,6 +12,7 @@ pub struct Config {
     pub log_level: log::LevelFilter,
     pub entrypoint: Option<PathBuf>,
     pub assembly: bool,
+    pub ast: bool,
 }
 
 pub fn get_config() -> Config {
@@ -23,6 +24,7 @@ pub fn get_config() -> Config {
         .and_then(|path| Some(canonicalize(path).expect("Could not parse the provided path")));
 
     let assembly = matches.get_flag("assembly");
+    let ast = matches.get_flag("ast");
     let debug = std::env::var("DEBUG").and(Ok(true)).unwrap_or(false);
     let log_level = std::env::var("VIF_LOG_LEVEL")
         .map(|lvl| lvl.parse().unwrap())
@@ -37,5 +39,6 @@ pub fn get_config() -> Config {
         debug,
         log_level,
         assembly,
+        ast,
     };
 }

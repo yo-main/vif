@@ -4,10 +4,13 @@ use std::fs;
 use std::io;
 use std::io::Write;
 use std::path::PathBuf;
+use vif_ast::build_ast;
+use vif_ast::print_ast_tree;
 use vif_compiler::compile;
 use vif_compiler::disassemble_application;
 use vif_loader::log;
 use vif_loader::CONFIG;
+use vif_typing::run_typing_checks;
 use vif_vm::interpret;
 
 pub struct Vif {}
@@ -25,15 +28,17 @@ impl Vif {
     }
 
     fn exec(&mut self, content: String) -> Result<(), VifError> {
-        match CONFIG.assembly {
-            false => match interpret(content) {
+        if CONFIG.assembly {
+            let (function, globals) = compile(content).unwrap();
+            disassemble_application(&function, &globals);
+        } else if CONFIG.ast {
+            let ast = run_typing_checks(build_ast(content).unwrap()).unwrap();
+            print_ast_tree(&ast);
+        } else {
+            match interpret(content) {
                 Ok(_) => log::info!("Interpreter says Bye"),
                 Err(e) => println!("Intepreter error: {e}"),
-            },
-            true => {
-                let (function, globals) = compile(content).unwrap();
-                disassemble_application(&function, &globals);
-            }
+            };
         }
 
         Ok(())

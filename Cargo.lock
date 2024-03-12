@@ -255,6 +255,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "treeline"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7f741b240f1a48843f9b8e0444fb55fb2a4ff67293b50a9179dfd5ea67f8d41"
+
+[[package]]
 name = "unicode-ident"
 version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -270,6 +276,7 @@ checksum = "711b9620af191e0cdc7468a8d14e709c3dcdb115b36f838e601583af800a370a"
 name = "vif-ast"
 version = "0.1.0"
 dependencies = [
+ "treeline",
  "vif-loader",
  "vif-objects",
  "vif-scanner",
@@ -279,8 +286,10 @@ dependencies = [
 name = "vif-cli"
 version = "0.1.0"
 dependencies = [
+ "vif-ast",
  "vif-compiler",
  "vif-loader",
+ "vif-typing",
  "vif-vm",
 ]
 
