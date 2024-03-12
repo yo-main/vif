@@ -27,3 +27,15 @@ test_with_arg(2, i)
 assert i == 5
 
 
+## assert mutability
+
+def incr(mut counter, incr_by):
+    counter = counter + incr_by
+    return counter
+
+var mut counter = 0
+var variable_not_mutable = incr(counter, 10)
+assert counter == 10
+
+# this fails because "variable_not_mutable" is not... mutable
+incr(variable_not_mutable, 10)

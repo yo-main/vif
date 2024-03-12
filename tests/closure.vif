@@ -1,20 +1,42 @@
-# var value = "coucou"
-# 
-# def test(value):
-# 
-	# var g = 3
-	# var abc = 1
-# 
-	# def closure():
-		# assert g == 3
-		# assert abc == 1
-# 
-		# abc = 0
-		# assert abc == 0
-# 
-		# return value
-# 
-	# print(1, value)
-	# return closure
-# 
-# assert test("a")() == "a"
+var value = "coucou"
+
+def test(value):
+
+	var g = 3
+	var mut abc = 1
+
+	def closure():
+		assert g == 3
+		assert abc == 1
+
+		abc = 0
+		assert abc == 0
+
+		return value
+
+	print(1, value)
+	return closure
+
+# assert test("a")() == "a" // TODO FIX ME
+
+
+def sum(a, b, c):
+	def add(i, j):
+		def nested():
+			return i + j
+		return nested()
+
+	return add(a, c)
+
+assert sum(1, 4, 3) == 4
+
+
+#def sum(a, b, c):
+#	def add():
+#		def nested():
+#			return a + b
+#		return nested()
+#
+#	return add()
+#
+# assert sum(1, 2, 3) == 3

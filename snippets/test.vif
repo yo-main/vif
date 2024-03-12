@@ -1,9 +1,26 @@
-def coucou():
-	var a = 13
-	var b = a
-	var c = b
+def sum(a, b, c):
+	def add(i, j):
+		def nested():
+			return i + j
+		return nested()
 
-	print(c)
+	return add(a, c)
 
+assert sum(1, 4, 3) == 4
 
-coucou()
+assert 1+1 == 2
+assert 1.0+1 == 2.0
+assert "abc" + "def" == "abcdef"
+assert True + True == 2
+
+def incr(mut counter, incr_by):
+    counter = counter + incr_by
+    return counter
+
+var mut counter = 0
+var variable_not_mutable = incr(counter, 10)
+assert counter == 10
+
+# this fails because "variable_not_mutable" is not... mutable
+
+incr(variable_not_mutable, 10)

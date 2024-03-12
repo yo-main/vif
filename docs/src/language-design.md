@@ -1,55 +1,119 @@
 # Language Design
 
-I am not 100% of all the details and things might change but here's a few snippets of what I have in mind.
+## Types
 
-## Function & variable
+Vif handles several variable types for now:
 
-```python
-def say_hello():
-    var world = "world"
-    print("Hello", world)
+- string
+- integer
+- float
+- boolean
+- None
 
-say_hello()
-```
+More will come in the future (list, tuples, struct)
 
-As announced, it does look like python. The only different I introduce here is the `var` keyword. 
-Because the way local/global interacts in python always bugged me a little: having to use `local` and `global` bring in some complexity in my eyes.
-
-And I also suppose it will be less complex to manage for the interpreter because we are more strict on how variables are assigned/mutated.
-
-## Constants
-
-Vif has the notion of a constant, and as well as mutable for function parameters.
-By default, function parameters are not mutable, you need to specify which parameter should be mutable.
-
-This is probably one of the most important difference with Python. Directly influenced by Rust as you might have guessed :)
+Like in python, you can do operations on them where it makes sense, but it's a little bit more strict
 
 ```python
-var mut one = 1
-var two = 2
+assert 1+1 == 2
+assert 1.0+1 == 2.0
+assert "abc" + "def" == "abcdef"
+assert True + True == 2
 
-def add(a, b):
-    return a + b
-
-def substract(mut a, b):
-    return a - b
-
-assert add(one + two) == 3
-
-# the compiler should fail here because `one` is a constant but the function's signature is expecting that mutable value
-assert substract(one, two)
+# but the below don't work
+ -> assert "abc" + 1 == "abc1"
 ```
 
-Here we create 2 constants and pass them to the `add` function. By default those parameters are considered as constant, t
+## Variables
 
-You'll notice that parameters are defined with the `const` keyword. It's a way to indicate that those parameters cannot be altered by the function.
+A variable must be declared with the `var` keyword.
 
-It's ok to pass a `var` as a `const`, but the reverse is not allowed.
+```python
+var my_variable = "Hello"
+```
+
+Right now I think pretty everything can be a variable, except keywords:
+
+- return
+- while
+- def
+- ... to be documented
+
+## Functions
+
+```python
+def say_something(var_1, var_2):
+    print(var_1, " , ", var_2)
+
+say_something("hello", "world")
+```
+
+Very similar to python in how it looks and how it is like.
+
+The core functionality of functions is working today.
+But a few things, nice to have, are still missing:
+
+- no bug closure (today a closure cannot have closure itself)
+- calling function with named parameters
+- having default values for parameter
+
+## Mutability
+
+A core aspect of Vif is the notion of mutability. 
+A variable can be reassigned a new value __only__ if it is mutable
+By default, variables are not mutable, you need to declare them as such using the `mut` keyword, like rust.
+
+```python
+var mut my_variable = "Hello"
+my_variable = "World"
+```
+
+You can only assign to a mutable variable something that is mutable, meaning:
+
+- a core type: int, string, float...
+- a mutable variable
+    - a variable which is mutable itself
+- a mutable function
+    - a function that can only returns something mutable
+
+This check is done at compile time and will prevent the program to load if any incoherence is found.
+
+```python
+def incr(mut counter, incr_by):
+    counter = counter + incr_by
+    return counter
+
+var mut counter = 0
+var variable_not_mutable = incr(counter, 10)
+assert counter == 10
+
+# this fails because "variable_not_mutable" is not... mutable
+incr(variable_not_mutable, 10)
+```
+
+* actually it doesn't fail currently, it's a bug that I just identified and will fix
+
+
+## Variables are passed by reference
+
+Variables are passed by reference. It means the below is possible
+
+```python
+var mut a = 1
+var b = a
+
+a = 2
+assert b = 2
+```
+
+That can be weird, but I feel that coupled with the notion of mutability, it will bring many benefits to the Vif, and, I hope, more performance because we are cloning/copying less things than passing by values.
+
+But since I know nothing about programing language really, I'm probably wrong. Actually I reduced Vif's performance by half after having struggled for weeks to implement the passing by reference.....
 
 
 ## Class & interface
 
-I'm not sure how class will take form yet.
+Nothing done yet. And I'm not sure how class will take form yet.
 
 I do like how they work in python, especially magic methods. It's very powerful to integrate in the language, but I don't want 
 it to cost too much from a performance point of view. So those magic methods might come in a second time.
@@ -88,7 +152,7 @@ You can add attribute in the interface, on top of methods.
 
 ## Typing
 
-Typing will be a huge part of the language.
+Typing __will__ be a huge part of the language.
 I want it to be natural and smart, letting the compiler guess what should be the type of some variables if needed.
 If a type cannot be guessed and is not specified, then we would check that on runtime.
 
