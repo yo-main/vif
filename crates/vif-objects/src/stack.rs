@@ -93,11 +93,13 @@ impl<'value> Stack<'value> {
         }
     }
 
+    #[inline]
     pub fn pop_raw(&mut self) -> StackValue<'value> {
         self.top -= 1;
         self.stack[self.top].take().unwrap()
     }
 
+    #[inline]
     pub fn pop_and_get_value(&mut self) -> StackValue<'value> {
         match self.pop_raw() {
             StackValue::StackReference(i) => self.peek(i).clone(),
@@ -105,6 +107,7 @@ impl<'value> Stack<'value> {
         }
     }
 
+    #[inline]
     pub fn peek_till_scope(&mut self, index: usize, scope: usize) -> StackValue<'value> {
         match self.peek_raw(index) {
             StackValue::StackReference(i) if scope >= *i => self.peek_raw(*i).clone(),
@@ -112,6 +115,8 @@ impl<'value> Stack<'value> {
             v => v.clone(),
         }
     }
+
+    #[inline]
     pub fn pop_till_scope(&mut self, scope: usize) -> StackValue<'value> {
         match self.pop_raw() {
             StackValue::StackReference(i) if scope >= i => self.peek_raw(i).clone(),

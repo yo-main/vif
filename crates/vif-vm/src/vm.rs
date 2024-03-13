@@ -74,6 +74,7 @@ where
         Ok(())
     }
 
+    #[inline]
     pub fn interpret(&mut self, op_code: &OpCode) -> Result<(), InterpreterError> {
         // debug_stack(op_code, self.stack, &self.frame);
 
