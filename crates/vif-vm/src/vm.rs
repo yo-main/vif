@@ -124,6 +124,7 @@ where
         Ok(())
     }
 
+    #[inline]
     fn pop(&mut self) {
         self.stack.drop_last();
     }
@@ -156,6 +157,7 @@ where
         }
     }
 
+    #[inline]
     fn global_variable(&mut self, i: usize) -> Result<(), InterpreterError> {
         if let Global::Identifier(var_name) = self.globals.get(i) {
             self.variables
@@ -167,6 +169,7 @@ where
         Ok(())
     }
 
+    #[inline]
     fn call_function(
         &mut self,
         func: &'function Function,
@@ -210,6 +213,7 @@ where
         Ok(())
     }
 
+    #[inline]
     fn call(&mut self, arg_count: usize) -> Result<(), InterpreterError> {
         match self.stack.peek(self.stack.len() - arg_count - 1) {
             StackValue::Function(func) => self.call_function(func, arg_count),
@@ -222,10 +226,12 @@ where
         }
     }
 
+    #[inline]
     fn reset_ip(&mut self, i: usize) {
         self.frame.reset_ip(i)
     }
 
+    #[inline]
     fn advance_by(&mut self, i: usize) {
         self.frame.advance_by(i)
     }
@@ -243,6 +249,7 @@ where
         }
     }
 
+    #[inline]
     fn get_local(&mut self, i: usize) {
         self.stack
             .push(StackValue::StackReference(i + self.frame.get_position()));
@@ -263,6 +270,7 @@ where
         self.stack.set(i + self.frame.get_position(), value);
     }
 
+    #[inline]
     fn get_inherited_local(&mut self, pos: &InheritedLocalPos) {
         let frame = self.previous_frames.iter().nth(pos.get_depth()).unwrap();
         self.stack.push(StackValue::StackReference(
@@ -277,6 +285,7 @@ where
             .set(pos.get_pos() + frame.get_position() - 1, value);
     }
 
+    #[inline]
     fn get_global(&mut self, i: usize) -> Result<(), InterpreterError> {
         match self.globals.get(i) {
             Global::Identifier(s) => match self.variables.get(s.name.as_str()) {
