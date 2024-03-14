@@ -108,8 +108,6 @@ assert b = 2
 
 That can be weird, but I feel that coupled with the notion of mutability, it will bring many benefits to the Vif, and, I hope, more performance because we are cloning/copying less things than passing by values.
 
-But since I know nothing about programing language really, I'm probably wrong. Actually I reduced Vif's performance by half after having struggled for weeks to implement the passing by reference.....
-
 
 ## Class & interface
 
