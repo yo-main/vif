@@ -107,7 +107,6 @@ impl<'value> Stack<'value> {
         }
     }
 
-    #[inline]
     pub fn peek_till_scope(&mut self, index: usize, scope: usize) -> StackValue<'value> {
         match self.peek_raw(index) {
             StackValue::StackReference(i) if scope >= *i => self.peek_raw(*i).clone(),
