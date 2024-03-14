@@ -79,28 +79,27 @@ where
         // debug_stack(op_code, self.stack, &self.frame);
 
         match op_code {
-            OpCode::Print => {
-                println!("printing {}", self.stack.pop_and_get_value());
-            }
-            OpCode::Pop => self.pop(),
-            OpCode::Return => self.r#return(),
-            OpCode::GlobalVariable(i) => self.global_variable(*i)?,
-            OpCode::Call(arg_count) => self.call(*arg_count)?,
-            OpCode::Goto(i) => self.reset_ip(*i),
-            OpCode::Jump(i) => self.advance_by(*i),
-            OpCode::JumpIfFalse(i) => self.jump_if_false(*i),
-            OpCode::GetLocal(i) => self.get_local(*i),
+            OpCode::Global(i) => self.global(*i)?,
             OpCode::CreateLocal(i) => {
                 self.create_local(*i);
             }
             OpCode::SetLocal(i) => {
                 self.set_local(*i);
             }
-            OpCode::GetInheritedLocal(v) => self.get_inherited_local(v),
-            OpCode::SetInheritedLocal(v) => self.set_inherited_local(v),
             OpCode::GetGlobal(i) => self.get_global(*i)?,
             OpCode::SetGlobal(i) => self.set_global(*i)?,
-            OpCode::Global(i) => self.global(*i)?,
+            OpCode::GetInheritedLocal(v) => self.get_inherited_local(v),
+            OpCode::SetInheritedLocal(v) => self.set_inherited_local(v),
+            OpCode::Call(arg_count) => self.call(*arg_count)?,
+            OpCode::Add => self.add()?,
+            OpCode::Substract => self.substract()?,
+            OpCode::Pop => self.pop(),
+            OpCode::Return => self.r#return(),
+            OpCode::GlobalVariable(i) => self.global_variable(*i)?,
+            OpCode::Goto(i) => self.reset_ip(*i),
+            OpCode::Jump(i) => self.advance_by(*i),
+            OpCode::JumpIfFalse(i) => self.jump_if_false(*i),
+            OpCode::GetLocal(i) => self.get_local(*i),
             OpCode::AssertTrue => self.assert_true()?,
             OpCode::Not => self.not()?,
             OpCode::Negate => self.negate()?,
@@ -113,11 +112,12 @@ where
             OpCode::GreaterOrEqual => self.greater_or_equal()?,
             OpCode::Less => self.less()?,
             OpCode::LessOrEqual => self.less_or_equal()?,
-            OpCode::Add => self.add()?,
-            OpCode::Substract => self.substract()?,
             OpCode::Multiply => self.multiply()?,
             OpCode::Divide => self.divide()?,
             OpCode::Modulo => self.modulo()?,
+            OpCode::Print => {
+                println!("printing {}", self.stack.pop_and_get_value());
+            }
             OpCode::NotImplemented => panic!("Not implemented"),
         };
 
