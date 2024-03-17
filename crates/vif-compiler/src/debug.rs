@@ -74,7 +74,6 @@ fn disassemble_instruction(offset: usize, op_code: &OpCode, chunk: &Chunk, globa
         OpCode::GreaterOrEqual => simple_instruction("OP_GREATER_OR_EQUAL"),
         OpCode::Less => simple_instruction("OP_LESS"),
         OpCode::LessOrEqual => simple_instruction("OP_LESS_OR_EQUAL"),
-        OpCode::Print => simple_instruction("OP_PRINT"),
         OpCode::Pop => simple_instruction("OP_POP"),
         OpCode::JumpIfFalse(i) => jump_instruction("OP_JUMP_IF_FALSE", i),
         OpCode::Jump(i) => jump_instruction("OP_JUMP", i),

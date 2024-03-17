@@ -28,7 +28,6 @@ pub enum OpCode {
     Less,
     GreaterOrEqual,
     LessOrEqual,
-    Print, // temp
     Pop,
     AssertTrue,
     JumpIfFalse(usize),
@@ -67,7 +66,6 @@ impl std::fmt::Display for OpCode {
             Self::Less => write!(f, "OP_LESS"),
             Self::GreaterOrEqual => write!(f, "OP_GREATER_OR_EQUAL"),
             Self::LessOrEqual => write!(f, "OP_LESS_OR_EQUAL"),
-            Self::Print => write!(f, "OP_PRINT"),
             Self::Pop => write!(f, "OP_POP"),
             Self::JumpIfFalse(i) => write!(f, "OP_JUMP_IF_FALSE {i}"),
             Self::Jump(i) => write!(f, "OP_JUMP {i}"),

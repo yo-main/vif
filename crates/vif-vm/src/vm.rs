@@ -111,9 +111,6 @@ where
             OpCode::Multiply => self.multiply()?,
             OpCode::Divide => self.divide()?,
             OpCode::Modulo => self.modulo()?,
-            OpCode::Print => {
-                println!("printing {}", self.stack.pop_and_get_value());
-            }
             OpCode::NotImplemented => panic!("Not implemented"),
         };
 
