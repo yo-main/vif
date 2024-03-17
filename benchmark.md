@@ -40,4 +40,5 @@ this one is probably because the benchmark don't use a lot of variable. I guess 
 
 # variable by references
 2024-03-14 - 24157817   - 4 seconds  - 05a338b0def9c7d7abde7e82c033c4adf441896a (1.16 ± 0.05 times faster)
+2024-03-17 - 24157817   - 3 seconds  - a67e671b75a719100321804cf253b4b750e4445d (1.27 ± 0.09 times faster)
 ```
