@@ -79,15 +79,15 @@ where
         // debug_stack(op_code, self.stack, &self.frame);
 
         match op_code {
-            OpCode::Global(i) => self.global(*i)?,
+            OpCode::Global(i) => self.global(*i),
             OpCode::CreateLocal(i) => self.create_local(*i),
             OpCode::GetLocal(i) => self.get_local(*i),
             OpCode::GetInheritedLocal(v) => self.get_inherited_local(v),
-            OpCode::GetGlobal(i) => self.get_global(*i)?,
+            OpCode::GetGlobal(i) => self.get_global(*i),
             OpCode::SetLocal(i) => self.set_local(*i),
-            OpCode::SetGlobal(i) => self.set_global(*i)?,
+            OpCode::SetGlobal(i) => self.set_global(*i),
             OpCode::SetInheritedLocal(v) => self.set_inherited_local(v),
-            OpCode::GlobalVariable(i) => self.global_variable(*i)?,
+            OpCode::GlobalVariable(i) => self.global_variable(*i),
             OpCode::Call(arg_count) => self.call(*arg_count)?,
             OpCode::Add => self.add()?,
             OpCode::Substract => self.substract()?,
@@ -151,36 +151,20 @@ where
     }
 
     #[inline]
-    fn global_variable(&mut self, i: usize) -> Result<(), InterpreterError> {
+    fn global_variable(&mut self, i: usize) {
         if let Global::Identifier(var_name) = self.globals.get(i) {
             self.variables
                 .insert(var_name.name.as_str(), self.stack.pop_and_get_value());
         } else {
-            return Err(InterpreterError::Impossible);
+            panic!("Impossible")
         }
-
-        Ok(())
     }
 
     #[inline]
-    fn call_function(
-        &mut self,
-        func: &'function Function,
-        arg_count: usize,
-    ) -> Result<(), InterpreterError> {
-        if func.arity != arg_count {
-            return Err(InterpreterError::RuntimeError(
-                RuntimeErrorType::FunctionCall(format!(
-                    "Expected {} parameters, got {}",
-                    func.arity, arg_count
-                )),
-            ));
-        }
-
+    fn call_function(&mut self, func: &'function Function, arg_count: usize) {
         let new_frame = self.frame.start_new(func, self.stack.len() - arg_count - 1);
         self.previous_frames
             .push(std::mem::replace(&mut self.frame, new_frame));
-        Ok(())
     }
 
     fn call_native(
@@ -188,15 +172,6 @@ where
         func: &NativeFunction,
         arg_count: usize,
     ) -> Result<(), InterpreterError> {
-        if func.arity != arg_count {
-            return Err(InterpreterError::RuntimeError(
-                RuntimeErrorType::FunctionCall(format!(
-                    "Expected {} parameters, got {}",
-                    func.arity, arg_count
-                )),
-            ));
-        }
-
         let res = execute_native_call(self.stack, arg_count, func).map_err(|e| {
             InterpreterError::RuntimeError(RuntimeErrorType::FunctionFailed(format!("{e}")))
         })?;
@@ -210,13 +185,11 @@ where
     fn call(&mut self, arg_count: usize) -> Result<(), InterpreterError> {
         match self.stack.peek(self.stack.len() - arg_count - 1) {
             StackValue::Function(func) => self.call_function(func, arg_count),
-            StackValue::Native(func) => self.call_native(func, arg_count),
-            v => {
-                return Err(InterpreterError::CompileError(format!(
-                    "Expected function, got {v}"
-                )))
-            }
-        }
+            StackValue::Native(func) => self.call_native(func, arg_count)?,
+            v => panic!("Expected function, got {v}"),
+        };
+
+        Ok(())
     }
 
     #[inline]
@@ -282,58 +255,37 @@ where
     }
 
     #[inline]
-    fn get_global(&mut self, i: usize) -> Result<(), InterpreterError> {
+    fn get_global(&mut self, i: usize) {
         match self.globals.get(i) {
-            Global::Identifier(s) => match self.variables.get(s.name.as_str()) {
-                None => {
-                    return Err(InterpreterError::RuntimeError(
-                        RuntimeErrorType::UndeclaredVariable(format!("{}", s)),
-                    ))
-                }
-                Some(var) => self.stack.push(var.clone()),
-            },
+            Global::Identifier(s) => self.stack.push(self.variables.get(s.name.as_str()).clone()),
             Global::Native(f) => self.stack.push(StackValue::Native(f)),
-            _ => return Err(InterpreterError::Impossible),
+            _ => panic!("Impossible"),
         }
-
-        Ok(())
     }
 
-    fn set_global(&mut self, i: usize) -> Result<(), InterpreterError> {
+    fn set_global(&mut self, i: usize) {
         if let Global::Identifier(variable) = self.globals.get(i) {
-            if !self.variables.insert(
+            // we don't check if the result is false because the compiler should ensure we can't assign to a
+            // variable that do not exist
+            self.variables.insert(
                 variable.name.as_str(),
                 self.stack.peek_last().clone(), // here we clone because the assignement might be part of a larger expression
                                                 // the value must stay on the stack
-            ) {
-                return Err(InterpreterError::RuntimeError(
-                    RuntimeErrorType::UndeclaredVariable(format!(
-                        "Can't assign to undeclared variable: {variable}"
-                    )),
-                ));
-            }
+            );
         } else {
-            return Err(InterpreterError::Impossible);
-        };
-
-        Ok(())
+            panic!("Impossible");
+        }
     }
 
-    fn global(&mut self, i: usize) -> Result<(), InterpreterError> {
+    fn global(&mut self, i: usize) {
         self.stack.push(match self.globals.get(i) {
             Global::Integer(i) => StackValue::Integer(*i),
             Global::String(s) => StackValue::String(s.clone()),
             Global::Float(f) => StackValue::Float(*f),
             Global::Native(f) => StackValue::Native(f),
             Global::Function(f) => StackValue::Function(f),
-            Global::Identifier(i) => {
-                return Err(InterpreterError::RuntimeError(
-                    RuntimeErrorType::ValueError(format!("Got an identifier as value: {}", i)),
-                ))
-            }
-        });
-
-        Ok(())
+            Global::Identifier(i) => panic!("Impossible - Got an identifier as value: {}", i),
+        })
     }
 
     fn assert_true(&mut self) -> Result<(), InterpreterError> {

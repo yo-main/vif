@@ -77,10 +77,11 @@ impl<'globals, 'value, 'variables> VariableStore<'globals, 'value> {
         }
     }
 
-    pub fn get(&self, key: &'globals str) -> Option<&StackValue<'value>> {
+    pub fn get(&self, key: &'globals str) -> &StackValue<'value> {
         self.storage
             .iter()
             .find(|&v| v.key.eq(key))
             .map(|v| v.value.as_ref())
+            .unwrap()
     }
 }
