@@ -20,9 +20,28 @@ impl<'value> Stack<'value> {
     }
 
     #[inline]
-    pub fn pop_and_get_value(&mut self) -> StackValue<'value> {
-        match self.pop_raw() {
-            StackValue::StackReference(i) => self.peek(i).clone(),
+    pub fn pop_and_get_last_2_values(&mut self) -> (&StackValue<'value>, &StackValue<'value>) {
+        self.top -= 2;
+
+        let a = match unsafe { self.stack.get_unchecked(self.top + 1).as_ref().unwrap() } {
+            StackValue::StackReference(i) => self.peek(*i),
+            v => v,
+        };
+
+        let b = match unsafe { self.stack.get_unchecked(self.top).as_ref().unwrap() } {
+            StackValue::StackReference(i) => self.peek(*i),
+            v => v,
+        };
+
+        return (a, b);
+    }
+
+    #[inline]
+    pub fn pop_and_get_last(&mut self) -> &StackValue<'value> {
+        self.top -= 1;
+
+        match unsafe { self.stack.get_unchecked(self.top).as_ref().unwrap() } {
+            StackValue::StackReference(i) => self.peek(*i),
             v => v,
         }
     }

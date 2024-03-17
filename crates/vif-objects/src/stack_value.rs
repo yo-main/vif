@@ -262,202 +262,177 @@ impl StackValue<'_> {
         }
     }
 
-    pub fn add<'a, 'b>(&'a mut self, other: Self) -> Result<(), ValueError>
-    where
-        'b: 'a,
-    {
-        match self {
-            Self::Integer(ref mut i) => match other {
-                Self::Integer(j) => *i += j,
-                Self::Float(j) => *self = StackValue::Float(j + *i as f64),
-                Self::Boolean(true) => *i += 1,
-                Self::Boolean(false) => (),
+    pub fn add(&self, other: &Self) -> Result<Self, ValueError> {
+        Ok(match self {
+            Self::Integer(i) => match other {
+                Self::Integer(j) => Self::Integer(i + j),
+                Self::Float(j) => Self::Float(j + *i as f64),
+                Self::Boolean(true) => Self::Integer(i + 1),
+                Self::Boolean(false) => Self::Integer(*i),
                 _ => return value_error!("Can't add {self} and {other}"),
             },
-            Self::Float(ref mut i) => match other {
-                Self::Integer(j) => *i += j as f64,
-                Self::Float(j) => *i += j,
-                Self::Boolean(true) => *i += 1.0,
-                Self::Boolean(false) => (),
+            Self::Float(i) => match other {
+                Self::Integer(j) => Self::Float(i + *j as f64),
+                Self::Float(j) => Self::Float(i + j),
+                Self::Boolean(true) => Self::Float(i + 1.0),
+                Self::Boolean(false) => Self::Float(*i),
                 _ => return value_error!("Can't add {self} and {other}"),
             },
             Self::Boolean(true) => match other {
-                Self::Integer(j) => *self = StackValue::Integer(1 + j),
-                Self::Float(j) => *self = StackValue::Float(1.0 + j),
-                Self::Boolean(true) => *self = StackValue::Integer(2),
-                Self::Boolean(false) => *self = StackValue::Integer(1),
+                Self::Integer(j) => Self::Integer(1 + j),
+                Self::Float(j) => Self::Float(1.0 + j),
+                Self::Boolean(true) => Self::Integer(2),
+                Self::Boolean(false) => Self::Integer(1),
                 _ => return value_error!("Can't add {self} and {other}"),
             },
             Self::Boolean(false) => match other {
-                Self::Integer(j) => *self = StackValue::Integer(j),
-                Self::Float(j) => *self = StackValue::Float(j),
-                Self::Boolean(true) => *self = StackValue::Integer(1),
-                Self::Boolean(false) => *self = StackValue::Integer(0),
+                Self::Integer(j) => Self::Integer(*j),
+                Self::Float(j) => Self::Float(*j),
+                Self::Boolean(true) => Self::Integer(1),
+                Self::Boolean(false) => Self::Integer(0),
                 _ => return value_error!("Can't add {self} and {other}"),
             },
             Self::String(i) => match other {
-                Self::String(j) => *self = StackValue::String(Box::new(format!("{i}{j}"))),
+                Self::String(j) => Self::String(Box::new(format!("{i}{j}"))),
                 _ => return value_error!("Can't add {self} and {other}"),
             },
             _ => return value_error!("Can't add {self} and {other}"),
-        };
-
-        Ok(())
+        })
     }
 
-    pub fn multiply<'a, 'b>(&'a mut self, other: Self) -> Result<(), ValueError>
-    where
-        'b: 'a,
-    {
-        match self {
-            Self::Integer(ref mut i) => match other {
-                Self::Integer(j) => *i *= j,
-                Self::Float(j) => *self = StackValue::Float(*i as f64 * j),
-                Self::Boolean(true) => *i *= 1,
-                Self::Boolean(false) => *i *= 0,
+    pub fn multiply(&self, other: &Self) -> Result<Self, ValueError> {
+        Ok(match self {
+            Self::Integer(i) => match other {
+                Self::Integer(j) => Self::Integer(i * j),
+                Self::Float(j) => Self::Float(*i as f64 * j),
+                Self::Boolean(true) => Self::Integer(*i),
+                Self::Boolean(false) => Self::Integer(0),
                 _ => return value_error!("Can't multiply {self} and {other}"),
             },
-            Self::Float(ref mut i) => match other {
-                Self::Integer(j) => *i *= j as f64,
-                Self::Float(j) => *i *= j,
-                Self::Boolean(true) => *i *= 1.0,
-                Self::Boolean(false) => *i *= 0.0,
+            Self::Float(i) => match other {
+                Self::Integer(j) => Self::Float(i * *j as f64),
+                Self::Float(j) => Self::Float(i * j),
+                Self::Boolean(true) => Self::Float(*i),
+                Self::Boolean(false) => Self::Float(0.0),
                 _ => return value_error!("Can't multiply {self} and {other}"),
             },
             Self::Boolean(true) => match other {
-                Self::Integer(j) => *self = StackValue::Integer(1 * j),
-                Self::Float(j) => *self = StackValue::Float(1.0 * j),
-                Self::Boolean(true) => *self = StackValue::Integer(1 * 1),
-                Self::Boolean(false) => *self = StackValue::Integer(1 * 0),
+                Self::Integer(j) => Self::Integer(1 * j),
+                Self::Float(j) => Self::Float(1.0 * j),
+                Self::Boolean(true) => Self::Integer(1 * 1),
+                Self::Boolean(false) => Self::Integer(1 * 0),
                 _ => return value_error!("Can't multiply {self} and {other}"),
             },
             Self::Boolean(false) => match other {
-                Self::Integer(j) => *self = StackValue::Integer(0 * j),
-                Self::Float(j) => *self = StackValue::Float(0.0 * j),
-                Self::Boolean(true) => *self = StackValue::Integer(0 * 1),
-                Self::Boolean(false) => *self = StackValue::Integer(0 * 0),
+                Self::Integer(j) => Self::Integer(0 * j),
+                Self::Float(j) => Self::Float(0.0 * j),
+                Self::Boolean(true) => Self::Integer(0 * 1),
+                Self::Boolean(false) => Self::Integer(0 * 0),
                 _ => return value_error!("Can't multiply {self} and {other}"),
             },
             _ => return value_error!("Can't multiply {self} and {other}"),
-        };
-
-        Ok(())
+        })
     }
 
-    pub fn substract<'a, 'b>(&'a mut self, other: Self) -> Result<(), ValueError>
-    where
-        'b: 'a,
-    {
-        match self {
-            Self::Integer(ref mut i) => match other {
-                Self::Integer(j) => *i -= j,
-                Self::Float(j) => *self = StackValue::Float(*i as f64 - j),
-                Self::Boolean(true) => *i -= 1,
-                Self::Boolean(false) => *i -= 0,
+    pub fn substract(&self, other: &Self) -> Result<Self, ValueError> {
+        Ok(match self {
+            Self::Integer(i) => match other {
+                Self::Integer(j) => Self::Integer(i - j),
+                Self::Float(j) => Self::Float(*i as f64 - j),
+                Self::Boolean(true) => Self::Integer(i - 1),
+                Self::Boolean(false) => Self::Integer(*i),
                 _ => return value_error!("Can't substract {self} and {other}"),
             },
-            Self::Float(ref mut i) => match other {
-                Self::Integer(j) => *i -= j as f64,
-                Self::Float(j) => *i -= j,
-                Self::Boolean(true) => *i -= 1.0,
-                Self::Boolean(false) => *i -= 0.0,
+            Self::Float(i) => match other {
+                Self::Integer(j) => Self::Float(i - *j as f64),
+                Self::Float(j) => Self::Float(i - j),
+                Self::Boolean(true) => Self::Float(i - 1.0),
+                Self::Boolean(false) => Self::Float(*i),
                 _ => return value_error!("Can't substract {self} and {other}"),
             },
             Self::Boolean(true) => match other {
-                Self::Integer(j) => *self = StackValue::Integer(1 - j),
-                Self::Float(j) => *self = StackValue::Float(1.0 - j),
-                Self::Boolean(true) => *self = StackValue::Integer(1 - 1),
-                Self::Boolean(false) => *self = StackValue::Integer(1 - 0),
+                Self::Integer(j) => Self::Integer(1 - j),
+                Self::Float(j) => Self::Float(1.0 - j),
+                Self::Boolean(true) => Self::Integer(0),
+                Self::Boolean(false) => Self::Integer(1),
                 _ => return value_error!("Can't substract {self} and {other}"),
             },
             Self::Boolean(false) => match other {
-                Self::Integer(j) => *self = StackValue::Integer(0 - j),
-                Self::Float(j) => *self = StackValue::Float(0.0 - j),
-                Self::Boolean(true) => *self = StackValue::Integer(0 - 1),
-                Self::Boolean(false) => *self = StackValue::Integer(0 - 0),
+                Self::Integer(j) => Self::Integer(0 - j),
+                Self::Float(j) => Self::Float(0.0 - j),
+                Self::Boolean(true) => Self::Integer(-1),
+                Self::Boolean(false) => Self::Integer(0),
                 _ => return value_error!("Can't substract {self} and {other}"),
             },
             _ => return value_error!("Can't substract {self} and {other}"),
-        };
-
-        Ok(())
+        })
     }
 
-    pub fn divide<'a, 'b>(&'a mut self, other: Self) -> Result<(), ValueError>
-    where
-        'b: 'a,
-    {
-        match self {
-            Self::Integer(ref mut i) => match other {
-                Self::Integer(j) => *i /= j,
-                Self::Float(j) => *self = StackValue::Float(*i as f64 / j),
-                Self::Boolean(true) => *i /= 1,
+    pub fn divide(&self, other: &Self) -> Result<Self, ValueError> {
+        Ok(match self {
+            Self::Integer(i) => match other {
+                Self::Integer(j) => Self::Integer(i / j),
+                Self::Float(j) => Self::Float(*i as f64 / j),
+                Self::Boolean(true) => Self::Integer(*i),
                 Self::Boolean(false) => return divide_by_zero_error!("Can't divide {i} by 0"),
                 _ => return value_error!("Can't divide {self} and {other}"),
             },
-            Self::Float(ref mut i) => match other {
-                Self::Integer(j) => *i /= j as f64,
-                Self::Float(j) => *i /= j,
-                Self::Boolean(true) => *i /= 1.0,
+            Self::Float(i) => match other {
+                Self::Integer(j) => Self::Float(i / *j as f64),
+                Self::Float(j) => Self::Float(i / j),
+                Self::Boolean(true) => Self::Float(*i),
                 Self::Boolean(false) => return divide_by_zero_error!("Can't divide {i} by 0"),
                 _ => return value_error!("Can't divide {self} and {other}"),
             },
             Self::Boolean(true) => match other {
-                Self::Integer(j) => *self = StackValue::Integer(1 / j),
-                Self::Float(j) => *self = StackValue::Float(1.0 / j),
-                Self::Boolean(true) => *self = StackValue::Integer(1 / 1),
+                Self::Integer(j) => Self::Integer(1 / j),
+                Self::Float(j) => Self::Float(1.0 / j),
+                Self::Boolean(true) => Self::Integer(1),
                 Self::Boolean(false) => return divide_by_zero_error!("Can't divide 1 by Zero"),
                 _ => return value_error!("Can't divide {self} and {other}"),
             },
             Self::Boolean(false) => match other {
-                Self::Integer(j) => *self = StackValue::Integer(0 / j),
-                Self::Float(j) => *self = StackValue::Float(0.0 / j),
-                Self::Boolean(true) => *self = StackValue::Integer(0 / 1),
+                Self::Integer(j) => Self::Integer(0 / j),
+                Self::Float(j) => Self::Float(0.0 / j),
+                Self::Boolean(true) => Self::Integer(0),
                 Self::Boolean(false) => return divide_by_zero_error!("Can't divide 0 by 0"),
                 _ => return value_error!("Can't divide {self} and {other}"),
             },
             _ => return value_error!("Can't divide {self} and {other}"),
-        };
-
-        Ok(())
+        })
     }
 
-    pub fn modulo<'a, 'b>(&'a mut self, other: Self) -> Result<(), ValueError>
-    where
-        'b: 'a,
-    {
-        match self {
-            Self::Integer(ref mut i) => match other {
-                Self::Integer(j) => *i %= j,
-                Self::Float(j) => *self = StackValue::Float(*i as f64 % j),
-                Self::Boolean(true) => *i %= 1,
+    pub fn modulo(&self, other: &Self) -> Result<Self, ValueError> {
+        Ok(match self {
+            Self::Integer(i) => match other {
+                Self::Integer(j) => Self::Integer(i % j),
+                Self::Float(j) => Self::Float(*i as f64 % j),
+                Self::Boolean(true) => Self::Integer(*i),
                 Self::Boolean(false) => return divide_by_zero_error!("Can't modulo {i} by 0"),
                 _ => return value_error!("Can't modulo {self} and {other}"),
             },
-            Self::Float(ref mut i) => match other {
-                Self::Integer(j) => *i %= j as f64,
-                Self::Float(j) => *i %= j,
-                Self::Boolean(true) => *i %= 1.0,
+            Self::Float(i) => match other {
+                Self::Integer(j) => Self::Float(i % *j as f64),
+                Self::Float(j) => Self::Float(i % j),
+                Self::Boolean(true) => Self::Float(*i),
                 Self::Boolean(false) => return divide_by_zero_error!("Can't divide {i} by 0"),
                 _ => return value_error!("Can't modulo {self} and {other}"),
             },
             Self::Boolean(true) => match other {
-                Self::Integer(j) => *self = StackValue::Integer(1 % j),
-                Self::Float(j) => *self = StackValue::Float(1.0 % j),
-                Self::Boolean(true) => *self = StackValue::Integer(1 % 1),
+                Self::Integer(j) => Self::Integer(1 % j),
+                Self::Float(j) => Self::Float(1.0 % j),
+                Self::Boolean(true) => Self::Integer(1),
                 Self::Boolean(false) => return divide_by_zero_error!("Can't divide 1 by Zero"),
                 _ => return value_error!("Can't modulo {self} and {other}"),
             },
             Self::Boolean(false) => match other {
-                Self::Integer(j) => *self = StackValue::Integer(0 % j),
-                Self::Float(j) => *self = StackValue::Float(0.0 % j),
-                Self::Boolean(true) => *self = StackValue::Integer(0 % 1),
+                Self::Integer(j) => Self::Integer(0 % j),
+                Self::Float(j) => Self::Float(0.0 % j),
+                Self::Boolean(true) => Self::Integer(0),
                 Self::Boolean(false) => return divide_by_zero_error!("Can't divide 0 by 0"),
                 _ => return value_error!("Can't modulo {self} and {other}"),
             },
             _ => return value_error!("Can't modulo {self} and {other}"),
-        };
-
-        Ok(())
+        })
     }
 }

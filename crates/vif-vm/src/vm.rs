@@ -153,8 +153,10 @@ where
     #[inline]
     fn global_variable(&mut self, i: usize) {
         if let Global::Identifier(var_name) = self.globals.get(i) {
-            self.variables
-                .insert(var_name.name.as_str(), self.stack.pop_and_get_value());
+            self.variables.insert(
+                var_name.name.as_str(),
+                self.stack.pop_and_get_last().clone(),
+            );
         } else {
             panic!("Impossible")
         }
@@ -323,16 +325,15 @@ where
     }
 
     fn not(&mut self) -> Result<(), InterpreterError> {
-        let value = self.stack.pop_and_get_value();
-        match value {
-            StackValue::Integer(i) => self.stack.push(StackValue::Boolean(i == 0)),
-            StackValue::Float(f) => self.stack.push(StackValue::Boolean(f == 0.0)),
-            StackValue::Boolean(b) => self.stack.push(StackValue::Boolean(!b)),
-            StackValue::None => self.stack.push(StackValue::Boolean(true)),
+        let value = self.stack.pop_and_get_last();
+        let c = match value {
+            StackValue::Integer(i) => StackValue::Boolean(i == &0),
+            StackValue::Float(f) => StackValue::Boolean(f == &0.0),
+            StackValue::Boolean(b) => StackValue::Boolean(!b),
+            StackValue::None => StackValue::Boolean(true),
             _ => return value_error!("Can't compare {value}"),
         };
-
-        Ok(())
+        Ok(self.stack.push(c))
     }
 
     fn negate(&mut self) -> Result<(), InterpreterError> {
@@ -359,74 +360,60 @@ where
     }
 
     fn equal(&mut self) {
-        let a = self.stack.pop_and_get_value();
-        let b = self.stack.pop_and_get_value();
-        self.stack.push(StackValue::Boolean(b.eq(&a)));
+        let (a, b) = self.stack.pop_and_get_last_2_values();
+        let c = b.eq(a);
+        self.stack.push(StackValue::Boolean(c));
     }
 
     fn not_equal(&mut self) {
-        let a = self.stack.pop_and_get_value();
-        let b = self.stack.pop_and_get_value();
-        self.stack.push(StackValue::Boolean(b.neq(&a)));
+        let (a, b) = self.stack.pop_and_get_last_2_values();
+        let c = b.neq(a);
+        self.stack.push(StackValue::Boolean(c));
     }
 
     fn greater(&mut self) -> Result<(), InterpreterError> {
-        let a = self.stack.pop_and_get_value();
-        let b = self.stack.pop_and_get_value();
-        self.stack.push(StackValue::Boolean(b.gt(&a)?));
-        Ok(())
+        let (a, b) = self.stack.pop_and_get_last_2_values();
+        let c = b.gt(a)?;
+        Ok(self.stack.push(StackValue::Boolean(c)))
     }
     fn greater_or_equal(&mut self) -> Result<(), InterpreterError> {
-        let a = self.stack.pop_and_get_value();
-        let b = self.stack.pop_and_get_value();
-        self.stack.push(StackValue::Boolean(b.gte(&a)?));
-        Ok(())
+        let (a, b) = self.stack.pop_and_get_last_2_values();
+        let c = b.gte(a)?;
+        Ok(self.stack.push(StackValue::Boolean(c)))
     }
     fn less(&mut self) -> Result<(), InterpreterError> {
-        let a = self.stack.pop_and_get_value();
-        let b = self.stack.pop_and_get_value();
-        self.stack.push(StackValue::Boolean(b.lt(&a)?));
-        Ok(())
+        let (a, b) = self.stack.pop_and_get_last_2_values();
+        let c = b.lt(a)?;
+        Ok(self.stack.push(StackValue::Boolean(c)))
     }
     fn less_or_equal(&mut self) -> Result<(), InterpreterError> {
-        let a = self.stack.pop_and_get_value();
-        let b = self.stack.pop_and_get_value();
-        self.stack.push(StackValue::Boolean(b.lte(&a)?));
-        Ok(())
+        let (a, b) = self.stack.pop_and_get_last_2_values();
+        let c = b.lte(a)?;
+        Ok(self.stack.push(StackValue::Boolean(c)))
     }
     fn add(&mut self) -> Result<(), InterpreterError> {
-        let a = self.stack.pop_and_get_value();
-        let mut b = self.stack.pop_and_get_value();
-        b.add(a)?;
-        self.stack.push(b);
-        Ok(())
+        let (a, b) = self.stack.pop_and_get_last_2_values();
+        let c = b.add(a)?;
+        Ok(self.stack.push(c))
     }
     fn substract(&mut self) -> Result<(), InterpreterError> {
-        let a = self.stack.pop_and_get_value();
-        let mut b = self.stack.pop_and_get_value();
-        b.substract(a)?;
-        self.stack.push(b);
-        Ok(())
+        let (a, b) = self.stack.pop_and_get_last_2_values();
+        let c = b.substract(a)?;
+        Ok(self.stack.push(c))
     }
     fn multiply(&mut self) -> Result<(), InterpreterError> {
-        let a = self.stack.pop_and_get_value();
-        let mut b = self.stack.pop_and_get_value();
-        b.multiply(a)?;
-        self.stack.push(b);
-        Ok(())
+        let (a, b) = self.stack.pop_and_get_last_2_values();
+        let c = b.multiply(a)?;
+        Ok(self.stack.push(c))
     }
     fn divide(&mut self) -> Result<(), InterpreterError> {
-        let a = self.stack.pop_and_get_value();
-        let mut b = self.stack.pop_and_get_value();
-        b.divide(a)?;
-        self.stack.push(b);
-        Ok(())
+        let (a, b) = self.stack.pop_and_get_last_2_values();
+        let c = b.divide(a)?;
+        Ok(self.stack.push(c))
     }
     fn modulo(&mut self) -> Result<(), InterpreterError> {
-        let a = self.stack.pop_and_get_value();
-        let mut b = self.stack.pop_and_get_value();
-        b.modulo(a)?;
-        self.stack.push(b);
-        Ok(())
+        let (a, b) = self.stack.pop_and_get_last_2_values();
+        let c = b.modulo(a)?;
+        Ok(self.stack.push(c))
     }
 }
