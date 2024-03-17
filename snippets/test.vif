@@ -1,5 +1,11 @@
+var mut x = 1
+
 def coucou():
-    print("Yes")
+    x = 2
+    def closure():
+        return 4
 
+    return closure
 
-coucou(1)
+var p = coucou()
+print(p())

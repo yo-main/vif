@@ -1,0 +1,9 @@
+def coucou():
+	def hello():
+		return 1
+
+	return hello
+
+
+## This does not print anything
+print(coucou()())
