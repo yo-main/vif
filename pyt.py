@@ -8,7 +8,7 @@ def fib(n):
 
 
 i = 0
-while True:
+while i < 38:
     start = time.time()
     value = fib(i)
     duration = round(time.time() - start)
