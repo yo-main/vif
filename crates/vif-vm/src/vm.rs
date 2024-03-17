@@ -78,7 +78,7 @@ where
     pub fn interpret(&mut self, op_code: &OpCode) -> Result<(), InterpreterError> {
         // debug_stack(op_code, self.stack, &self.frame);
 
-        match op_code {
+        Ok(match op_code {
             OpCode::Global(i) => self.global(*i),
             OpCode::CreateLocal(i) => self.create_local(*i),
             OpCode::GetLocal(i) => self.get_local(*i),
@@ -112,9 +112,7 @@ where
             OpCode::Divide => self.divide()?,
             OpCode::Modulo => self.modulo()?,
             OpCode::NotImplemented => panic!("Not implemented"),
-        };
-
-        Ok(())
+        })
     }
 
     #[inline]
@@ -221,8 +219,7 @@ where
     fn get_local(&mut self, i: usize) {
         self.stack.push(
             self.stack
-                .peek_first_ref_as_ref(i + self.frame.get_position())
-                .clone(),
+                .peek_first_ref_as_ref(i + self.frame.get_position()),
         );
     }
 
