@@ -64,7 +64,7 @@ where
         loop {
             if let Some(byte) = self.frame.next() {
                 self.interpret(byte)?;
-            } else if self.previous_frames.len() > 0 {
+            } else if !self.previous_frames.is_empty() {
                 self.frame = self.previous_frames.pop().unwrap();
             } else {
                 break;
@@ -162,9 +162,10 @@ where
 
     #[inline]
     fn call_function(&mut self, func: &'function Function, arg_count: usize) {
-        let new_frame = self.frame.start_new(func, self.stack.len() - arg_count - 1);
-        self.previous_frames
-            .push(std::mem::replace(&mut self.frame, new_frame));
+        self.previous_frames.push(std::mem::replace(
+            &mut self.frame,
+            CallFrame::new(func, 0, self.stack.len() - arg_count - 1),
+        ))
     }
 
     fn call_native(
@@ -199,18 +200,18 @@ where
 
     #[inline]
     fn advance_by(&mut self, i: usize) {
-        self.frame.advance_by(i)
+        self.frame.advance_by(i).unwrap()
     }
 
     fn jump_if_false(&mut self, i: usize) {
         let value = self.stack.peek_last();
 
         match value {
-            StackValue::Boolean(false) => self.frame.advance_by(i),
-            StackValue::Integer(0) => self.frame.advance_by(i),
-            StackValue::Float(v) if v == &0.0 => self.frame.advance_by(i),
-            StackValue::String(s) if s.is_empty() => self.frame.advance_by(i),
-            StackValue::None => self.frame.advance_by(i),
+            StackValue::Boolean(false) => self.frame.advance_by(i).unwrap(),
+            StackValue::Integer(0) => self.frame.advance_by(i).unwrap(),
+            StackValue::Float(v) if v == &0.0 => self.frame.advance_by(i).unwrap(),
+            StackValue::String(s) if s.is_empty() => self.frame.advance_by(i).unwrap(),
+            StackValue::None => self.frame.advance_by(i).unwrap(),
             _ => (),
         }
     }

@@ -26,23 +26,23 @@ where
         self.ip = self.function.chunk.iter(index);
     }
 
-    pub fn next(&mut self) -> Option<&'stack OpCode> {
-        self.ip.next()
-    }
-
-    pub fn advance_by(&mut self, jump: usize) {
-        self.ip.advance_by(jump).unwrap();
-    }
-
     pub fn get_position(&self) -> usize {
         self.stack_position
     }
 
-    pub fn start_new(&self, function: &'function Function, stack_position: usize) -> Self {
-        Self::new(function, 0, stack_position)
-    }
-
     pub fn get_function_name(&self) -> &str {
         self.function.name.as_str()
+    }
+}
+
+impl<'stack, 'function> std::iter::Iterator for CallFrame<'stack, 'function> {
+    type Item = &'stack OpCode;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.ip.next()
+    }
+
+    fn advance_by(&mut self, n: usize) -> Result<(), std::num::NonZeroUsize> {
+        self.ip.advance_by(n)
     }
 }
