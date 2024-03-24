@@ -218,10 +218,8 @@ where
 
     #[inline]
     fn get_local(&mut self, i: usize) {
-        self.stack.push(
-            self.stack
-                .peek_first_ref_as_ref(i + self.frame.get_position()),
-        );
+        self.stack
+            .push(self.stack.peek_first_ref(i + self.frame.get_position()));
     }
 
     fn create_local(&mut self, i: usize) {

@@ -16,7 +16,7 @@ impl<'value> Stack<'value> {
     #[inline]
     pub fn pop_raw(&mut self) -> StackValue<'value> {
         self.top -= 1;
-        self.stack[self.top].take().unwrap()
+        unsafe { self.stack.get_unchecked_mut(self.top).take().unwrap() }
     }
 
     #[inline]
@@ -82,7 +82,7 @@ impl<'value> Stack<'value> {
 
     pub fn set(&mut self, n: usize, value: StackValue<'value>) {
         let value = match value {
-            StackValue::StackReference(i) => self.peek_to_set(i, &value).clone(),
+            StackValue::StackReference(i) => self.peek_if_reference(i, &value).clone(),
             _ => value,
         };
         // println!("{value}");
@@ -121,18 +121,8 @@ impl<'value> Stack<'value> {
     }
 
     #[inline]
-    fn peek_mut_raw(&mut self, n: usize) -> &mut StackValue<'value> {
-        unsafe { self.stack.get_unchecked_mut(n).as_mut().unwrap() }
-    }
-
-    #[inline]
     pub fn peek_last_raw(&self) -> &StackValue<'value> {
         unsafe { self.stack.get_unchecked(self.top - 1).as_ref().unwrap() }
-    }
-
-    #[inline]
-    fn peek_last_mut_raw(&mut self) -> &mut StackValue<'value> {
-        unsafe { self.stack.get_unchecked_mut(self.top - 1).as_mut().unwrap() }
     }
 
     #[inline]
@@ -144,52 +134,19 @@ impl<'value> Stack<'value> {
     }
 
     #[inline]
+    fn peek_mut_raw(&mut self, n: usize) -> &mut StackValue<'value> {
+        unsafe { self.stack.get_unchecked_mut(n).as_mut().unwrap() }
+    }
+
+    #[inline]
+    fn peek_last_mut_raw(&mut self) -> &mut StackValue<'value> {
+        unsafe { self.stack.get_unchecked_mut(self.top - 1).as_mut().unwrap() }
+    }
+
+    #[inline]
     pub fn peek_last(&self) -> &StackValue<'value> {
         match self.peek_last_raw() {
             StackValue::StackReference(i) => self.peek(*i),
-            value => value,
-        }
-    }
-
-    #[inline]
-    fn peek_to_set<'a, 'b>(
-        &'b self,
-        index: usize,
-        prev: &'a StackValue<'value>,
-    ) -> &'a StackValue<'value>
-    where
-        'b: 'a,
-    {
-        let value = self.peek_raw(index);
-        match value {
-            StackValue::StackReference(i) => self.peek_to_set(*i, value),
-            _ => prev,
-        }
-    }
-
-    #[inline]
-    pub fn peek_first_ref_from_last(&self) -> &StackValue<'value> {
-        let value = self.peek_last_raw();
-        match value {
-            StackValue::StackReference(i) => self.peek_to_set(*i, value),
-            value => value,
-        }
-    }
-
-    #[inline]
-    pub fn peek_first_ref_as_ref(&self, index: usize) -> StackValue<'value> {
-        let value = self.peek_raw(index);
-        match value {
-            StackValue::StackReference(i) => self.peek_to_set(*i, value).clone(),
-            _ => StackValue::StackReference(index),
-        }
-    }
-
-    #[inline]
-    pub fn peek_first_ref(&self, index: usize) -> &StackValue<'value> {
-        let value = self.peek_raw(index);
-        match value {
-            StackValue::StackReference(i) => self.peek_to_set(*i, value),
             value => value,
         }
     }
@@ -207,6 +164,31 @@ impl<'value> Stack<'value> {
         match self.peek_last_raw() {
             StackValue::StackReference(i) => self.peek_mut(*i),
             _ => self.peek_last_mut_raw(),
+        }
+    }
+
+    #[inline]
+    fn peek_if_reference<'a, 'b>(
+        &'b self,
+        index: usize,
+        prev: &'a StackValue<'value>,
+    ) -> &'a StackValue<'value>
+    where
+        'b: 'a,
+    {
+        let value = self.peek_raw(index);
+        match value {
+            StackValue::StackReference(i) => self.peek_if_reference(*i, value),
+            _ => prev,
+        }
+    }
+
+    #[inline]
+    pub fn peek_first_ref(&self, index: usize) -> StackValue<'value> {
+        let value = self.peek_raw(index);
+        match value {
+            StackValue::StackReference(i) => self.peek_if_reference(*i, value).clone(),
+            _ => StackValue::StackReference(index),
         }
     }
 
