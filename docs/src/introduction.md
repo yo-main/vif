@@ -54,8 +54,7 @@ Here are a bunch of things which are still to be implemented:
 
 #### Closures
 
-I'm really considering whether I want closure in vif or not. It does complexify things a lot, and I don't see the usage of closures 
-that critical in python. They could be replaced by simple functions, we just need to pass parameters in.
+I'm really considering whether I want closure in vif or not. It does complexify things a lot, and I don't see the usage of closures that critical in python. They could be replaced by simple functions, we just need to pass parameters in.
 
 One advantage of vif is that passed variables can be mutated, contrary to python, so it does not prevent any use case and it enforces better
 design practices.

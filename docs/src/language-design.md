@@ -106,15 +106,14 @@ a = 2
 assert b = 2
 ```
 
-That can be weird, but I feel that coupled with the notion of mutability, it will bring many benefits to the Vif, and, I hope, more performance because we are cloning/copying less things than passing by values.
+That can be weird, but I feel that coupled with the notion of mutability, it will bring many benefits to Vif, and, I hope, boost performances because we are cloning/copying less things than passing by values.
 
 
 ## Class & interface
 
 Nothing done yet. And I'm not sure how class will take form yet.
 
-I do like how they work in python, especially magic methods. It's very powerful to integrate in the language, but I don't want 
-it to cost too much from a performance point of view. So those magic methods might come in a second time.
+I do like how they work in python, especially magic methods. It's very powerful to integrate in the language, but I don't want it to cost too much from a performance point of view. So those magic methods might come in a second time.
 
 ```python
 class AlgorithmConcrete:

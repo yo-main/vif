@@ -8,6 +8,7 @@ pkgs.mkShellNoCC {
     hyperfine
     mdbook 
     cargo-flamegraph
+    marksman
   ];
 
 }

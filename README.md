@@ -10,11 +10,14 @@ https://craftinginterpreters.com/ gave me a huge boost, and then I went rogue wi
 
 Vif aims to look like python, because I look how python looks like. But a few things are very different from it:
 
-- `var` is used to declare variables
-- `mut` is used to mark a variable as mutable
+- variables are declared with the `var` keyword
+- variables are constant by default.
+- to override an existing variable, it must be declared with the `mut` keyword
 - variables are __always__ passed by reference
 
-Vif is an interpreted language, but lot of checks are still hapenning through compilation.
+Most of those things are handled during compilation, to not burden the livetime with pointless checks.
+
+Vif's compiler and VM are made in rust. I plan to switch to LLVM at some point, but for now I'm exploring on my own.
 
 ### Examples
 
