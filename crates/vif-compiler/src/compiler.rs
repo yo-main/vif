@@ -9,6 +9,7 @@ use vif_objects::function::Arity;
 use vif_objects::function::Function;
 use vif_objects::global_store::GlobalStore;
 use vif_objects::variable::InheritedLocalPos;
+use vif_objects::variable::InheritedVariable;
 use vif_objects::variable::Variable;
 use vif_objects::variable::VariableType;
 
@@ -200,16 +201,30 @@ impl<'function> Compiler<'function> {
             Some(self.scope_depth),
         ));
 
-        // TODO: manage self.function.inherited_locals as well
         for (i, local) in self.function.locals.iter().enumerate() {
-            function
-                .inherited_locals
-                .push(vif_objects::variable::InheritedVariable {
-                    var_name: local.name.clone(),
-                    depth: self.scope_depth,
-                    pos: i + 1,
-                });
+            function.inherited_locals.push(InheritedVariable {
+                var_name: local.name.clone(),
+                depth: self.scope_depth,
+                pos: i + 1,
+            });
         }
+
+        for v in self.function.inherited_locals.iter() {
+            if function
+                .inherited_locals
+                .iter()
+                .any(|x| x.var_name == v.var_name)
+            {
+                continue;
+            }
+            function.inherited_locals.push(InheritedVariable {
+                var_name: v.var_name.clone(),
+                depth: v.depth,
+                pos: v.pos,
+            })
+        }
+
+        println!("TEST {} {:?}", function.name, function.inherited_locals);
 
         let mut compiler = Compiler::new(&mut function, self.scope_depth + 1);
         std::mem::swap(&mut compiler.globals, &mut self.globals);

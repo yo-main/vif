@@ -1,11 +1,12 @@
 var mut x = 1
+var y = 2
+var z = 3
 
 def coucou():
-    x = 2
+    var y = 4
     def closure():
-        return 4
+        print(z)
 
     return closure
 
-var p = coucou()
-print(p())
+coucou()()

@@ -28,6 +28,17 @@ fn debug_stack(op_code: &OpCode, stack: &Stack, frame: &CallFrame) {
     );
 }
 
+struct SoftTrunc {
+    pos: usize,
+    name: String,
+}
+
+impl std::fmt::Display for SoftTrunc {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ST {} {}", self.name, self.pos)
+    }
+}
+
 pub struct VM<'function, 'stack, 'value, 'variables, 'globals>
 where
     'globals: 'value,
@@ -37,6 +48,7 @@ where
     pub globals: &'globals GlobalStore,
     pub frame: CallFrame<'stack, 'function>,
     pub previous_frames: Vec<CallFrame<'stack, 'function>>,
+    soft_trunc: Option<SoftTrunc>,
 }
 
 impl<'function, 'stack, 'value, 'variables, 'globals>
@@ -57,6 +69,7 @@ where
             globals,
             frame,
             previous_frames: Vec::with_capacity(100),
+            soft_trunc: None,
         }
     }
 
@@ -76,7 +89,7 @@ where
 
     #[inline]
     pub fn interpret(&mut self, op_code: &OpCode) -> Result<(), InterpreterError> {
-        // debug_stack(op_code, self.stack, &self.frame);
+        debug_stack(op_code, self.stack, &self.frame);
 
         Ok(match op_code {
             OpCode::Global(i) => self.global(*i),
@@ -139,7 +152,13 @@ where
                 //         x = 1
                 //
                 // when x=2, we need to know it's a inherited variable
-                StackValue::Function(_) => (),
+                StackValue::Function(_) => {
+                    self.soft_trunc = Some(SoftTrunc {
+                        pos: self.frame.get_position(),
+                        name: self.frame.get_function_name().to_owned(),
+                    });
+                    println!("SOFT TRUNC {}", self.soft_trunc.as_ref().unwrap());
+                }
                 _ => self.stack.truncate(self.frame.get_position()),
             }
 
@@ -165,7 +184,13 @@ where
         self.previous_frames.push(std::mem::replace(
             &mut self.frame,
             CallFrame::new(func, 0, self.stack.len() - arg_count - 1),
-        ))
+        ));
+
+        if let Some(st) = &self.soft_trunc {
+            if st.name == self.frame.get_function_name() {
+                self.soft_trunc = None;
+            }
+        }
     }
 
     fn call_native(
@@ -239,10 +264,28 @@ where
 
     #[inline]
     fn get_inherited_local(&mut self, pos: &InheritedLocalPos) {
-        let frame = self.previous_frames.iter().nth(pos.get_depth()).unwrap();
-        self.stack.push(StackValue::StackReference(
-            pos.get_pos() + frame.get_position() - 1,
-        ))
+        if self.soft_trunc.is_some() {
+            println!(
+                "GET INHN {} PREVIOUS FRAME LEN {} POS {}",
+                self.soft_trunc.as_ref().unwrap(),
+                self.previous_frames.len(),
+                pos.get_pos()
+            );
+        }
+
+        let index = self
+            .previous_frames
+            .iter()
+            .nth(pos.get_depth())
+            .and_then(|f| Some(f.get_position()))
+            .or_else(|| match &self.soft_trunc {
+                Some(st) => Some(st.pos),
+                None => None,
+            })
+            .unwrap();
+
+        self.stack
+            .push(StackValue::StackReference(pos.get_pos() + index - 1))
     }
 
     fn set_inherited_local(&mut self, pos: &InheritedLocalPos) {
