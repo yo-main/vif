@@ -89,7 +89,7 @@ where
 
     #[inline]
     pub fn interpret(&mut self, op_code: &OpCode) -> Result<(), InterpreterError> {
-        debug_stack(op_code, self.stack, &self.frame);
+        // debug_stack(op_code, self.stack, &self.frame);
 
         Ok(match op_code {
             OpCode::Global(i) => self.global(*i),

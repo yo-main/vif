@@ -1,3 +1,49 @@
+/*
+This module checks that mutability is coherent through the whole program.
+If a variable is declared as mutable, the module will ensure that only mutable values can be assigned it.
+It will also ensure that a variable not declared a mutable cannot be mutated.
+
+It's okay to pass a mutable value to a const variable. The opposite is not.
+
+First, what is a mutable value ?
+It's a core type (int, string, bool...) or a variable declared as mutable.
+Basically everything is mutable until it lands into a variable that is not mutable.
+From that moment, the value hold by the variable cannot be mutated.
+
+The goal of that module is to ensure this statement is true at compile time.
+
+And the complexity hides into functions, their parameters and their return value.
+
+A function's parameter can be mutable or not. We cannot pass a const variable to a mutable parameter,
+otherwise the value could be modifed from inside the function and we don't want that.
+
+A function's return value must also be defined as mutable or not. If not, how do we know if we can
+store in a mutable variable the result from a function. Say that the function the value from a const parameter,
+if we allow storing that return in a mutable variable, it'll be modified. And the variable that hold the const
+value won't expect that.
+
+Example
+```vif
+def hello(s):
+    return s
+
+var const_var = "world"
+var mut mut_var = hello(const_var)
+
+mut_var = "hahaha" ## should not be allowed
+```
+
+The module parses the AST and keeps track of all variables and functions in a `References` object.
+Every time a variable is assigned a new value, we check that the value being assigned is in
+that reference object and is mutable.
+
+For a function to be "considered" as mutable, all of the possible return values from that function
+must be mutable. If not, the function return value is not considered as mutable.
+
+Initially we don't know if a function result is mutable or not, it's the module that will compute
+this information and update the AST function nodes accordingly
+*/
+
 use crate::error::TypingError;
 
 use vif_objects::ast::Assert;

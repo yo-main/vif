@@ -40,3 +40,4 @@ def sum(a, b, c):
 	return add()
 
 assert sum(1, 2, 3) == 3
+
