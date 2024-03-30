@@ -46,6 +46,9 @@ this information and update the AST function nodes accordingly
 
 use crate::error::TypingError;
 
+use crate::references::Reference;
+use crate::references::References;
+use crate::references::VariableReference;
 use vif_objects::ast::Assert;
 use vif_objects::ast::Condition;
 use vif_objects::ast::Expr;
@@ -54,127 +57,8 @@ use vif_objects::ast::Function;
 use vif_objects::ast::LogicalOperator;
 use vif_objects::ast::Return;
 use vif_objects::ast::Stmt;
-use vif_objects::ast::Typing;
 use vif_objects::ast::Value;
 use vif_objects::ast::While;
-
-#[derive(Debug, Clone)]
-struct VariableReference {
-    name: String,
-    typing: Typing,
-}
-
-impl std::cmp::PartialEq for VariableReference {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name && self.typing.mutable == other.typing.mutable
-    }
-}
-
-impl VariableReference {
-    fn new(name: String, typing: Typing) -> Self {
-        Self { name, typing }
-    }
-}
-
-struct FunctionReference {
-    name: String,
-    typing: Typing,
-    parameters: Vec<VariableReference>,
-}
-
-enum Reference {
-    Variable(VariableReference),
-    Function(FunctionReference),
-}
-
-impl Reference {
-    fn new_variable(name: String, typing: Typing) -> Self {
-        Self::Variable(VariableReference { name, typing })
-    }
-
-    fn new_function(name: String, parameters: Vec<VariableReference>, typing: Typing) -> Self {
-        Self::Function(FunctionReference {
-            name,
-            parameters,
-            typing,
-        })
-    }
-}
-
-impl std::fmt::Display for Reference {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Variable(v) => write!(f, "var {}", v.name),
-            Self::Function(v) => write!(f, "func {} {:?}", v.name, v.parameters),
-        }
-    }
-}
-
-impl std::fmt::Debug for Reference {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Variable(v) => write!(f, "var {}", v.name),
-            Self::Function(v) => write!(f, "func {} {:?}", v.name, v.parameters),
-        }
-    }
-}
-
-struct References {
-    references: Vec<Reference>,
-}
-
-impl std::fmt::Display for References {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            self.references
-                .iter()
-                .map(|r| format!("{r}"))
-                .collect::<Vec<String>>()
-                .join(", ")
-        )
-    }
-}
-
-impl References {
-    fn new() -> Self {
-        References {
-            references: Vec::new(),
-        }
-    }
-
-    fn len(&self) -> usize {
-        self.references.len()
-    }
-
-    fn truncate(&mut self, value: usize) {
-        self.references.truncate(value)
-    }
-
-    fn push(&mut self, value: Reference) {
-        self.references.push(value)
-    }
-
-    fn contain_mutable_reference(&self, name: &str) -> bool {
-        self.references
-            .iter()
-            .rev()
-            .find(|r| match r {
-                Reference::Variable(v) if v.name == name && v.typing.mutable => true,
-                Reference::Function(f) if f.name == name && f.typing.mutable => true,
-                _ => false,
-            })
-            .is_some()
-    }
-
-    fn get_function(&self, name: &str) -> Option<&FunctionReference> {
-        self.references.iter().rev().find_map(|r| match r {
-            Reference::Function(f) if f.name == name => Some(f),
-            _ => None,
-        })
-    }
-}
 
 pub fn check_mutability(mut function: Function) -> Result<Function, TypingError> {
     let mut references = References::new();
