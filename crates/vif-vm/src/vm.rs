@@ -157,7 +157,6 @@ where
                         pos: self.frame.get_position(),
                         name: self.frame.get_function_name().to_owned(),
                     });
-                    println!("SOFT TRUNC {}", self.soft_trunc.as_ref().unwrap());
                 }
                 _ => self.stack.truncate(self.frame.get_position()),
             }
@@ -264,25 +263,17 @@ where
 
     #[inline]
     fn get_inherited_local(&mut self, pos: &InheritedLocalPos) {
-        if self.soft_trunc.is_some() {
-            println!(
-                "GET INHN {} PREVIOUS FRAME LEN {} POS {}",
-                self.soft_trunc.as_ref().unwrap(),
-                self.previous_frames.len(),
-                pos.get_pos()
-            );
-        }
-
         let index = self
             .previous_frames
             .iter()
             .nth(pos.get_depth())
-            .and_then(|f| Some(f.get_position()))
-            .or_else(|| match &self.soft_trunc {
-                Some(st) => Some(st.pos),
-                None => None,
-            })
-            .unwrap();
+            .map_or_else(
+                || match &self.soft_trunc {
+                    Some(st) => st.pos,
+                    None => panic!("Bye"),
+                },
+                |f| f.get_position(),
+            );
 
         self.stack
             .push(StackValue::StackReference(pos.get_pos() + index - 1))
