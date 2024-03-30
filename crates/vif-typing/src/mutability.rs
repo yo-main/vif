@@ -54,30 +54,31 @@ use vif_objects::ast::Function;
 use vif_objects::ast::LogicalOperator;
 use vif_objects::ast::Return;
 use vif_objects::ast::Stmt;
+use vif_objects::ast::Typing;
 use vif_objects::ast::Value;
 use vif_objects::ast::While;
 
 #[derive(Debug, Clone)]
 struct VariableReference {
     name: String,
-    mutable: bool,
+    typing: Typing,
 }
 
 impl std::cmp::PartialEq for VariableReference {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name && self.mutable == other.mutable
+        self.name == other.name && self.typing.mutable == other.typing.mutable
     }
 }
 
 impl VariableReference {
-    fn new(name: String, mutable: bool) -> Self {
-        Self { name, mutable }
+    fn new(name: String, typing: Typing) -> Self {
+        Self { name, typing }
     }
 }
 
 struct FunctionReference {
     name: String,
-    mutable: bool,
+    typing: Typing,
     parameters: Vec<VariableReference>,
 }
 
@@ -87,15 +88,15 @@ enum Reference {
 }
 
 impl Reference {
-    fn new_variable(name: String, mutable: bool) -> Self {
-        Self::Variable(VariableReference { name, mutable })
+    fn new_variable(name: String, typing: Typing) -> Self {
+        Self::Variable(VariableReference { name, typing })
     }
 
-    fn new_function(name: String, mutable: bool, parameters: Vec<VariableReference>) -> Self {
+    fn new_function(name: String, parameters: Vec<VariableReference>, typing: Typing) -> Self {
         Self::Function(FunctionReference {
             name,
-            mutable,
             parameters,
+            typing,
         })
     }
 }
@@ -160,8 +161,8 @@ impl References {
             .iter()
             .rev()
             .find(|r| match r {
-                Reference::Variable(v) if v.name == name && v.mutable => true,
-                Reference::Function(f) if f.name == name && f.mutable => true,
+                Reference::Variable(v) if v.name == name && v.typing.mutable => true,
+                Reference::Function(f) if f.name == name && f.typing.mutable => true,
                 _ => false,
             })
             .is_some()
@@ -185,8 +186,11 @@ fn check_function(function: &mut Function, references: &mut References) -> Resul
     let index = references.len();
 
     for param in function.params.iter() {
-        if param.mutable {
-            references.push(Reference::new_variable(param.name.clone(), true));
+        if param.typing.mutable {
+            references.push(Reference::new_variable(
+                param.name.clone(),
+                param.typing.clone(),
+            ));
         };
     }
 
@@ -194,25 +198,25 @@ fn check_function(function: &mut Function, references: &mut References) -> Resul
 
     references.truncate(index);
 
-    function.mutable = function
+    function.typing.mutable = function
         .body
         .iter()
         .filter_map(|s| match s {
             Stmt::Return(r) => Some(r),
             _ => None,
         })
-        .all(|r| r.value.mutable);
+        .all(|r| r.value.typing.mutable);
 
     let parameters = function
         .params
         .iter()
-        .map(|p| VariableReference::new(p.name.clone(), p.mutable))
+        .map(|p| VariableReference::new(p.name.clone(), p.typing.clone()))
         .collect::<Vec<VariableReference>>();
 
     references.push(Reference::new_function(
         function.name.clone(),
-        function.mutable,
         parameters,
+        function.typing.clone(),
     ));
 
     Ok(())
@@ -230,22 +234,22 @@ fn check_statement(stmt: &mut Stmt, references: &mut References) -> Result<(), T
         Stmt::Var(v) => {
             check_expression(&mut v.value, references)?;
 
-            if v.mutable && !v.value.mutable {
+            if v.typing.mutable && !v.value.typing.mutable {
                 return Err(TypingError::Mutability(format!(
                     "Cannot set non mutable expression to mutable variable {}",
                     v.name
                 )));
             }
 
-            if v.mutable {
-                references.push(Reference::new_variable(v.name.clone(), true));
+            if v.typing.mutable {
+                references.push(Reference::new_variable(v.name.clone(), v.typing.clone()));
             }
 
             if let Some(params) = get_function_parameters(&v.value, references) {
                 references.push(Reference::new_function(
                     v.name.clone(),
-                    v.value.mutable,
                     params.clone(),
+                    v.value.typing.clone(),
                 ));
             }
 
@@ -265,12 +269,12 @@ fn check_expression(expr: &mut Expr, references: &mut References) -> Result<(), 
     match &mut expr.body {
         ExprBody::Value(Value::Variable(v)) => {
             if references.contain_mutable_reference(v.as_str()) {
-                expr.mutable = true;
+                expr.typing.mutable = true;
             }
         }
         ExprBody::Call(c) => {
             check_expression(&mut c.callee, references)?;
-            expr.mutable = c.callee.mutable;
+            expr.typing.mutable = c.callee.typing.mutable;
             for arg in c.arguments.iter_mut() {
                 check_expression(arg, references)?;
             }
@@ -290,7 +294,7 @@ fn check_expression(expr: &mut Expr, references: &mut References) -> Result<(), 
             }
 
             for (arg, param) in c.arguments.iter().zip(parameters.iter()) {
-                if param.mutable && !arg.mutable {
+                if param.typing.mutable && !arg.typing.mutable {
                     return Err(TypingError::Mutability(format!(
                         "Cannot pass {} argument (non mutable) to {} parameter (mutable)",
                         arg.body, param.name
@@ -301,15 +305,15 @@ fn check_expression(expr: &mut Expr, references: &mut References) -> Result<(), 
         ExprBody::Binary(b) => {
             check_expression(&mut b.left, references)?;
             check_expression(&mut b.right, references)?;
-            expr.mutable = true;
+            expr.typing.mutable = true;
         }
         ExprBody::Unary(u) => {
             check_expression(&mut u.right, references)?;
-            expr.mutable = u.right.mutable;
+            expr.typing.mutable = u.right.typing.mutable;
         }
         ExprBody::Grouping(g) => {
             check_expression(&mut g.expr, references)?;
-            expr.mutable = g.expr.mutable;
+            expr.typing.mutable = g.expr.typing.mutable;
         }
         ExprBody::Assign(a) => {
             if !references.contain_mutable_reference(&a.name) {
@@ -319,17 +323,17 @@ fn check_expression(expr: &mut Expr, references: &mut References) -> Result<(), 
                 )));
             }
             check_expression(&mut a.value, references)?;
-            expr.mutable = a.value.mutable;
+            expr.typing.mutable = a.value.typing.mutable;
         }
         ExprBody::Logical(l) => {
             check_expression(&mut l.left, references)?;
             check_expression(&mut l.right, references)?;
             match l.operator {
                 LogicalOperator::And => {
-                    expr.mutable = true;
+                    expr.typing.mutable = true;
                 }
                 LogicalOperator::Or => {
-                    expr.mutable = l.left.mutable && l.right.mutable;
+                    expr.typing.mutable = l.left.typing.mutable && l.right.typing.mutable;
                 }
             }
         }

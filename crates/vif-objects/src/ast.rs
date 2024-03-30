@@ -64,14 +64,14 @@ pub struct Grouping {
 #[derive(Debug, PartialEq)]
 pub struct VariableReference {
     pub name: String,
-    pub mutable: bool,
+    pub typing: Typing,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct Variable {
     pub name: String,
-    pub mutable: bool,
     pub value: Box<Expr>,
+    pub typing: Typing,
 }
 
 #[derive(Debug, PartialEq)]
@@ -96,6 +96,26 @@ pub struct Assert {
     pub value: Box<Expr>,
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct Callable {
+    pub parameters: Vec<bool>, // None if not a callable, bool being is_mutable from the parameters
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Typing {
+    pub mutable: bool,
+    pub callable: Option<Callable>, // None if not a callable, bool being is_mutable from the parameters
+}
+
+impl Typing {
+    pub fn new(mutable: bool) -> Self {
+        Self {
+            mutable,
+            callable: None,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum Number {
     Integer(i64),
@@ -105,7 +125,7 @@ pub enum Number {
 #[derive(Debug, PartialEq)]
 pub struct FunctionParameter {
     pub name: String,
-    pub mutable: bool,
+    pub typing: Typing,
 }
 
 #[derive(Debug, PartialEq)]
@@ -113,7 +133,7 @@ pub struct Function {
     pub name: String,
     pub params: Vec<FunctionParameter>,
     pub body: Vec<Stmt>,
-    pub mutable: bool,
+    pub typing: Typing,
 }
 
 #[derive(Debug, PartialEq)]
@@ -158,7 +178,7 @@ pub struct Logical {
 #[derive(Debug, PartialEq)]
 pub struct Expr {
     pub body: ExprBody,
-    pub mutable: bool,
+    pub typing: Typing,
 }
 
 #[derive(Debug, PartialEq)]
@@ -186,8 +206,8 @@ pub enum Stmt {
 }
 
 impl Expr {
-    pub fn new(body: ExprBody, mutable: bool) -> Self {
-        Expr { body, mutable }
+    pub fn new(body: ExprBody, typing: Typing) -> Self {
+        Expr { body, typing }
     }
 }
 
@@ -279,7 +299,7 @@ impl std::fmt::Display for Number {
 
 impl std::fmt::Display for VariableReference {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.mutable {
+        if self.typing.mutable {
             write!(f, "mut {}", self.name)
         } else {
             write!(f, "{}", self.name)
