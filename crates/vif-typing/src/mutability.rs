@@ -150,9 +150,10 @@ fn check_statement(stmt: &mut Stmt, references: &mut References) -> Result<(), T
                 )));
             }
 
-            if v.typing.mutable {
-                references.push(Reference::new_variable(v.name.clone(), v.typing.clone()));
-            }
+            // if v.typing.mutable {
+            v.typing.callable = v.value.typing.callable.clone();
+            references.push(Reference::new_variable(v.name.clone(), v.typing.clone()));
+            // }
 
             if let Some(params) = get_function_parameters(&v.value, references) {
                 references.push(Reference::new_function(
@@ -184,6 +185,15 @@ fn check_expression(expr: &mut Expr, references: &mut References) -> Result<(), 
         ExprBody::Call(c) => {
             check_expression(&mut c.callee, references)?;
             expr.typing.mutable = c.callee.typing.mutable;
+
+            let names = get_callable_name(&c.callee);
+            if names.is_empty() {
+                panic!("Should not be empty");
+            }
+            if let Some(typing) = references.get_typing(names[0]) {
+                expr.typing = typing;
+            };
+
             for arg in c.arguments.iter_mut() {
                 check_expression(arg, references)?;
             }
@@ -214,6 +224,12 @@ fn check_expression(expr: &mut Expr, references: &mut References) -> Result<(), 
         ExprBody::Binary(b) => {
             check_expression(&mut b.left, references)?;
             check_expression(&mut b.right, references)?;
+            if b.left.typing.callable != b.right.typing.callable {
+                return Err(TypingError::Signature(format!(
+                    "{} and {} don't have the same signature: {:?} {:?}",
+                    b.left, b.right, b.left.typing.callable, b.right.typing.callable
+                )));
+            }
             expr.typing.mutable = true;
             expr.typing.callable = b.left.typing.callable.clone();
         }
@@ -238,6 +254,12 @@ fn check_expression(expr: &mut Expr, references: &mut References) -> Result<(), 
         ExprBody::Logical(l) => {
             check_expression(&mut l.left, references)?;
             check_expression(&mut l.right, references)?;
+            if l.left.typing.callable != l.right.typing.callable {
+                return Err(TypingError::Signature(format!(
+                    "{} and {} don't have the same signature",
+                    l.left, l.right
+                )));
+            }
             match l.operator {
                 LogicalOperator::And => {
                     expr.typing.mutable = true;
@@ -246,6 +268,7 @@ fn check_expression(expr: &mut Expr, references: &mut References) -> Result<(), 
                     expr.typing.mutable = l.left.typing.mutable && l.right.typing.mutable;
                 }
             }
+            expr.typing.callable = l.left.typing.callable.clone();
         }
         ExprBody::LoopKeyword(_) => (),
         ExprBody::Value(_) => (),
@@ -406,6 +429,7 @@ fn get_callable_name(expr: &Expr) -> Vec<&str> {
         ExprBody::Value(Value::Variable(v)) => {
             vec![v]
         }
+        ExprBody::Call(c) => get_callable_name(&c.callee),
         _ => Vec::new(),
     }
 }

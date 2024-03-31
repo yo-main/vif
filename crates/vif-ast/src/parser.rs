@@ -205,7 +205,7 @@ impl<'a> Parser<'a> {
 
         Ok(ast::Stmt::Var(ast::Variable {
             name,
-            typing: Typing::new(mutable),
+            typing: Typing::new_callable(mutable, expr.typing.callable.clone()),
             value: expr,
         }))
     }
@@ -715,7 +715,7 @@ mod tests {
             parser.ast[0],
             Stmt::Var(Variable {
                 name: "coucou".to_owned(),
-                typing: Typing::new(false),
+                typing: Typing::new_no_callable(false),
                 value: Box::new(Expr::new(
                     ExprBody::Unary(Unary {
                         operator: UnaryOperator::Minus,
@@ -744,7 +744,7 @@ mod tests {
             parser.ast[0],
             Stmt::Var(Variable {
                 name: "coucou".to_owned(),
-                typing: Typing::new(true),
+                typing: Typing::new_no_callable(true),
                 value: Box::new(Expr::new(
                     ExprBody::Unary(Unary {
                         operator: UnaryOperator::Minus,
