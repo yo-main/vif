@@ -94,8 +94,23 @@ impl References {
         self.references.truncate(value)
     }
 
+    pub fn slice_from(&self, index: usize) -> Vec<&Reference> {
+        self.references[index..].iter().collect()
+    }
+
     pub fn push(&mut self, value: Reference) {
         self.references.push(value)
+    }
+
+    pub fn get_typing(&self, name: &str) -> Option<Typing> {
+        for reference in self.references.iter() {
+            match reference {
+                Reference::Variable(v) if v.name == name => return Some(v.typing.clone()),
+                Reference::Function(f) if f.name == name => return Some(f.typing.clone()),
+                _ => (),
+            };
+        }
+        None
     }
 
     pub fn contain_mutable_reference(&self, name: &str) -> bool {

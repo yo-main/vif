@@ -96,9 +96,23 @@ pub struct Assert {
     pub value: Box<Expr>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone)]
 pub struct Callable {
     pub parameters: Vec<bool>, // None if not a callable, bool being is_mutable from the parameters
+}
+
+impl std::default::Default for Callable {
+    fn default() -> Self {
+        Callable {
+            parameters: Vec::new(),
+        }
+    }
+}
+
+impl PartialEq for Callable {
+    fn eq(&self, other: &Self) -> bool {
+        self.parameters == other.parameters
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -112,6 +126,17 @@ impl Typing {
         Self {
             mutable,
             callable: None,
+        }
+    }
+
+    pub fn new_callable(mutable: bool, callable: Option<Callable>) -> Self {
+        Self { mutable, callable }
+    }
+
+    pub fn new_no_callable(mutable: bool) -> Self {
+        Self {
+            mutable,
+            callable: Some(Callable::default()),
         }
     }
 }
