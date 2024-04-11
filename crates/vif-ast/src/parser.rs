@@ -1,11 +1,11 @@
 use crate::error::AstError;
 use vif_objects::ast;
-use vif_objects::ast::Callable;
 use vif_objects::ast::Expr;
 use vif_objects::ast::ExprBody;
 use vif_objects::ast::Function;
 use vif_objects::ast::Typing;
 use vif_objects::ast::Value;
+use vif_objects::ast::Variable;
 use vif_scanner::Scanner;
 use vif_scanner::Token;
 use vif_scanner::TokenType;
@@ -30,7 +30,7 @@ impl<'a> Parser<'a> {
             name: "Main".to_owned(),
             params: Vec::new(),
             body: self.ast,
-            typing: Typing::new_no_callable(false),
+            typing: Typing::new(false),
         }
     }
 
@@ -119,12 +119,7 @@ impl<'a> Parser<'a> {
             "Expect new line after function declaration",
         )?;
 
-        let mut func = Function {
-            name,
-            params: parameters,
-            body: self.block()?,
-            typing: Typing::new(false),
-        };
+        let func = Function::new(name, parameters, self.block()?);
 
         Ok(ast::Stmt::Function(func))
     }
@@ -145,10 +140,9 @@ impl<'a> Parser<'a> {
         self.scanner.scan().unwrap();
 
         let value = match self.scanner.peek() {
-            Ok(t) if t.r#type == TokenType::NewLine => Box::new(Expr::new(
-                ExprBody::Value(Value::None),
-                Typing::new_no_callable(false),
-            )),
+            Ok(t) if t.r#type == TokenType::NewLine => {
+                Box::new(Expr::new(ExprBody::Value(Value::None), Typing::new(false)))
+            }
             _ => self.expression()?,
         };
         let stmt = ast::Assert { value };
@@ -203,11 +197,7 @@ impl<'a> Parser<'a> {
             "Expected new line after variable declaration",
         )?;
 
-        Ok(ast::Stmt::Var(ast::Variable {
-            name,
-            typing: Typing::new_callable(mutable, expr.typing.callable.clone()),
-            value: expr,
-        }))
+        Ok(ast::Stmt::Var(Variable::new(name, expr, mutable)))
     }
 
     fn unary(&mut self) -> Result<Box<Expr>, AstError> {
@@ -235,10 +225,9 @@ impl<'a> Parser<'a> {
         self.scanner.scan().unwrap();
 
         let value = match self.scanner.peek() {
-            Ok(t) if t.r#type == TokenType::NewLine => Box::new(Expr::new(
-                ExprBody::Value(Value::None),
-                Typing::new_no_callable(true),
-            )),
+            Ok(t) if t.r#type == TokenType::NewLine => {
+                Box::new(Expr::new(ExprBody::Value(Value::None), Typing::new(true)))
+            }
             _ => self.expression()?,
         };
         let stmt = ast::Return { value };
@@ -350,20 +339,14 @@ impl<'a> Parser<'a> {
         if self.scanner.check(&TokenType::Or) {
             self.scanner.scan().unwrap();
             let right = self.or()?;
-            if left.typing.callable != right.typing.callable {
-                return Err(AstError::SyntaxError(format!(
-                    "{left} and {right} don't have the same signature"
-                )));
-            }
-            let mutable = left.typing.mutable & right.typing.mutable;
-            let callable = left.typing.callable.clone();
+            let typing = Typing::new(left.typing.mutable & right.typing.mutable);
             return Ok(Box::new(Expr::new(
                 ExprBody::Logical(ast::Logical {
                     left,
                     operator: ast::LogicalOperator::Or,
                     right,
                 }),
-                Typing::new_callable(mutable, callable),
+                typing,
             )));
         };
 
@@ -563,46 +546,39 @@ impl<'a> Parser<'a> {
         let next = self.scanner.scan().unwrap();
 
         Ok(match next.r#type {
-            TokenType::False => Box::new(Expr::new(
-                ExprBody::Value(Value::False),
-                Typing::new_no_callable(true),
-            )),
-            TokenType::True => Box::new(Expr::new(
-                ExprBody::Value(Value::True),
-                Typing::new_no_callable(true),
-            )),
-            TokenType::None => Box::new(Expr::new(
-                ExprBody::Value(Value::None),
-                Typing::new_no_callable(true),
-            )),
+            TokenType::False => {
+                Box::new(Expr::new(ExprBody::Value(Value::False), Typing::new(true)))
+            }
+            TokenType::True => Box::new(Expr::new(ExprBody::Value(Value::True), Typing::new(true))),
+            TokenType::None => Box::new(Expr::new(ExprBody::Value(Value::None), Typing::new(true))),
             TokenType::Integer(i) => Box::new(Expr::new(
                 ExprBody::Value(Value::Integer(i)),
-                Typing::new_no_callable(true),
+                Typing::new(true),
             )),
             TokenType::Float(f) => Box::new(Expr::new(
                 ExprBody::Value(Value::Float(f)),
-                Typing::new_no_callable(true),
+                Typing::new(true),
             )),
             TokenType::String(s) => Box::new(Expr::new(
                 ExprBody::Value(Value::String(s)),
-                Typing::new_no_callable(true),
+                Typing::new(true),
             )),
             TokenType::Identifier(s) => Box::new(Expr::new(
                 ExprBody::Value(Value::Variable(s.to_owned())),
-                Typing::new_no_callable(false),
+                Typing::new(false),
             )),
             TokenType::Break => {
                 self.consume(TokenType::NewLine, "Expect new line after break")?;
                 Box::new(Expr::new(
                     ExprBody::LoopKeyword(ast::LoopKeyword::Break),
-                    Typing::new_no_callable(false),
+                    Typing::new(false),
                 ))
             }
             TokenType::Continue => {
                 self.consume(TokenType::NewLine, "Expect new line after continue")?;
                 Box::new(Expr::new(
                     ExprBody::LoopKeyword(ast::LoopKeyword::Continue),
-                    Typing::new_no_callable(false),
+                    Typing::new(false),
                 ))
             }
             TokenType::EOF => return Err(AstError::EOF),
@@ -651,7 +627,6 @@ mod tests {
     use super::ast::UnaryOperator;
     use super::ast::Value;
     use super::ast::Variable;
-    use super::ast::VariableReference;
     use super::Expr;
     use super::ExprBody;
     use super::Parser;
@@ -671,7 +646,7 @@ mod tests {
             parser.ast[0],
             Stmt::Expression(Box::new(Expr::new(
                 ExprBody::Value(Value::String("This is a simple string".to_owned())),
-                Typing::new_no_callable(true)
+                Typing::new(true)
             )))
         );
     }
@@ -693,10 +668,10 @@ mod tests {
                     operator: UnaryOperator::Minus,
                     right: Box::new(Expr::new(
                         ExprBody::Value(Value::Integer(1)),
-                        Typing::new_no_callable(true)
+                        Typing::new(true)
                     ))
                 }),
-                Typing::new_no_callable(true)
+                Typing::new(true)
             )))
         );
     }
@@ -715,16 +690,16 @@ mod tests {
             parser.ast[0],
             Stmt::Var(Variable {
                 name: "coucou".to_owned(),
-                typing: Typing::new_no_callable(false),
+                typing: Typing::new(false),
                 value: Box::new(Expr::new(
                     ExprBody::Unary(Unary {
                         operator: UnaryOperator::Minus,
                         right: Box::new(Expr::new(
                             ExprBody::Value(Value::Integer(1)),
-                            Typing::new_no_callable(true)
+                            Typing::new(true)
                         ))
                     }),
-                    Typing::new_no_callable(true),
+                    Typing::new(true),
                 ))
             })
         );
@@ -744,16 +719,16 @@ mod tests {
             parser.ast[0],
             Stmt::Var(Variable {
                 name: "coucou".to_owned(),
-                typing: Typing::new_no_callable(true),
+                typing: Typing::new(true),
                 value: Box::new(Expr::new(
                     ExprBody::Unary(Unary {
                         operator: UnaryOperator::Minus,
                         right: Box::new(Expr::new(
                             ExprBody::Value(Value::Integer(1)),
-                            Typing::new_no_callable(true)
+                            Typing::new(true)
                         ))
                     }),
-                    Typing::new_no_callable(true)
+                    Typing::new(true)
                 ))
             })
         );
@@ -775,19 +750,19 @@ mod tests {
                 ExprBody::Binary(Binary {
                     left: Box::new(Expr::new(
                         ExprBody::Value(Value::Integer(4)),
-                        Typing::new_no_callable(true)
+                        Typing::new(true)
                     )),
                     operator: Operator::Equal,
                     right: Box::new(Expr::new(
                         ExprBody::Binary(Binary {
                             left: Box::new(Expr::new(
                                 ExprBody::Value(Value::Integer(3)),
-                                Typing::new_no_callable(true)
+                                Typing::new(true)
                             )),
                             operator: Operator::Plus,
                             right: Box::new(Expr::new(
                                 ExprBody::Value(Value::Integer(1)),
-                                Typing::new_no_callable(true)
+                                Typing::new(true)
                             )),
                         }),
                         Typing::new(true)
@@ -812,15 +787,9 @@ mod tests {
             parser.ast[0],
             Stmt::Expression(Box::new(Expr::new(
                 ExprBody::Logical(Logical {
-                    left: Box::new(Expr::new(
-                        ExprBody::Value(Value::True),
-                        Typing::new_no_callable(true)
-                    )),
+                    left: Box::new(Expr::new(ExprBody::Value(Value::True), Typing::new(true))),
                     operator: LogicalOperator::And,
-                    right: Box::new(Expr::new(
-                        ExprBody::Value(Value::False),
-                        Typing::new_no_callable(true)
-                    )),
+                    right: Box::new(Expr::new(ExprBody::Value(Value::False), Typing::new(true))),
                 }),
                 Typing::new(true)
             )))
@@ -841,17 +810,11 @@ mod tests {
             parser.ast[0],
             Stmt::Expression(Box::new(Expr::new(
                 ExprBody::Logical(Logical {
-                    left: Box::new(Expr::new(
-                        ExprBody::Value(Value::True),
-                        Typing::new_no_callable(true)
-                    )),
+                    left: Box::new(Expr::new(ExprBody::Value(Value::True), Typing::new(true))),
                     operator: LogicalOperator::Or,
-                    right: Box::new(Expr::new(
-                        ExprBody::Value(Value::False),
-                        Typing::new_no_callable(true)
-                    )),
+                    right: Box::new(Expr::new(ExprBody::Value(Value::False), Typing::new(true))),
                 }),
-                Typing::new_no_callable(true)
+                Typing::new(true)
             )))
         );
     }
@@ -872,11 +835,11 @@ mod tests {
                 ExprBody::Call(Call {
                     callee: Box::new(Expr::new(
                         ExprBody::Value(Value::Variable("my_function".to_owned())),
-                        Typing::new_no_callable(false)
+                        Typing::new(false)
                     )),
                     arguments: Vec::new(),
                 }),
-                Typing::new_no_callable(false)
+                Typing::new(false)
             )))
         );
     }
@@ -897,24 +860,24 @@ mod tests {
                 ExprBody::Call(Call {
                     callee: Box::new(Expr::new(
                         ExprBody::Value(Value::Variable("my_function".to_owned())),
-                        Typing::new_no_callable(false)
+                        Typing::new(false)
                     )),
                     arguments: vec![
                         Box::new(Expr::new(
                             ExprBody::Value(Value::Variable("a".to_owned())),
-                            Typing::new_no_callable(false)
+                            Typing::new(false)
                         )),
                         Box::new(Expr::new(
                             ExprBody::Value(Value::Variable("b".to_owned())),
-                            Typing::new_no_callable(false)
+                            Typing::new(false)
                         )),
                         Box::new(Expr::new(
                             ExprBody::Value(Value::Variable("c".to_owned())),
-                            Typing::new_no_callable(false)
+                            Typing::new(false)
                         )),
                     ]
                 }),
-                Typing::new_no_callable(false)
+                Typing::new(false)
             )))
         );
     }
@@ -951,10 +914,7 @@ mod tests {
                     },
                 ],
                 body: vec![Stmt::Return(Return {
-                    value: Box::new(Expr::new(
-                        ExprBody::Value(Value::None),
-                        Typing::new_no_callable(true)
-                    ))
+                    value: Box::new(Expr::new(ExprBody::Value(Value::None), Typing::new(true)))
                 })],
                 typing: Typing::new(false)
             })
@@ -995,7 +955,7 @@ mod tests {
                 body: vec![Stmt::Return(Return {
                     value: Box::new(Expr::new(
                         ExprBody::Value(Value::Float(1.5)),
-                        Typing::new_no_callable(true)
+                        Typing::new(true)
                     ))
                 })],
                 typing: Typing::new(false)
@@ -1016,14 +976,11 @@ mod tests {
         assert_eq!(
             parser.ast[0],
             Stmt::Condition(Condition {
-                expr: Box::new(Expr::new(
-                    ExprBody::Value(Value::True),
-                    Typing::new_no_callable(true)
-                )),
+                expr: Box::new(Expr::new(ExprBody::Value(Value::True), Typing::new(true))),
                 then: Box::new(Stmt::Block(vec![Stmt::Return(Return {
                     value: Box::new(Expr::new(
                         ExprBody::Value(Value::String("coucou".to_owned())),
-                        Typing::new_no_callable(true)
+                        Typing::new(true)
                     ))
                 })])),
                 r#else: None
@@ -1044,20 +1001,17 @@ mod tests {
         assert_eq!(
             parser.ast[0],
             Stmt::Condition(Condition {
-                expr: Box::new(Expr::new(
-                    ExprBody::Value(Value::True),
-                    Typing::new_no_callable(true)
-                )),
+                expr: Box::new(Expr::new(ExprBody::Value(Value::True), Typing::new(true))),
                 then: Box::new(Stmt::Block(vec![Stmt::Return(Return {
                     value: Box::new(Expr::new(
                         ExprBody::Value(Value::String("coucou".to_owned())),
-                        Typing::new_no_callable(true)
+                        Typing::new(true)
                     ))
                 })])),
                 r#else: Some(Box::new(Stmt::Block(vec![Stmt::Return(Return {
                     value: Box::new(Expr::new(
                         ExprBody::Value(Value::String("bye".to_owned())),
-                        Typing::new_no_callable(true)
+                        Typing::new(true)
                     ))
                 })])))
             })
@@ -1082,25 +1036,19 @@ mod tests {
         assert_eq!(
             parser.ast[0],
             Stmt::Condition(Condition {
-                expr: Box::new(Expr::new(
-                    ExprBody::Value(Value::True),
-                    Typing::new_no_callable(true)
-                )),
+                expr: Box::new(Expr::new(ExprBody::Value(Value::True), Typing::new(true))),
                 then: Box::new(Stmt::Block(vec![Stmt::Return(Return {
                     value: Box::new(Expr::new(
                         ExprBody::Value(Value::String("coucou".to_owned())),
-                        Typing::new_no_callable(true)
+                        Typing::new(true)
                     ))
                 })])),
                 r#else: Some(Box::new(Stmt::Condition(Condition {
-                    expr: Box::new(Expr::new(
-                        ExprBody::Value(Value::False),
-                        Typing::new_no_callable(true)
-                    )),
+                    expr: Box::new(Expr::new(ExprBody::Value(Value::False), Typing::new(true))),
                     then: Box::new(Stmt::Block(vec![Stmt::Return(Return {
                         value: Box::new(Expr::new(
                             ExprBody::Value(Value::String("bye".to_owned())),
-                            Typing::new_no_callable(true)
+                            Typing::new(true)
                         ))
                     })])),
                     r#else: None
@@ -1129,31 +1077,25 @@ mod tests {
         assert_eq!(
             parser.ast[0],
             Stmt::Condition(Condition {
-                expr: Box::new(Expr::new(
-                    ExprBody::Value(Value::True),
-                    Typing::new_no_callable(true)
-                )),
+                expr: Box::new(Expr::new(ExprBody::Value(Value::True), Typing::new(true))),
                 then: Box::new(Stmt::Block(vec![Stmt::Return(Return {
                     value: Box::new(Expr::new(
                         ExprBody::Value(Value::String("coucou".to_owned())),
-                        Typing::new_no_callable(true)
+                        Typing::new(true)
                     ))
                 })])),
                 r#else: Some(Box::new(Stmt::Condition(Condition {
-                    expr: Box::new(Expr::new(
-                        ExprBody::Value(Value::False),
-                        Typing::new_no_callable(true)
-                    )),
+                    expr: Box::new(Expr::new(ExprBody::Value(Value::False), Typing::new(true))),
                     then: Box::new(Stmt::Block(vec![Stmt::Return(Return {
                         value: Box::new(Expr::new(
                             ExprBody::Value(Value::String("bye".to_owned())),
-                            Typing::new_no_callable(true)
+                            Typing::new(true)
                         ))
                     })])),
                     r#else: Some(Box::new(Stmt::Block(vec![Stmt::Return(Return {
                         value: Box::new(Expr::new(
                             ExprBody::Value(Value::String("hello".to_owned())),
-                            Typing::new_no_callable(true)
+                            Typing::new(true)
                         ))
                     })])))
                 })))

@@ -44,15 +44,13 @@ Initially we don't know if a function result is mutable or not, it's the module 
 this information and update the AST function nodes accordingly
 */
 
-use std::fs::File;
-
-use crate::callable;
 use crate::error::TypingError;
 
 use crate::references;
 use crate::references::Reference;
 use crate::references::References;
 use crate::references::VariableReference;
+use crate::typer;
 use vif_objects::ast::Assert;
 use vif_objects::ast::Callable;
 use vif_objects::ast::Condition;
@@ -68,80 +66,27 @@ use vif_objects::ast::While;
 
 pub fn check_mutability(mut function: Function) -> Result<Function, TypingError> {
     let mut references = References::new();
-    check_function(&mut function, &mut references)?;
+    typer::add_missing_typing(&mut function, &mut references)?;
+
+    check_function(&function)?;
     Ok(function)
 }
 
-fn check_function(function: &mut Function, references: &mut References) -> Result<(), TypingError> {
-    let index = references.len();
-    fill_in_function_param(function, references);
-
-    for param in function.params.iter_mut() {
-        if param.typing.mutable {
-            references.push(Reference::new_variable(
-                param.name.clone(),
-                param.typing.clone(),
-            ));
-        };
-    }
-
-    check_statements(&mut function.body, references)?;
-
-    references.truncate(index);
-
-    let returns = function
-        .body
-        .iter()
-        .filter_map(|s| match s {
-            Stmt::Return(r) => Some(r),
-            _ => None,
-        })
-        .collect::<Vec<&Return>>();
-
-    // update the function.typing according to its returned value(s)
-
-    let callable = if returns.is_empty() {
-        None
-    } else {
-        returns[0].value.typing.callable.clone()
-    };
-
-    if !returns.iter().all(|f| f.value.typing.callable == callable) {
-        return Err(TypingError::Signature(format!(
-            "Got several return signature on function {}",
-            function.name
-        )));
-    }
-
-    function.typing.mutable = returns.iter().all(|r| r.value.typing.mutable);
-    function.typing.callable = callable;
-
-    let parameters = function
-        .params
-        .iter()
-        .map(|p| VariableReference::new(p.name.clone(), p.typing.clone()))
-        .collect::<Vec<VariableReference>>();
-
-    references.push(Reference::new_function(
-        function.name.clone(),
-        parameters,
-        function.typing.clone(),
-    ));
-
-    Ok(())
+fn check_function(function: &Function) -> Result<(), TypingError> {
+    check_statements(&function.body)
 }
 
-fn check_statements(stmts: &mut Vec<Stmt>, references: &mut References) -> Result<(), TypingError> {
-    for stmt in stmts.iter_mut() {
-        check_statement(stmt, references)?;
+fn check_statements(stmts: &Vec<Stmt>) -> Result<(), TypingError> {
+    for stmt in stmts.iter() {
+        check_statement(stmt)?;
     }
     Ok(())
 }
 
-fn check_statement(stmt: &mut Stmt, references: &mut References) -> Result<(), TypingError> {
+fn check_statement(stmt: &Stmt) -> Result<(), TypingError> {
     match stmt {
         Stmt::Var(v) => {
-            check_expression(&mut v.value, references)?;
+            check_expression(&v.value)?;
 
             if v.typing.mutable && !v.value.typing.mutable {
                 return Err(TypingError::Mutability(format!(
@@ -150,288 +95,134 @@ fn check_statement(stmt: &mut Stmt, references: &mut References) -> Result<(), T
                 )));
             }
 
-            // if v.typing.mutable {
-            v.typing.callable = v.value.typing.callable.clone();
-            references.push(Reference::new_variable(v.name.clone(), v.typing.clone()));
-            // }
-
-            if let Some(params) = get_function_parameters(&v.value, references) {
-                references.push(Reference::new_function(
-                    v.name.clone(),
-                    params.clone(),
-                    v.value.typing.clone(),
-                ));
-            }
-
             Ok(())
         }
-        Stmt::Function(f) => check_function(f, references),
-        Stmt::Expression(e) => check_expression(e, references),
-        Stmt::Block(s) => check_statements(s, references),
-        Stmt::Condition(c) => check_condition(c, references),
-        Stmt::While(w) => check_while(w, references),
-        Stmt::Return(r) => check_return(r, references),
-        Stmt::Assert(a) => check_assert(a, references),
+        Stmt::Function(f) => check_function(f),
+        Stmt::Expression(e) => check_expression(e),
+        Stmt::Block(s) => check_statements(s),
+        Stmt::Condition(c) => {
+            check_expression(&c.expr)?;
+            check_statement(&c.r#then)?;
+            if c.r#else.is_some() {
+                check_statement(c.r#else.as_deref().unwrap())?;
+            };
+            Ok(())
+        }
+        Stmt::While(w) => {
+            check_expression(&r#w.condition)?;
+            check_statement(&r#w.body)?;
+            Ok(())
+        }
+        Stmt::Return(r) => check_expression(&r#r.value),
+        Stmt::Assert(a) => check_expression(&r#a.value),
     }
 }
 
-fn check_expression(expr: &mut Expr, references: &mut References) -> Result<(), TypingError> {
-    match &mut expr.body {
-        ExprBody::Value(Value::Variable(v)) => {
-            if let Some(typing) = references.get_typing(v.as_str()) {
-                expr.typing = typing;
-            }
-        }
+fn check_expression(expr: &Expr) -> Result<(), TypingError> {
+    match &expr.body {
+        ExprBody::Value(Value::Variable(v)) => {}
         ExprBody::Call(c) => {
-            check_expression(&mut c.callee, references)?;
-            expr.typing.mutable = c.callee.typing.mutable;
+            check_expression(&c.callee)?;
 
-            let names = get_callable_name(&c.callee);
-            if names.is_empty() {
-                panic!("Should not be empty");
-            }
-            if let Some(typing) = references.get_typing(names[0]) {
-                expr.typing = typing;
-            };
-
-            for arg in c.arguments.iter_mut() {
-                check_expression(arg, references)?;
+            for arg in c.arguments.iter() {
+                check_expression(arg)?;
             }
 
-            let parameters = get_function_parameters(&c.callee, references);
-            if parameters.is_none() {
+            if c.callee.typing.callable.is_none() {
+                // probably builtin, TO FIX
                 return Ok(());
-            };
+            }
 
-            let parameters = parameters.unwrap();
-
-            if c.arguments.len() != parameters.len() {
+            if c.arguments.len()
+                != c.callee
+                    .typing
+                    .callable
+                    .as_ref()
+                    .unwrap()
+                    .signature
+                    .parameters
+                    .len()
+            {
                 return Err(TypingError::Mutability(format!(
-                    "Wrong arguments numbers for function {}",
+                    "Wrong arguments numbers for function {}, expected {:?} got {:?}",
+                    c.callee,
                     c.callee
+                        .typing
+                        .callable
+                        .as_ref()
+                        .unwrap()
+                        .signature
+                        .parameters,
+                    c.arguments
                 )));
             }
 
-            for (arg, param) in c.arguments.iter().zip(parameters.iter()) {
-                if param.typing.mutable && !arg.typing.mutable {
+            for (arg, param_mutable) in c.arguments.iter().zip(
+                c.callee
+                    .typing
+                    .callable
+                    .as_ref()
+                    .unwrap()
+                    .signature
+                    .parameters
+                    .iter(),
+            ) {
+                if *param_mutable && !arg.typing.mutable {
                     return Err(TypingError::Mutability(format!(
-                        "Cannot pass {} argument (non mutable) to {} parameter (mutable)",
-                        arg.body, param.name
+                        "Cannot pass {} argument (non mutable) to a mutable parameter",
+                        arg.body
                     )));
                 }
             }
         }
         ExprBody::Binary(b) => {
-            check_expression(&mut b.left, references)?;
-            check_expression(&mut b.right, references)?;
+            check_expression(&b.left)?;
+            check_expression(&b.right)?;
             if b.left.typing.callable != b.right.typing.callable {
                 return Err(TypingError::Signature(format!(
                     "{} and {} don't have the same signature: {:?} {:?}",
                     b.left, b.right, b.left.typing.callable, b.right.typing.callable
                 )));
             }
-            expr.typing.mutable = true;
-            expr.typing.callable = b.left.typing.callable.clone();
         }
         ExprBody::Unary(u) => {
-            check_expression(&mut u.right, references)?;
-            expr.typing = u.right.typing.clone();
+            check_expression(&u.right)?;
         }
         ExprBody::Grouping(g) => {
-            check_expression(&mut g.expr, references)?;
-            expr.typing = g.expr.typing.clone();
+            check_expression(&g.expr)?;
         }
         ExprBody::Assign(a) => {
-            if !references.contain_mutable_reference(&a.name) {
+            let is_value_mutable = if let Some(callable) = a.value.typing.callable.as_ref() {
+                callable.output.mutable
+            } else {
+                a.value.typing.mutable
+            };
+
+            if !is_value_mutable {
                 return Err(TypingError::Mutability(format!(
                     "Cannot assign a value to {} (non mutable variable)",
                     a.name
                 )));
             }
-            check_expression(&mut a.value, references)?;
-            expr.typing = a.value.typing.clone();
+
+            check_expression(&a.value)?;
         }
         ExprBody::Logical(l) => {
-            check_expression(&mut l.left, references)?;
-            check_expression(&mut l.right, references)?;
+            check_expression(&l.left)?;
+            check_expression(&l.right)?;
+
             if l.left.typing.callable != l.right.typing.callable {
                 return Err(TypingError::Signature(format!(
                     "{} and {} don't have the same signature",
                     l.left, l.right
                 )));
             }
-            match l.operator {
-                LogicalOperator::And => {
-                    expr.typing.mutable = true;
-                }
-                LogicalOperator::Or => {
-                    expr.typing.mutable = l.left.typing.mutable && l.right.typing.mutable;
-                }
-            }
-            expr.typing.callable = l.left.typing.callable.clone();
         }
         ExprBody::LoopKeyword(_) => (),
         ExprBody::Value(_) => (),
     };
 
     Ok(())
-}
-
-fn check_condition(cond: &mut Condition, references: &mut References) -> Result<(), TypingError> {
-    check_expression(&mut cond.expr, references)?;
-    check_statement(&mut cond.r#then, references)?;
-    if cond.r#else.is_some() {
-        check_statement(cond.r#else.as_deref_mut().unwrap(), references)?;
-    };
-    Ok(())
-}
-
-fn check_while(r#while: &mut While, references: &mut References) -> Result<(), TypingError> {
-    check_expression(&mut r#while.condition, references)?;
-    check_statement(&mut r#while.body, references)?;
-    Ok(())
-}
-
-fn check_return(r#return: &mut Return, references: &mut References) -> Result<(), TypingError> {
-    check_expression(&mut r#return.value, references)
-}
-
-fn check_assert(r#assert: &mut Assert, references: &mut References) -> Result<(), TypingError> {
-    check_expression(&mut r#assert.value, references)
-}
-
-fn get_function_parameters<'a>(
-    expr: &Expr,
-    references: &'a References,
-) -> Option<&'a Vec<VariableReference>> {
-    match &expr.body {
-        ExprBody::Value(Value::Variable(s)) => references
-            .get_function(s.as_str())
-            .and_then(|f| Some(&f.parameters)),
-        ExprBody::Value(_) => None,
-        ExprBody::Call(c) => {
-            return get_function_parameters(&c.callee, references);
-        }
-        ExprBody::Unary(u) => get_function_parameters(&u.right, references),
-        ExprBody::Binary(b) => {
-            let right = get_function_parameters(&b.right, references);
-            let left = get_function_parameters(&b.left, references);
-            if right != left {}
-            return left;
-        }
-        ExprBody::Grouping(g) => get_function_parameters(&g.expr, references),
-        ExprBody::Assign(_) => None,
-        ExprBody::LoopKeyword(_) => None,
-        ExprBody::Logical(l) => {
-            let right = get_function_parameters(&l.right, references);
-            let left = get_function_parameters(&l.left, references);
-            if right != left {
-                panic!("Cannot have a logical node with 2 different callable signature")
-            }
-            return left;
-        }
-    }
-}
-
-fn fill_in_function_param<'a>(function: &mut Function, references: &'a References) {
-    for stmt in function.body.iter_mut() {
-        fill_in_function_param_stmt(&mut function.params, stmt, references);
-    }
-
-    function
-        .params
-        .iter_mut()
-        .filter(|p| p.typing.callable.is_none())
-        .for_each(|p| p.typing.callable = Some(Callable::default()));
-}
-
-fn fill_in_function_param_stmt<'a>(
-    params: &mut Vec<FunctionParameter>,
-    stmt: &Stmt,
-    references: &'a References,
-) {
-    match stmt {
-        Stmt::Expression(expr) => fill_in_function_param_expr(params, expr, references),
-        Stmt::Block(block) => {
-            for stmt in block.iter() {
-                fill_in_function_param_stmt(params, stmt, references);
-            }
-        }
-        Stmt::Condition(cond) => {
-            fill_in_function_param_expr(params, &cond.expr, references);
-            fill_in_function_param_stmt(params, &cond.then, references);
-            if let Some(stmt_else) = &cond.r#else {
-                fill_in_function_param_stmt(params, stmt_else, references);
-            }
-        }
-        Stmt::Return(ret) => {
-            fill_in_function_param_expr(params, &ret.value, references);
-        }
-        Stmt::Assert(assert) => {
-            fill_in_function_param_expr(params, &assert.value, references);
-        }
-        Stmt::While(block) => {
-            fill_in_function_param_expr(params, &block.condition, references);
-            fill_in_function_param_stmt(params, &block.body, references);
-        }
-        Stmt::Var(_) => (),
-        Stmt::Function(_) => (),
-    }
-}
-
-fn fill_in_function_param_expr<'a>(
-    params: &mut Vec<FunctionParameter>,
-    expr: &Expr,
-    references: &'a References,
-) {
-    match &expr.body {
-        ExprBody::Binary(binary) => {
-            fill_in_function_param_expr(params, &binary.left, references);
-            fill_in_function_param_expr(params, &binary.right, references);
-        }
-        ExprBody::Unary(unary) => fill_in_function_param_expr(params, &unary.right, references),
-        ExprBody::Grouping(grouping) => {
-            fill_in_function_param_expr(params, &grouping.expr, references)
-        }
-        ExprBody::Assign(assign) => fill_in_function_param_expr(params, &assign.value, references),
-        ExprBody::Logical(logical) => {
-            fill_in_function_param_expr(params, &logical.left, references);
-            fill_in_function_param_expr(params, &logical.right, references);
-        }
-        ExprBody::Call(call) => update_param_from_callee(params, &call.callee),
-        _ => (),
-    }
-}
-
-fn update_param_from_callee(params: &mut Vec<FunctionParameter>, callee: &Expr) {
-    let callable_name = get_callable_name(callee);
-    for param in params.iter_mut() {
-        if param.typing.callable.is_none() && callable_name.contains(&param.name.as_str()) {
-            param.typing.callable = callee.typing.callable.clone();
-        }
-    }
-}
-
-fn get_callable_name(expr: &Expr) -> Vec<&str> {
-    match &expr.body {
-        ExprBody::Binary(binary) => {
-            let mut res = get_callable_name(&binary.left);
-            res.extend(get_callable_name(&binary.right));
-            res
-        }
-        ExprBody::Unary(unary) => get_callable_name(&unary.right),
-        ExprBody::Grouping(grouping) => get_callable_name(&grouping.expr),
-        ExprBody::Logical(logical) => {
-            let mut res = get_callable_name(&logical.left);
-            res.extend(get_callable_name(&logical.right));
-            res
-        }
-        ExprBody::Value(Value::Variable(v)) => {
-            vec![v]
-        }
-        ExprBody::Call(c) => get_callable_name(&c.callee),
-        _ => Vec::new(),
-    }
 }
 
 #[cfg(test)]

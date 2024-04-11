@@ -54,6 +54,12 @@ pub struct Unary {
     pub right: Box<Expr>,
 }
 
+impl Unary {
+    pub fn new(operator: UnaryOperator, right: Box<Expr>) -> Self {
+        Unary { operator, right }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct Grouping {
     pub left: Group,
@@ -61,17 +67,33 @@ pub struct Grouping {
     pub right: Group,
 }
 
-#[derive(Debug, PartialEq)]
-pub struct VariableReference {
-    pub name: String,
-    pub typing: Typing,
-}
+// #[derive(Debug, PartialEq)]
+// pub struct VariableReference {
+//     pub name: String,
+//     pub typing: Typing,
+// }
+
+// impl VariableReference {
+//     pub fn new(name: String, typing: Typing) -> Self {
+//         Self { name, typing }
+//     }
+// }
 
 #[derive(Debug, PartialEq)]
 pub struct Variable {
     pub name: String,
     pub value: Box<Expr>,
     pub typing: Typing,
+}
+
+impl Variable {
+    pub fn new(name: String, value: Box<Expr>, mutable: bool) -> Self {
+        Variable {
+            name,
+            value,
+            typing: Typing::new(mutable),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -97,28 +119,64 @@ pub struct Assert {
 }
 
 #[derive(Debug, Clone)]
-pub struct Callable {
-    pub parameters: Vec<bool>, // None if not a callable, bool being is_mutable from the parameters
+pub struct Signature {
+    pub parameters: Vec<bool>,
 }
 
-impl std::default::Default for Callable {
+impl Signature {
+    pub fn new(parameters: Vec<bool>) -> Self {
+        Signature { parameters }
+    }
+}
+
+impl std::default::Default for Signature {
     fn default() -> Self {
-        Callable {
+        Signature {
             parameters: Vec::new(),
         }
     }
 }
 
-impl PartialEq for Callable {
+impl PartialEq for Signature {
     fn eq(&self, other: &Self) -> bool {
         self.parameters == other.parameters
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone)]
+pub struct Callable {
+    pub signature: Signature,
+    pub output: Typing,
+}
+
+impl PartialEq for Callable {
+    fn eq(&self, other: &Self) -> bool {
+        self.signature == other.signature && self.output == other.output
+    }
+}
+
+impl Callable {
+    pub fn new(signature: Signature, output: Typing) -> Self {
+        Self { signature, output }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Typing {
     pub mutable: bool,
-    pub callable: Option<Callable>, // None if not a callable, bool being is_mutable from the parameters
+    pub callable: Option<Box<Callable>>,
+}
+
+impl PartialEq for Typing {
+    fn eq(&self, other: &Self) -> bool {
+        self.mutable == other.mutable && self.callable == other.callable
+    }
+}
+
+impl std::fmt::Display for Typing {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "mut[{}] callable[{:?}]", self.mutable, self.callable)
+    }
 }
 
 impl Typing {
@@ -129,14 +187,16 @@ impl Typing {
         }
     }
 
-    pub fn new_callable(mutable: bool, callable: Option<Callable>) -> Self {
-        Self { mutable, callable }
-    }
-
-    pub fn new_no_callable(mutable: bool) -> Self {
-        Self {
-            mutable,
-            callable: Some(Callable::default()),
+    pub fn callable_eq(&self, other: &Option<Box<Callable>>) -> bool {
+        match &self.callable {
+            None => match other {
+                None => true,
+                _ => false,
+            },
+            Some(callable1) => match other {
+                None => false,
+                Some(callable2) => callable1.signature == callable2.signature,
+            },
         }
     }
 }
@@ -159,6 +219,17 @@ pub struct Function {
     pub params: Vec<FunctionParameter>,
     pub body: Vec<Stmt>,
     pub typing: Typing,
+}
+
+impl Function {
+    pub fn new(name: String, params: Vec<FunctionParameter>, body: Vec<Stmt>) -> Self {
+        Function {
+            typing: Typing::new(false),
+            name,
+            params,
+            body,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -205,6 +276,15 @@ pub struct Expr {
     pub body: ExprBody,
     pub typing: Typing,
 }
+
+// impl Expr {
+//     pub fn new(body: ExprBody) -> Self {
+//         Expr {
+//             typing: Typing::new(body.typing.mutable)
+//             body,
+//         }
+//     }
+// }
 
 #[derive(Debug, PartialEq)]
 pub enum ExprBody {
@@ -322,15 +402,15 @@ impl std::fmt::Display for Number {
     }
 }
 
-impl std::fmt::Display for VariableReference {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.typing.mutable {
-            write!(f, "mut {}", self.name)
-        } else {
-            write!(f, "{}", self.name)
-        }
-    }
-}
+// impl std::fmt::Display for VariableReference {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         if self.typing.mutable {
+//             write!(f, "mut {}", self.name)
+//         } else {
+//             write!(f, "{}", self.name)
+//         }
+//     }
+// }
 
 impl std::fmt::Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

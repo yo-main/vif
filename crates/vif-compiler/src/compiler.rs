@@ -224,8 +224,6 @@ impl<'function> Compiler<'function> {
             })
         }
 
-        println!("TEST {} {:?}", function.name, function.inherited_locals);
-
         let mut compiler = Compiler::new(&mut function, self.scope_depth + 1);
         std::mem::swap(&mut compiler.globals, &mut self.globals);
 

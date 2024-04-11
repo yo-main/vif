@@ -1,16 +1,8 @@
-def coucou2(mut a):
-    return a
-
-def test(mut p):
-    return coucou2
-
-test(2)(2)
-
 def coucou(a):
-    def r():
-        return 3
+    def r(b):
+        return b
     return r
 
 
 var k = coucou(2)
-k()
+print(k(2))

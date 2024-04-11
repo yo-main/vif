@@ -18,7 +18,7 @@ pub struct VariableReference {
 pub struct FunctionReference {
     pub name: String,
     pub typing: Typing,
-    pub parameters: Vec<VariableReference>,
+    // pub parameters: Vec<VariableReference>,
 }
 
 impl std::cmp::PartialEq for VariableReference {
@@ -41,7 +41,7 @@ impl Reference {
     pub fn new_function(name: String, parameters: Vec<VariableReference>, typing: Typing) -> Self {
         Self::Function(FunctionReference {
             name,
-            parameters,
+            // parameters,
             typing,
         })
     }
@@ -51,7 +51,7 @@ impl std::fmt::Display for Reference {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Variable(v) => write!(f, "var {}", v.name),
-            Self::Function(v) => write!(f, "func {} {:?}", v.name, v.parameters),
+            Self::Function(v) => write!(f, "func {}", v.name),
         }
     }
 }
@@ -60,7 +60,7 @@ impl std::fmt::Debug for Reference {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Variable(v) => write!(f, "var {}", v.name),
-            Self::Function(v) => write!(f, "func {} {:?}", v.name, v.parameters),
+            Self::Function(v) => write!(f, "func {}", v.name),
         }
     }
 }
