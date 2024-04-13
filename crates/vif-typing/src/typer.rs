@@ -3,10 +3,7 @@ use crate::error::TypingError;
 use crate::references::Reference;
 use crate::references::References;
 use crate::references::VariableReference;
-use crate::typer;
-use vif_objects::ast::Assert;
 use vif_objects::ast::Callable;
-use vif_objects::ast::Condition;
 use vif_objects::ast::Expr;
 use vif_objects::ast::ExprBody;
 use vif_objects::ast::Function;
@@ -17,8 +14,6 @@ use vif_objects::ast::Signature;
 use vif_objects::ast::Stmt;
 use vif_objects::ast::Typing;
 use vif_objects::ast::Value;
-use vif_objects::ast::Variable;
-use vif_objects::ast::While;
 
 pub fn add_missing_typing<'a>(
     function: &mut Function,
@@ -88,6 +83,7 @@ fn update_function_typing(function: &mut Function) -> Result<(), TypingError> {
         )));
     }
 
+    function.typing.mutable = returns.iter().all(|r| r.value.typing.mutable);
     function.typing.callable = callable;
 
     Ok(())
@@ -202,8 +198,8 @@ fn visit_expression<'a>(
                 visit_expression(params, arg, references)?;
             }
 
+            expr.typing.mutable = call.callee.typing.mutable;
             let callable_names = get_callable_names(&call.callee);
-            let typing = Typing::new(call.callee.typing.mutable);
 
             // add callee typing
             for name in callable_names.iter() {
@@ -234,10 +230,14 @@ fn visit_expression<'a>(
         ExprBody::Value(Value::Variable(v)) => {
             if let Some(typing) = references.get_typing(v.as_str()) {
                 expr.typing = typing;
+            } else {
+                if !["print", "get_time", "sleep"].contains(&v.as_str()) {
+                    panic!("Unknown variable ? {}", v);
+                }
             }
         }
-        ExprBody::Value(_) => (),
-        ExprBody::LoopKeyword(_) => (),
+        ExprBody::Value(_) => expr.typing.mutable = true,
+        ExprBody::LoopKeyword(_) => expr.typing.mutable = false,
     };
     Ok(())
 }

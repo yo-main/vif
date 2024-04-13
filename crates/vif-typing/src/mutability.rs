@@ -1,6 +1,6 @@
 /*
 This module checks that mutability is coherent through the whole program.
-If a variable is declared as mutable, the module will ensure that only mutable values can be assigned it.
+If a variable is declared as mutable, we need to ensure that only mutable values can be assigned it.
 It will also ensure that a variable not declared a mutable cannot be mutated.
 
 It's okay to pass a mutable value to a const variable. The opposite is not.
@@ -44,26 +44,15 @@ Initially we don't know if a function result is mutable or not, it's the module 
 this information and update the AST function nodes accordingly
 */
 
-use crate::callable;
 use crate::error::TypingError;
 
-use crate::references;
-use crate::references::Reference;
 use crate::references::References;
-use crate::references::VariableReference;
 use crate::typer;
-use vif_objects::ast::Assert;
-use vif_objects::ast::Callable;
-use vif_objects::ast::Condition;
 use vif_objects::ast::Expr;
 use vif_objects::ast::ExprBody;
 use vif_objects::ast::Function;
-use vif_objects::ast::FunctionParameter;
-use vif_objects::ast::LogicalOperator;
-use vif_objects::ast::Return;
 use vif_objects::ast::Stmt;
 use vif_objects::ast::Value;
-use vif_objects::ast::While;
 
 pub fn check_mutability(mut function: Function) -> Result<Function, TypingError> {
     let mut references = References::new();
@@ -196,19 +185,6 @@ fn check_expression(expr: &Expr) -> Result<(), TypingError> {
             if !expr.typing.mutable {
                 return Err(TypingError::Mutability(format!(
                     "Cannot assign a value to {} (non mutable variable)",
-                    a.name
-                )));
-            }
-
-            let is_value_mutable = if let Some(callable) = a.value.typing.callable.as_ref() {
-                callable.output.mutable
-            } else {
-                a.value.typing.mutable
-            };
-
-            if !is_value_mutable {
-                return Err(TypingError::Mutability(format!(
-                    "Cannot assign a non mutable value to a mutable variable {}",
                     a.name
                 )));
             }

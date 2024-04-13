@@ -1,11 +1,8 @@
-var mut i = 0
+def incr(mut counter, incr_by):
+    counter = counter + incr_by
+    return counter
 
-def test_with_arg(a, mut b):
-	assert a == 2
-	assert b == 0
-
-	b = b + 2
-
-	assert b == 2
-
-test_with_arg(2, i)
+var mut counter = 0
+var mut variable_mutable = incr(counter, 10)
+var variable_not_mutable = incr(counter, 10)
+assert counter == 20
