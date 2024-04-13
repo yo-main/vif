@@ -1,8 +1,11 @@
-def coucou(a):
-    def r(b):
-        return b
-    return r
+var mut i = 0
 
+def test_with_arg(a, mut b):
+	assert a == 2
+	assert b == 0
 
-var k = coucou(2)
-print(k(2))
+	b = b + 2
+
+	assert b == 2
+
+test_with_arg(2, i)

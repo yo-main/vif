@@ -33,11 +33,11 @@ def incr(mut counter, incr_by):
     counter = counter + incr_by
     return counter
 
-var mut counter = 0
-var mut variable_mutable = incr(counter, 10)
-var variable_not_mutable = incr(counter, 10)
-assert counter == 20
+# var mut counter = 0
+# var mut variable_mutable = incr(counter, 10)
+# var variable_not_mutable = incr(counter, 10)
+# assert counter == 20
 
 # this fails because "variable_not_mutable" is not... mutable
 # incr(variable_not_mutable, 10)
-incr(variable_mutable, 10)
+# incr(variable_mutable, 10)

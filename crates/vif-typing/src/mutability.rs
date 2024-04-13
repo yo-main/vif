@@ -44,6 +44,7 @@ Initially we don't know if a function result is mutable or not, it's the module 
 this information and update the AST function nodes accordingly
 */
 
+use crate::callable;
 use crate::error::TypingError;
 
 use crate::references;
@@ -192,6 +193,13 @@ fn check_expression(expr: &Expr) -> Result<(), TypingError> {
             check_expression(&g.expr)?;
         }
         ExprBody::Assign(a) => {
+            if !expr.typing.mutable {
+                return Err(TypingError::Mutability(format!(
+                    "Cannot assign a value to {} (non mutable variable)",
+                    a.name
+                )));
+            }
+
             let is_value_mutable = if let Some(callable) = a.value.typing.callable.as_ref() {
                 callable.output.mutable
             } else {
@@ -200,7 +208,7 @@ fn check_expression(expr: &Expr) -> Result<(), TypingError> {
 
             if !is_value_mutable {
                 return Err(TypingError::Mutability(format!(
-                    "Cannot assign a value to {} (non mutable variable)",
+                    "Cannot assign a non mutable value to a mutable variable {}",
                     a.name
                 )));
             }
@@ -353,7 +361,7 @@ mod tests {
         };
         assert_eq!(
             err_msg,
-            "Cannot pass Value[var[i]] argument (non mutable) to b parameter (mutable)"
+            "Cannot pass Value[var[i]] argument (non mutable) to a mutable parameter"
         );
     }
 
@@ -415,7 +423,7 @@ mod tests {
         };
         assert_eq!(
             err_msg,
-            "Cannot pass Value[var[j]] argument (non mutable) to a parameter (mutable)"
+            "Cannot pass Value[var[j]] argument (non mutable) to a mutable parameter"
         );
     }
 
@@ -458,7 +466,46 @@ mod tests {
         };
         assert_eq!(
             err_msg,
-            "Cannot pass Value[var[i]] argument (non mutable) to p parameter (mutable)"
+            "Cannot pass Value[var[i]] argument (non mutable) to a mutable parameter"
         );
+    }
+
+    #[test]
+    fn callable_returning_a_callback_ok() {
+        let string = "
+            def coucou(mut a):
+                def inside():
+                    return 3
+                return inside
+
+            var callback = coucou(1)
+            assert callback() == 3
+        "
+        .to_owned();
+
+        let result = check_mutability(build_ast(string).unwrap());
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn callable_returning_a_callback_fail() {
+        let string = "
+            def coucou(mut a):
+                def inside():
+                    return 3
+                return inside
+
+            var callback = coucou(1)
+            assert callback(2) == 3
+        "
+        .to_owned();
+
+        let result = check_mutability(build_ast(string).unwrap());
+        assert!(result.is_err());
+        let err_msg = match result.unwrap_err() {
+            TypingError::Mutability(s) => s,
+            TypingError::Signature(s) => s,
+        };
+        assert!(err_msg.starts_with("Wrong arguments numbers for function"));
     }
 }

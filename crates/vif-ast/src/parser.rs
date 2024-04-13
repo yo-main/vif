@@ -314,7 +314,7 @@ impl<'a> Parser<'a> {
         if self.scanner.check(&TokenType::Equal) {
             self.scanner.scan().unwrap();
             let value = self.assignment()?;
-            let typing = value.typing.clone();
+            let typing = expr.typing.clone();
 
             match expr.body {
                 ExprBody::Value(Value::Variable(var)) => {

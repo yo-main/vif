@@ -1,5 +1,3 @@
-use std::collections::BinaryHeap;
-
 use crate::error::TypingError;
 
 use crate::references::Reference;
@@ -27,6 +25,13 @@ pub fn add_missing_typing<'a>(
     references: &mut References,
 ) -> Result<(), TypingError> {
     let index = references.len();
+
+    for param in function.params.iter() {
+        references.push(Reference::Variable(VariableReference::new(
+            param.name.clone(),
+            param.typing.clone(),
+        )));
+    }
 
     for stmt in function.body.iter_mut() {
         visit_statement(&mut function.params, stmt, references)?;
@@ -116,21 +121,29 @@ fn visit_statement<'a>(
         Stmt::Var(v) => {
             visit_expression(params, &mut v.value, references)?;
 
-            let mut typing = v.value.typing.clone();
+            if let Some(callable) = &v.value.typing.callable {
+                v.typing.callable = callable.output.callable.clone();
+            }
+
             let names = get_callable_names(&v.value);
 
-            for name in names.iter() {
-                if let Some(t) = references.get_typing(name) {
-                    if let Some(callable) = t.callable {
-                        typing = callable.output;
+            if v.typing.callable.is_none() {
+                for name in names.iter() {
+                    if let Some(t) = references.get_typing(name) {
+                        if let Some(callable) = t.callable {
+                            match v.value.body {
+                                ExprBody::Call(_) => v.typing.callable = callable.output.callable,
+                                _ => v.typing.callable = Some(callable),
+                            };
+                        }
+                        break;
                     }
-                    break;
                 }
             }
 
             references.push(Reference::Variable(VariableReference::new(
                 v.name.clone(),
-                typing,
+                v.typing.clone(),
             )))
         }
         Stmt::Function(f) => {
@@ -151,7 +164,7 @@ fn visit_expression<'a>(
             visit_expression(params, &mut binary.left, references)?;
             visit_expression(params, &mut binary.right, references)?;
 
-            expr.typing.mutable = binary.left.typing.mutable & binary.right.typing.mutable;
+            expr.typing.mutable = true;
         }
         ExprBody::Unary(unary) => {
             visit_expression(params, &mut unary.right, references)?;
@@ -163,6 +176,10 @@ fn visit_expression<'a>(
         }
         ExprBody::Assign(assign) => {
             visit_expression(params, &mut assign.value, references)?;
+
+            if let Some(t) = references.get_typing(&assign.name) {
+                expr.typing.mutable = t.mutable;
+            }
             // TODO: should probably override the variable we have in references here
         }
         ExprBody::Logical(logical) => {
@@ -216,7 +233,7 @@ fn visit_expression<'a>(
         }
         ExprBody::Value(Value::Variable(v)) => {
             if let Some(typing) = references.get_typing(v.as_str()) {
-                expr.typing.callable = typing.callable;
+                expr.typing = typing;
             }
         }
         ExprBody::Value(_) => (),
