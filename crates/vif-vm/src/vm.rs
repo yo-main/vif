@@ -1,5 +1,3 @@
-use std::fmt::Debug;
-
 use crate::callframe::CallFrame;
 use crate::error::InterpreterError;
 use crate::error::RuntimeErrorType;

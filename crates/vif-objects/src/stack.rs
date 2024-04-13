@@ -99,7 +99,7 @@ impl<'value> Stack<'value> {
             Some(StackValue::StackReference(i)) => self.set(*i, value),
             _ => {
                 if value_ref != Some(n) {
-                    self.stack[n].insert(value);
+                    let _ = self.stack[n].insert(value);
                 }
             }
         };

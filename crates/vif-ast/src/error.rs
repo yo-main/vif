@@ -4,7 +4,6 @@ use vif_scanner::ScanningErrorType;
 pub enum AstError {
     ScannerError(ScanningError),
     ParsingError(String),
-    SyntaxError(String),
     EOF,
 }
 
@@ -22,7 +21,6 @@ impl std::fmt::Display for AstError {
         match self {
             Self::ScannerError(err) => write!(f, "{}", err),
             Self::ParsingError(s) => write!(f, "{}", s),
-            Self::SyntaxError(s) => write!(f, "{}", s),
             Self::EOF => write!(f, "EOF"),
         }
     }

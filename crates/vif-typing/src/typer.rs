@@ -42,15 +42,8 @@ pub fn add_missing_typing<'a>(
 
     references.truncate(index);
 
-    let parameters = function
-        .params
-        .iter()
-        .map(|p| VariableReference::new(p.name.clone(), p.typing.clone()))
-        .collect::<Vec<VariableReference>>();
-
     references.push(Reference::new_function(
         function.name.clone(),
-        parameters,
         function.typing.clone(),
     ));
 
@@ -143,10 +136,7 @@ fn visit_statement<'a>(
                 }
             }
 
-            references.push(Reference::Variable(VariableReference::new(
-                v.name.clone(),
-                v.typing.clone(),
-            )))
+            references.push(Reference::new_variable(v.name.clone(), v.typing.clone()))
         }
         Stmt::Function(f) => {
             add_missing_typing(f, references)?;

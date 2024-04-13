@@ -249,23 +249,6 @@ impl<'function> Compiler<'function> {
         Ok(())
     }
 
-    fn begin_scope(&mut self) {
-        self.scope_depth += 1
-    }
-
-    // fn end_scope(&mut self) {
-    //     // Since we adjust stack on the VM, I'm wondering if that part is still needed ?
-    //     while let Some(variable) = self.function.locals.last() {
-    //         // TODO: maybe use a match here ?
-    //         if variable.depth.unwrap_or(usize::MAX) >= self.scope_depth {
-    //             self.function.locals.pop().unwrap();
-    //             self.emit_op_code(OpCode::Pop);
-    //         }
-    //     }
-
-    //     self.scope_depth -= 1
-    // }
-
     fn var_declaration(&mut self, token: &ast::Variable) -> Result<(), CompilerError> {
         log::debug!("Starting variable declaration");
         let index = self.register_variable(Box::new(token.name.to_owned()));
@@ -279,12 +262,6 @@ impl<'function> Compiler<'function> {
             log::debug!("Initialize variable {var}");
             var.depth = Some(self.scope_depth);
         }
-    }
-
-    fn update_variable(&mut self, variable_index: usize) {
-        log::debug!("Starting define variable");
-        self.initialize_variable();
-        self.emit_op_code(OpCode::SetLocal(variable_index))
     }
 
     fn define_variable(&mut self, variable_index: usize) {

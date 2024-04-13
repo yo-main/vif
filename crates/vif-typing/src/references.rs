@@ -38,12 +38,8 @@ impl Reference {
         Self::Variable(VariableReference { name, typing })
     }
 
-    pub fn new_function(name: String, parameters: Vec<VariableReference>, typing: Typing) -> Self {
-        Self::Function(FunctionReference {
-            name,
-            // parameters,
-            typing,
-        })
+    pub fn new_function(name: String, typing: Typing) -> Self {
+        Self::Function(FunctionReference { name, typing })
     }
 }
 
@@ -94,10 +90,6 @@ impl References {
         self.references.truncate(value)
     }
 
-    pub fn slice_from(&self, index: usize) -> Vec<&Reference> {
-        self.references[index..].iter().collect()
-    }
-
     pub fn push(&mut self, value: Reference) {
         self.references.push(value)
     }
@@ -111,24 +103,5 @@ impl References {
             };
         }
         None
-    }
-
-    pub fn contain_mutable_reference(&self, name: &str) -> bool {
-        self.references
-            .iter()
-            .rev()
-            .find(|r| match r {
-                Reference::Variable(v) if v.name == name && v.typing.mutable => true,
-                Reference::Function(f) if f.name == name && f.typing.mutable => true,
-                _ => false,
-            })
-            .is_some()
-    }
-
-    pub fn get_function(&self, name: &str) -> Option<&FunctionReference> {
-        self.references.iter().rev().find_map(|r| match r {
-            Reference::Function(f) if f.name == name => Some(f),
-            _ => None,
-        })
     }
 }
