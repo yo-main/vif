@@ -3,24 +3,22 @@ This module checks that mutability is coherent through the whole program.
 If a variable is declared as mutable, we need to ensure that only mutable values can be assigned it.
 It will also ensure that a variable not declared a mutable cannot be mutated.
 
-It's okay to pass a mutable value to a const variable. The opposite is not.
-
 First, what is a mutable value ?
-It's a core type (int, string, bool...) or a variable declared as mutable.
-Basically everything is mutable until it lands into a variable that is not mutable.
+It's basically a core type (int, string, bool...). A mutable value can loose its mutability, and can
+never find it back later.
+
+The mutability perperty of a value is transfered through variables or functions (parameters and returns).
+
+In other words, everything is mutable until it lands into a variable that is not mutable.
 From that moment, the value hold by the variable cannot be mutated.
 
 The goal of that module is to ensure this statement is true at compile time.
 
-And the complexity hides into functions, their parameters and their return value.
+It will check variables, functions, their paramters, their return values to assert if the mutability rules
+are respected.
 
-A function's parameter can be mutable or not. We cannot pass a const variable to a mutable parameter,
-otherwise the value could be modifed from inside the function and we don't want that.
-
-A function's return value must also be defined as mutable or not. If not, how do we know if we can
-store in a mutable variable the result from a function. Say that the function the value from a const parameter,
-if we allow storing that return in a mutable variable, it'll be modified. And the variable that hold the const
-value won't expect that.
+A lot of the complexcity resides in functions. Their parameters can be mutable or not. Their return values can
+be mutable or not. Our mutability principle must be respected at every stage.
 
 Example
 ```vif
@@ -28,20 +26,14 @@ def hello(s):
     return s
 
 var const_var = "world"
-var mut mut_var = hello(const_var)
-
-mut_var = "hahaha" ## should not be allowed
+var mut mut_var = hello(const_var) # should not be allowed
+# we can't store in a mutable variable a result that is not mutable
 ```
-
-The module parses the AST and keeps track of all variables and functions in a `References` object.
-Every time a variable is assigned a new value, we check that the value being assigned is in
-that reference object and is mutable.
 
 For a function to be "considered" as mutable, all of the possible return values from that function
 must be mutable. If not, the function return value is not considered as mutable.
 
-Initially we don't know if a function result is mutable or not, it's the module that will compute
-this information and update the AST function nodes accordingly
+The module will look for var declaration, assignment and calls to do its checks.
 */
 
 use crate::error::TypingError;
@@ -110,7 +102,6 @@ fn check_statement(stmt: &Stmt) -> Result<(), TypingError> {
 
 fn check_expression(expr: &Expr) -> Result<(), TypingError> {
     match &expr.body {
-        ExprBody::Value(Value::Variable(v)) => {}
         ExprBody::Call(c) => {
             check_expression(&c.callee)?;
 
@@ -203,6 +194,7 @@ fn check_expression(expr: &Expr) -> Result<(), TypingError> {
             }
         }
         ExprBody::LoopKeyword(_) => (),
+        ExprBody::Value(Value::Variable(_)) => (),
         ExprBody::Value(_) => (),
     };
 
