@@ -1,5 +1,6 @@
 use crate::error::TypingError;
 
+use crate::references::FunctionReference;
 use crate::references::Reference;
 use crate::references::References;
 use crate::references::VariableReference;
@@ -20,6 +21,11 @@ pub fn add_missing_typing<'a>(
     references: &mut References,
 ) -> Result<(), TypingError> {
     let index = references.len();
+
+    references.push(Reference::Function(FunctionReference {
+        name: function.name.clone(),
+        typing: function.typing.clone(),
+    }));
 
     for param in function.params.iter() {
         references.push(Reference::Variable(VariableReference::new(
