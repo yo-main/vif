@@ -1,4 +1,4 @@
-use error::TypingError;
+pub use error::TypingError;
 use vif_objects::ast::Function;
 mod callable;
 mod error;

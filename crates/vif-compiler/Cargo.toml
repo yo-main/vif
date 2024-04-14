@@ -9,5 +9,3 @@ edition = "2021"
 vif-loader = { version = "0.1.0", path = "../vif-loader" }
 vif-scanner = { version = "0.1.0", path = "../vif-scanner" }
 vif-objects = { version = "0.1.0", path = "../vif-objects" }
-vif-ast = { version = "0.1.0", path = "../vif-ast" }
-vif-typing = { version = "0.1.0", path = "../vif-typing" }

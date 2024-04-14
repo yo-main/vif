@@ -11,6 +11,4 @@ vif-loader = { version = "0.1.0", path = "../vif-loader" }
 vif-vm = { version = "0.1.0", path = "../vif-vm" }
 vif-ast = { version = "0.1.0", path = "../vif-ast" }
 vif-typing = { version = "0.1.0", path = "../vif-typing" }
-
-[dev-dependencies]
 vif-objects = { version = "0.1.0", path = "../vif-objects" }

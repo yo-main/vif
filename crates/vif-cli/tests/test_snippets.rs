@@ -1,5 +1,7 @@
+use vif_ast::build_ast;
 use vif_compiler::compile;
 use vif_objects::op_code::OpCode;
+use vif_typing::run_typing_checks;
 use vif_vm::interpret;
 
 #[test]
@@ -20,7 +22,8 @@ fn test_variable_declaration() {
         OpCode::Return,         // return
     ];
 
-    let (function, globals) = compile(string).unwrap();
+    let ast = run_typing_checks(build_ast(string).unwrap()).unwrap();
+    let (function, globals) = compile(&ast).unwrap();
     assert_eq!(function.chunk.code, bytes);
 
     let result = interpret(function, globals);
@@ -59,7 +62,8 @@ fn test_simple() {
         OpCode::Return,          // return
     ];
 
-    let (function, globals) = compile(string).unwrap();
+    let ast = run_typing_checks(build_ast(string).unwrap()).unwrap();
+    let (function, globals) = compile(&ast).unwrap();
     assert_eq!(function.chunk.code, bytes);
 
     let result = interpret(function, globals);

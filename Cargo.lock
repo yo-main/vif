@@ -298,11 +298,9 @@ dependencies = [
 name = "vif-compiler"
 version = "0.1.0"
 dependencies = [
- "vif-ast",
  "vif-loader",
  "vif-objects",
  "vif-scanner",
- "vif-typing",
 ]
 
 [[package]]
