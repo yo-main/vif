@@ -1,6 +1,5 @@
 def incr(mut counter, incr_by):
-    counter = counter + incr_by
-    return counter
+    return incr_by
 
 var mut counter = 0
 var mut variable_mutable = incr(counter, 10)

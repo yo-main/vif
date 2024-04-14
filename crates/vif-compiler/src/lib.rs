@@ -16,7 +16,18 @@ use vif_objects::op_code::OpCode;
 use vif_typing::run_typing_checks;
 
 pub fn compile(content: &str) -> Result<(Function, GlobalStore), CompilerError> {
-    let ast = run_typing_checks(build_ast(content).unwrap()).unwrap();
+    let ast = match build_ast(content) {
+        Ok(ast) => ast,
+        Err(errors) => {
+            for error in errors.iter() {
+                println!("AST error: {error}");
+            }
+
+            return Err(CompilerError::SyntaxError(format!("{}", errors[0])));
+        }
+    };
+
+    let ast = run_typing_checks(ast).unwrap();
     let mut function = Function::new(Arity::None, ast.name.clone());
     let mut compiler = Compiler::new(&mut function, 0);
 
