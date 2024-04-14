@@ -6,18 +6,14 @@ pub mod vm;
 
 pub use callframe::CallFrame;
 pub use error::InterpreterError;
-use vif_compiler::compile;
+use vif_objects::function::Function;
+use vif_objects::global_store::GlobalStore;
 use vif_objects::stack::Stack;
 use vif_objects::variable_storage::VariableStore;
 
-pub fn interpret(content: String) -> Result<(), InterpreterError> {
+pub fn interpret(function: Function, globals: GlobalStore) -> Result<(), InterpreterError> {
     let mut stack = Stack::new();
     let mut variables = VariableStore::new();
-
-    let (function, globals) = match compile(content) {
-        Ok(c) => c,
-        Err(e) => return Err(InterpreterError::CompileError(format!("{}", e))),
-    };
 
     let mut vm = vm::VM::new(
         &mut stack,

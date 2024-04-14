@@ -211,8 +211,7 @@ mod tests {
     fn simple_variable() {
         let string = "
             var i = 0
-        "
-        .to_owned();
+        ";
 
         let ast = check_mutability(build_ast(string).unwrap()).unwrap();
         assert_eq!(ast.body.len(), 1);
@@ -223,8 +222,7 @@ mod tests {
         let string = "
             var i = 0
             i = 2
-        "
-        .to_owned();
+        ";
 
         let result = check_mutability(build_ast(string).unwrap());
         assert!(result.is_err());
@@ -240,8 +238,7 @@ mod tests {
         let string = "
             var mut i = 0
             i = 2
-        "
-        .to_owned();
+        ";
 
         let ast = check_mutability(build_ast(string).unwrap()).unwrap();
         assert_eq!(ast.body.len(), 2);
@@ -252,8 +249,7 @@ mod tests {
         let string = "
             var i = 0
             var mut j = i
-        "
-        .to_owned();
+        ";
 
         let result = check_mutability(build_ast(string).unwrap());
         assert!(result.is_err());
@@ -272,8 +268,7 @@ mod tests {
         let string = "
             var mut i = 0
             var j = i
-        "
-        .to_owned();
+        ";
 
         let ast = check_mutability(build_ast(string).unwrap()).unwrap();
         assert_eq!(ast.body.len(), 2);
@@ -286,8 +281,7 @@ mod tests {
                 return a + b
 
             coucou(1, 2)
-        "
-        .to_owned();
+        ";
 
         let ast = check_mutability(build_ast(string).unwrap()).unwrap();
         assert_eq!(ast.body.len(), 2);
@@ -302,8 +296,7 @@ mod tests {
             var i = 1
             var mut j = 2
             coucou(i, j)
-        "
-        .to_owned();
+        ";
 
         let ast = check_mutability(build_ast(string).unwrap()).unwrap();
         assert_eq!(ast.body.len(), 4);
@@ -318,8 +311,7 @@ mod tests {
             var i = 1
             var mut j = 2
             coucou(j, i)
-        "
-        .to_owned();
+        ";
 
         let result = check_mutability(build_ast(string).unwrap());
         assert!(result.is_err());
@@ -341,8 +333,7 @@ mod tests {
 
             var i = 1
             var mut k = coucou(i)
-        "
-        .to_owned();
+        ";
 
         let result = check_mutability(build_ast(string).unwrap());
         assert!(result.is_err());
@@ -364,8 +355,7 @@ mod tests {
 
             var i = coucou
             i(1)
-        "
-        .to_owned();
+        ";
 
         let ast = check_mutability(build_ast(string).unwrap()).unwrap();
         assert_eq!(ast.body.len(), 3);
@@ -380,8 +370,7 @@ mod tests {
             var i = coucou
             var j = 2
             i(j)
-        "
-        .to_owned();
+        ";
 
         let result = check_mutability(build_ast(string).unwrap());
         assert!(result.is_err());
@@ -405,8 +394,7 @@ mod tests {
                 return coucou
 
             test(2)(2)
-        "
-        .to_owned();
+        ";
 
         let ast = check_mutability(build_ast(string).unwrap()).unwrap();
         assert_eq!(ast.body.len(), 3);
@@ -423,8 +411,7 @@ mod tests {
 
             var i = 2
             test(i)(i)
-        "
-        .to_owned();
+        ";
 
         let result = check_mutability(build_ast(string).unwrap());
         assert!(result.is_err());
@@ -448,8 +435,7 @@ mod tests {
 
             var callback = coucou(1)
             assert callback() == 3
-        "
-        .to_owned();
+        ";
 
         let result = check_mutability(build_ast(string).unwrap());
         assert!(result.is_ok());
@@ -465,8 +451,7 @@ mod tests {
 
             var callback = coucou(1)
             assert callback(2) == 3
-        "
-        .to_owned();
+        ";
 
         let result = check_mutability(build_ast(string).unwrap());
         assert!(result.is_err());

@@ -7,8 +7,8 @@ use vif_loader::log;
 use vif_objects::ast::Function;
 use vif_scanner::Scanner;
 
-pub fn build_ast(content: String) -> Option<Function> {
-    let scanner = Scanner::new(content.as_str());
+pub fn build_ast(content: &str) -> Option<Function> {
+    let scanner = Scanner::new(content);
     let mut parser = Parser::new(scanner);
     let res = parser.build();
     if !res {

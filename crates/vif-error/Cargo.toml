@@ -1,10 +1,10 @@
 [package]
-name = "vif-vm"
+name = "vif-error"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-vif-native = { version = "0.1.0", path = "../vif-native" }
 vif-objects = { version = "0.1.0", path = "../vif-objects" }
+vif-loader = { version = "0.1.0", path = "../vif-loader" }

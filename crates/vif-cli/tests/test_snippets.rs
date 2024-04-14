@@ -1,13 +1,14 @@
-mod common;
+use vif_compiler::compile;
 use vif_objects::op_code::OpCode;
+use vif_vm::interpret;
 
 #[test]
 fn test_variable_declaration() {
     let string = "
         var i = 1
         print(i)
-"
-    .to_owned();
+";
+
     let bytes = vec![
         OpCode::Global(3),      // constant 1
         OpCode::CreateLocal(0), // save 1 in a variable named i
@@ -19,7 +20,10 @@ fn test_variable_declaration() {
         OpCode::Return,         // return
     ];
 
-    let result = common::interpret(string, bytes);
+    let (function, globals) = compile(string).unwrap();
+    assert_eq!(function.chunk.code, bytes);
+
+    let result = interpret(function, globals);
     assert!(result.is_ok(), "{}", result.unwrap_err());
 }
 
@@ -30,8 +34,7 @@ fn test_simple() {
         while i < 5:
             print(i)
             i = i + 1
-"
-    .to_owned();
+";
 
     let bytes = vec![
         OpCode::Global(3),       // constant 1
@@ -56,6 +59,9 @@ fn test_simple() {
         OpCode::Return,          // return
     ];
 
-    let result = common::interpret(string, bytes);
+    let (function, globals) = compile(string).unwrap();
+    assert_eq!(function.chunk.code, bytes);
+
+    let result = interpret(function, globals);
     assert!(result.is_ok(), "{}", result.unwrap_err());
 }

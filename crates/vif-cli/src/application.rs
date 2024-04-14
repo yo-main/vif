@@ -27,26 +27,31 @@ impl Vif {
         }
     }
 
-    fn exec(&mut self, content: String) -> Result<(), VifError> {
-        if CONFIG.assembly {
-            let (function, globals) = compile(content).unwrap();
-            disassemble_application(&function, &globals);
-        } else if CONFIG.ast {
-            let ast = run_typing_checks(build_ast(content).unwrap()).unwrap();
-            print_ast_tree(&ast);
-        } else {
-            match interpret(content) {
-                Ok(_) => log::info!("Interpreter says Bye"),
-                Err(e) => println!("Intepreter error: {e}"),
-            };
-        }
+    fn exec(&mut self, content: &str) -> Result<(), VifError> {
+        match compile(content) {
+            Ok((function, globals)) => {
+                if CONFIG.assembly {
+                    let (function, globals) = compile(content).unwrap();
+                    disassemble_application(&function, &globals);
+                } else if CONFIG.ast {
+                    let ast = run_typing_checks(build_ast(content).unwrap()).unwrap();
+                    print_ast_tree(&ast);
+                } else {
+                    match interpret(function, globals) {
+                        Ok(_) => log::info!("Interpreter says Bye"),
+                        Err(e) => println!("Intepreter error: {e}"),
+                    };
+                }
+            }
+            Err(e) => println!("Compiler error! {e}"),
+        };
 
         Ok(())
     }
 
     fn run_file(&mut self, path: PathBuf) -> Result<(), VifError> {
         match fs::read_to_string(&path) {
-            Ok(content) => self.exec(content)?,
+            Ok(content) => self.exec(content.as_str())?,
             _ => {
                 return Err(VifError::new(
                     format!("Could not read file {}", path.to_str().unwrap()),
@@ -65,7 +70,7 @@ impl Vif {
             io::stdout().flush().unwrap();
             match io::stdin().read_line(&mut line) {
                 Ok(0) => break,
-                Ok(_) => match self.exec(line) {
+                Ok(_) => match self.exec(line.as_str()) {
                     Err(error) => print!("Failed to parse command: {error}"),
                     _ => (),
                 },

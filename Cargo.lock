@@ -289,6 +289,7 @@ dependencies = [
  "vif-ast",
  "vif-compiler",
  "vif-loader",
+ "vif-objects",
  "vif-typing",
  "vif-vm",
 ]
@@ -302,6 +303,14 @@ dependencies = [
  "vif-objects",
  "vif-scanner",
  "vif-typing",
+]
+
+[[package]]
+name = "vif-error"
+version = "0.1.0"
+dependencies = [
+ "vif-loader",
+ "vif-objects",
 ]
 
 [[package]]
@@ -347,10 +356,8 @@ dependencies = [
 name = "vif-vm"
 version = "0.1.0"
 dependencies = [
- "vif-compiler",
  "vif-native",
  "vif-objects",
- "vif-scanner",
 ]
 
 [[package]]

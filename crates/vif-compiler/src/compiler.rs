@@ -433,11 +433,10 @@ impl<'function> Compiler<'function> {
     pub fn get_variable(&mut self, var_name: &str) -> Result<(), CompilerError> {
         log::debug!("Starting variable");
 
-        let op_code = match self.resolve_local(var_name) {
-            Ok(VariableType::Local(index)) => OpCode::GetLocal(index),
-            Ok(VariableType::Inherited(v)) => OpCode::GetInheritedLocal(v),
-            Ok(VariableType::Global(v)) => OpCode::GetGlobal(v),
-            Err(e) => return Err(e),
+        let op_code = match self.resolve_local(var_name)? {
+            VariableType::Local(index) => OpCode::GetLocal(index),
+            VariableType::Inherited(v) => OpCode::GetInheritedLocal(v),
+            VariableType::Global(v) => OpCode::GetGlobal(v),
         };
 
         self.emit_op_code(op_code);

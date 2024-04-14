@@ -10,6 +10,7 @@ members = [
   "crates/vif-ast",
   "crates/vif-loader",
   "crates/vif-typing",
+  "crates/vif-error",
 ]
 default-members = ["crates/vif-cli"]
 resolver = "2"

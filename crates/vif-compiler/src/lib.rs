@@ -15,7 +15,7 @@ use vif_objects::global_store::GlobalStore;
 use vif_objects::op_code::OpCode;
 use vif_typing::run_typing_checks;
 
-pub fn compile(content: String) -> Result<(Function, GlobalStore), CompilerError> {
+pub fn compile(content: &str) -> Result<(Function, GlobalStore), CompilerError> {
     let ast = run_typing_checks(build_ast(content).unwrap()).unwrap();
     let mut function = Function::new(Arity::None, ast.name.clone());
     let mut compiler = Compiler::new(&mut function, 0);
