@@ -21,7 +21,7 @@ impl Vif {
     }
 
     pub fn run(&mut self) -> Result<(), VifError> {
-        match CONFIG.entrypoint.clone() {
+        match &CONFIG.entrypoint {
             Some(path) => self.run_file(path),
             _ => self.run_prompt(),
         }
@@ -49,7 +49,7 @@ impl Vif {
         Ok(())
     }
 
-    fn run_file(&mut self, path: PathBuf) -> Result<(), VifError> {
+    fn run_file(&mut self, path: &PathBuf) -> Result<(), VifError> {
         match fs::read_to_string(&path) {
             Ok(content) => self.exec(content.as_str())?,
             _ => {
