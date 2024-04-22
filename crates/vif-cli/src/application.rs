@@ -1,5 +1,3 @@
-use crate::error::VifError;
-use crate::error::VifErrorType;
 use std::fs;
 use std::io;
 use std::io::Write;
@@ -8,6 +6,8 @@ use vif_ast::build_ast;
 use vif_ast::print_ast_tree;
 use vif_compiler::compile;
 use vif_compiler::disassemble_application;
+use vif_error::CLIError;
+use vif_error::VifError;
 use vif_loader::log;
 use vif_loader::CONFIG;
 use vif_objects::ast::Function;
@@ -21,21 +21,21 @@ impl Vif {
         Vif {}
     }
 
-    pub fn run(&mut self) -> Result<(), VifError> {
+    pub fn run(&mut self) {
         match &CONFIG.entrypoint {
             Some(path) => self.run_file(path),
             _ => self.run_prompt(),
-        }
+        };
     }
 
     fn run_file(&mut self, path: &PathBuf) -> Result<(), VifError> {
         match fs::read_to_string(&path) {
             Ok(content) => self.exec(content.as_str()),
             _ => {
-                return Err(VifError::new(
-                    format!("Could not read file {}", path.to_str().unwrap()),
-                    VifErrorType::CommandError,
-                ))
+                return Err(CLIError::new(format!(
+                    "Could not read file {}",
+                    path.to_str().unwrap()
+                )))
             }
         };
 
@@ -61,7 +61,7 @@ impl Vif {
         let ast = match self.build_ast(content) {
             Ok(ast) => ast,
             Err(err) => {
-                println!("{err}");
+                println!("{}", err.format(content));
                 return;
             }
         };
@@ -90,16 +90,9 @@ impl Vif {
     }
 
     fn build_ast(&self, content: &str) -> Result<Function, VifError> {
-        let ast = match build_ast(content) {
-            Ok(ast) => ast,
-            Err(errors) => {
-                return Err(VifError::new(
-                    format!("{}", errors[0]),
-                    VifErrorType::AstError,
-                ))
-            }
-        };
+        let mut ast = build_ast(content).unwrap(); // TRANSFORM THIS INTO A VIF ERROR
 
-        run_typing_checks(ast).map_err(|e| e.into())
+        run_typing_checks(&mut ast).map_err(|e| e.into())?;
+        Ok(ast)
     }
 }

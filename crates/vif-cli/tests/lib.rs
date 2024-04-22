@@ -13,9 +13,9 @@ fn vif_tests() {
         println!("{:?}", file);
         let content = std::fs::read_to_string(file.unwrap().path()).unwrap();
 
-        let ast = build_ast(content.as_str()).unwrap();
-        let typed_ast = run_typing_checks(ast).unwrap();
-        let (f, g) = compile(&typed_ast).unwrap();
+        let mut ast = build_ast(content.as_str()).unwrap();
+        run_typing_checks(&mut ast).unwrap();
+        let (f, g) = compile(&ast).unwrap();
 
         let result = vif_vm::interpret(f, g);
         assert!(result.is_ok(), "{}", result.unwrap_err());

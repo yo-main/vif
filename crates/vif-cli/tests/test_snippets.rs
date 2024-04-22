@@ -22,7 +22,8 @@ fn test_variable_declaration() {
         OpCode::Return,         // return
     ];
 
-    let ast = run_typing_checks(build_ast(string).unwrap()).unwrap();
+    let mut ast = build_ast(string).unwrap();
+    run_typing_checks(&mut ast).unwrap();
     let (function, globals) = compile(&ast).unwrap();
     assert_eq!(function.chunk.code, bytes);
 
@@ -62,7 +63,8 @@ fn test_simple() {
         OpCode::Return,          // return
     ];
 
-    let ast = run_typing_checks(build_ast(string).unwrap()).unwrap();
+    let mut ast = build_ast(string).unwrap();
+    run_typing_checks(&mut ast).unwrap();
     let (function, globals) = compile(&ast).unwrap();
     assert_eq!(function.chunk.code, bytes);
 

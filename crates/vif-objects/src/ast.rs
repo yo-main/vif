@@ -143,6 +143,23 @@ impl PartialEq for Signature {
     }
 }
 
+impl std::fmt::Display for Signature {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "[{}]",
+            self.parameters
+                .iter()
+                .map(|b| match b {
+                    true => "true",
+                    false => "false",
+                })
+                .collect::<Vec<&str>>()
+                .join(", ")
+        )
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Callable {
     pub signature: Signature,
@@ -158,6 +175,12 @@ impl PartialEq for Callable {
 impl Callable {
     pub fn new(signature: Signature, output: Typing) -> Self {
         Self { signature, output }
+    }
+}
+
+impl std::fmt::Display for Callable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.signature)
     }
 }
 

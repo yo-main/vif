@@ -1,9 +1,9 @@
-use crate::error::TypingError;
-
 use crate::references::FunctionReference;
 use crate::references::Reference;
 use crate::references::References;
 use crate::references::VariableReference;
+use vif_error::DifferentSignatureBetweenReturns;
+use vif_error::VifError;
 use vif_objects::ast::Callable;
 use vif_objects::ast::Expr;
 use vif_objects::ast::ExprBody;
@@ -19,7 +19,7 @@ use vif_objects::ast::Value;
 pub fn add_missing_typing<'a>(
     function: &mut Function,
     references: &mut References,
-) -> Result<(), TypingError> {
+) -> Result<(), VifError> {
     let index = references.len();
 
     references.push(Reference::Function(FunctionReference {
@@ -50,7 +50,7 @@ pub fn add_missing_typing<'a>(
     Ok(())
 }
 
-fn update_function_typing(function: &mut Function) -> Result<(), TypingError> {
+fn update_function_typing(function: &mut Function) -> Result<(), VifError> {
     let returns = function
         .body
         .iter()
@@ -71,19 +71,24 @@ fn update_function_typing(function: &mut Function) -> Result<(), TypingError> {
         )))
     };
 
-    if !returns.iter().all(|r| {
-        r.value
-            .typing
-            .callable_eq(&callable.as_ref().unwrap().output.callable)
-    }) {
-        return Err(TypingError::Signature(format!(
-            "Got different return signature on function {}",
-            function.name
-        )));
-    }
-
     function.typing.mutable = returns.iter().all(|r| r.value.typing.mutable);
     function.typing.callable = callable;
+
+    for return_stmt in returns {
+        if !return_stmt
+            .value
+            .typing
+            .callable_eq(&function.typing.callable.as_ref().unwrap().output.callable)
+        {
+            return Err(DifferentSignatureBetweenReturns::new(
+                function.name.clone(),
+                return_stmt.value.typing.callable.clone(),
+                function.typing.callable.clone(),
+                0,
+                0,
+            ));
+        }
+    }
 
     Ok(())
 }
@@ -92,7 +97,7 @@ fn visit_statement<'a>(
     params: &mut Vec<FunctionParameter>,
     stmt: &mut Stmt,
     references: &mut References,
-) -> Result<(), TypingError> {
+) -> Result<(), VifError> {
     match stmt {
         Stmt::Expression(expr) => visit_expression(params, expr, references)?,
         Stmt::Block(block) => {
@@ -150,7 +155,7 @@ fn visit_expression<'a>(
     params: &mut Vec<FunctionParameter>,
     expr: &mut Expr,
     references: &mut References,
-) -> Result<(), TypingError> {
+) -> Result<(), VifError> {
     match &mut expr.body {
         ExprBody::Binary(binary) => {
             visit_expression(params, &mut binary.left, references)?;

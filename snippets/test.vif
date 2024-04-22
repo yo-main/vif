@@ -1,7 +1,6 @@
-def incr(mut counter, incr_by):
-    return incr_by
+def coucou(a, mut b):
+    return a + b
 
-var mut counter = 0
-var mut variable_mutable = incr(counter, 10)
-var variable_not_mutable = incr(counter, 10)
-assert counter == 20
+var i = 1
+var mut j = 2
+coucou(j, i)

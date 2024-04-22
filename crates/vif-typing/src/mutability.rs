@@ -36,45 +36,50 @@ must be mutable. If not, the function return value is not considered as mutable.
 The module will look for var declaration, assignment and calls to do its checks.
 */
 
-use crate::error::TypingError;
-
 use crate::references::References;
 use crate::typer;
+use vif_error::DifferentSignatureBetweenFunction;
+use vif_error::NonMutableArgumentToMutableParameter;
+use vif_error::NonMutableArgumentToMutableVariable;
+use vif_error::VifError;
+use vif_error::WrongArgumentNumberFunction;
 use vif_objects::ast::Expr;
 use vif_objects::ast::ExprBody;
 use vif_objects::ast::Function;
 use vif_objects::ast::Stmt;
 use vif_objects::ast::Value;
 
-pub fn check_mutability(mut function: Function) -> Result<Function, TypingError> {
+pub fn check_mutability(function: &mut Function) -> Result<(), VifError> {
     let mut references = References::new();
-    typer::add_missing_typing(&mut function, &mut references)?;
+    typer::add_missing_typing(function, &mut references)?;
 
-    check_function(&function)?;
-    Ok(function)
+    check_function(function)?;
+    Ok(())
 }
 
-fn check_function(function: &Function) -> Result<(), TypingError> {
+fn check_function(function: &Function) -> Result<(), VifError> {
     check_statements(&function.body)
 }
 
-fn check_statements(stmts: &Vec<Stmt>) -> Result<(), TypingError> {
+fn check_statements(stmts: &Vec<Stmt>) -> Result<(), VifError> {
     for stmt in stmts.iter() {
         check_statement(stmt)?;
     }
     Ok(())
 }
 
-fn check_statement(stmt: &Stmt) -> Result<(), TypingError> {
+fn check_statement(stmt: &Stmt) -> Result<(), VifError> {
     match stmt {
         Stmt::Var(v) => {
             check_expression(&v.value)?;
 
             if v.typing.mutable && !v.value.typing.mutable {
-                return Err(TypingError::Mutability(format!(
-                    "Cannot set non mutable expression to mutable variable {}",
-                    v.name
-                )));
+                return Err(NonMutableArgumentToMutableVariable::new(
+                    v.name.clone(),
+                    format!("{}", v.value),
+                    0,
+                    0,
+                ));
             }
 
             Ok(())
@@ -100,7 +105,7 @@ fn check_statement(stmt: &Stmt) -> Result<(), TypingError> {
     }
 }
 
-fn check_expression(expr: &Expr) -> Result<(), TypingError> {
+fn check_expression(expr: &Expr) -> Result<(), VifError> {
     match &expr.body {
         ExprBody::Call(c) => {
             check_expression(&c.callee)?;
@@ -114,28 +119,24 @@ fn check_expression(expr: &Expr) -> Result<(), TypingError> {
                 return Ok(());
             }
 
-            if c.arguments.len()
-                != c.callee
-                    .typing
-                    .callable
-                    .as_ref()
-                    .unwrap()
-                    .signature
-                    .parameters
-                    .len()
-            {
-                return Err(TypingError::Mutability(format!(
-                    "Wrong arguments numbers for function {}, expected {:?} got {:?}",
-                    c.callee,
-                    c.callee
-                        .typing
-                        .callable
-                        .as_ref()
-                        .unwrap()
-                        .signature
-                        .parameters,
-                    c.arguments
-                )));
+            let nb_parameters = c
+                .callee
+                .typing
+                .callable
+                .as_ref()
+                .unwrap()
+                .signature
+                .parameters
+                .len();
+
+            if c.arguments.len() != nb_parameters {
+                return Err(WrongArgumentNumberFunction::new(
+                    format!("{}", c.callee),
+                    nb_parameters,
+                    c.arguments.len(),
+                    0,
+                    0,
+                ));
             }
 
             for (arg, param_mutable) in c.arguments.iter().zip(
@@ -149,10 +150,12 @@ fn check_expression(expr: &Expr) -> Result<(), TypingError> {
                     .iter(),
             ) {
                 if *param_mutable && !arg.typing.mutable {
-                    return Err(TypingError::Mutability(format!(
-                        "Cannot pass {} argument (non mutable) to a mutable parameter",
-                        arg.body
-                    )));
+                    return Err(NonMutableArgumentToMutableParameter::new(
+                        format!("{}", c.callee),
+                        format!("{}", arg.body),
+                        0,
+                        0,
+                    ));
                 }
             }
         }
@@ -160,10 +163,14 @@ fn check_expression(expr: &Expr) -> Result<(), TypingError> {
             check_expression(&b.left)?;
             check_expression(&b.right)?;
             if b.left.typing.callable != b.right.typing.callable {
-                return Err(TypingError::Signature(format!(
-                    "{} and {} don't have the same signature: {:?} {:?}",
-                    b.left, b.right, b.left.typing.callable, b.right.typing.callable
-                )));
+                return Err(DifferentSignatureBetweenFunction::new(
+                    format!("{}", b.left),
+                    format!("{}", b.right),
+                    b.left.typing.callable.clone(),
+                    b.right.typing.callable.clone(),
+                    0,
+                    0,
+                ));
             }
         }
         ExprBody::Unary(u) => {
@@ -174,10 +181,12 @@ fn check_expression(expr: &Expr) -> Result<(), TypingError> {
         }
         ExprBody::Assign(a) => {
             if !expr.typing.mutable {
-                return Err(TypingError::Mutability(format!(
-                    "Cannot assign a value to {} (non mutable variable)",
-                    a.name
-                )));
+                return Err(NonMutableArgumentToMutableVariable::new(
+                    a.name.clone(),
+                    format!("{}", a.value),
+                    0,
+                    0,
+                ));
             }
 
             check_expression(&a.value)?;
@@ -187,10 +196,14 @@ fn check_expression(expr: &Expr) -> Result<(), TypingError> {
             check_expression(&l.right)?;
 
             if l.left.typing.callable != l.right.typing.callable {
-                return Err(TypingError::Signature(format!(
-                    "{} and {} don't have the same signature",
-                    l.left, l.right
-                )));
+                return Err(DifferentSignatureBetweenFunction::new(
+                    format!("{}", l.left),
+                    format!("{}", l.right),
+                    l.left.typing.callable.clone(),
+                    l.right.typing.callable.clone(),
+                    0,
+                    0,
+                ));
             }
         }
         ExprBody::LoopKeyword(_) => (),
@@ -204,7 +217,6 @@ fn check_expression(expr: &Expr) -> Result<(), TypingError> {
 #[cfg(test)]
 mod tests {
     use super::check_mutability;
-    use super::TypingError;
     use vif_ast::build_ast;
 
     #[test]
@@ -213,7 +225,8 @@ mod tests {
             var i = 0
         ";
 
-        let ast = check_mutability(build_ast(string).unwrap()).unwrap();
+        let mut ast = build_ast(string).unwrap();
+        check_mutability(&mut ast).unwrap();
         assert_eq!(ast.body.len(), 1);
     }
 
@@ -224,13 +237,14 @@ mod tests {
             i = 2
         ";
 
-        let result = check_mutability(build_ast(string).unwrap());
+        let mut ast = build_ast(string).unwrap();
+        let result = check_mutability(&mut ast);
         assert!(result.is_err());
-        let err_msg = match result.unwrap_err() {
-            TypingError::Mutability(s) => s,
-            TypingError::Signature(s) => s,
-        };
-        assert_eq!(err_msg, "Cannot assign a value to i (non mutable variable)");
+        let err_msg = result.unwrap_err().format(string);
+        assert_eq!(
+            err_msg,
+            "Line 0 - \nCannot assign value Value[2] (non mutable) to mutable variable i"
+        );
     }
 
     #[test]
@@ -240,7 +254,8 @@ mod tests {
             i = 2
         ";
 
-        let ast = check_mutability(build_ast(string).unwrap()).unwrap();
+        let mut ast = build_ast(string).unwrap();
+        check_mutability(&mut ast).unwrap();
         assert_eq!(ast.body.len(), 2);
     }
 
@@ -251,15 +266,13 @@ mod tests {
             var mut j = i
         ";
 
-        let result = check_mutability(build_ast(string).unwrap());
+        let mut ast = build_ast(string).unwrap();
+        let result = check_mutability(&mut ast);
         assert!(result.is_err());
-        let err_msg = match result.unwrap_err() {
-            TypingError::Mutability(s) => s,
-            TypingError::Signature(s) => s,
-        };
+        let err_msg = result.unwrap_err().format(string);
         assert_eq!(
             err_msg,
-            "Cannot set non mutable expression to mutable variable j"
+            "Line 0 - \nCannot assign value Value[var[i]] (non mutable) to mutable variable j"
         );
     }
 
@@ -270,7 +283,8 @@ mod tests {
             var j = i
         ";
 
-        let ast = check_mutability(build_ast(string).unwrap()).unwrap();
+        let mut ast = build_ast(string).unwrap();
+        check_mutability(&mut ast).unwrap();
         assert_eq!(ast.body.len(), 2);
     }
 
@@ -283,7 +297,8 @@ mod tests {
             coucou(1, 2)
         ";
 
-        let ast = check_mutability(build_ast(string).unwrap()).unwrap();
+        let mut ast = build_ast(string).unwrap();
+        check_mutability(&mut ast).unwrap();
         assert_eq!(ast.body.len(), 2);
     }
 
@@ -298,7 +313,9 @@ mod tests {
             coucou(i, j)
         ";
 
-        let ast = check_mutability(build_ast(string).unwrap()).unwrap();
+        let mut ast = build_ast(string).unwrap();
+        check_mutability(&mut ast).unwrap();
+
         assert_eq!(ast.body.len(), 4);
     }
 
@@ -313,15 +330,14 @@ mod tests {
             coucou(j, i)
         ";
 
-        let result = check_mutability(build_ast(string).unwrap());
+        let mut ast = build_ast(string).unwrap();
+        let result = check_mutability(&mut ast);
         assert!(result.is_err());
-        let err_msg = match result.unwrap_err() {
-            TypingError::Mutability(s) => s,
-            TypingError::Signature(s) => s,
-        };
+        let err_msg = result.unwrap_err().format(string);
+
         assert_eq!(
             err_msg,
-            "Cannot pass Value[var[i]] argument (non mutable) to a mutable parameter"
+            "Line 0 - \nCannot pass Value[var[i]] argument (non mutable) to a mutable parameter"
         );
     }
 
@@ -335,15 +351,14 @@ mod tests {
             var mut k = coucou(i)
         ";
 
-        let result = check_mutability(build_ast(string).unwrap());
+        let mut ast = build_ast(string).unwrap();
+        let result = check_mutability(&mut ast);
         assert!(result.is_err());
-        let err_msg = match result.unwrap_err() {
-            TypingError::Mutability(s) => s,
-            TypingError::Signature(s) => s,
-        };
+        let err_msg = result.unwrap_err().format(string);
+
         assert_eq!(
             err_msg,
-            "Cannot set non mutable expression to mutable variable k"
+            "Line 0 - \nCannot assign value Call[Function[Value[var[coucou]]]] (non mutable) to mutable variable k"
         );
     }
 
@@ -357,7 +372,9 @@ mod tests {
             i(1)
         ";
 
-        let ast = check_mutability(build_ast(string).unwrap()).unwrap();
+        let mut ast = build_ast(string).unwrap();
+        check_mutability(&mut ast).unwrap();
+
         assert_eq!(ast.body.len(), 3);
     }
 
@@ -372,15 +389,14 @@ mod tests {
             i(j)
         ";
 
-        let result = check_mutability(build_ast(string).unwrap());
+        let mut ast = build_ast(string).unwrap();
+        let result = check_mutability(&mut ast);
         assert!(result.is_err());
-        let err_msg = match result.unwrap_err() {
-            TypingError::Mutability(s) => s,
-            TypingError::Signature(s) => s,
-        };
+        let err_msg = result.unwrap_err().format(string);
+
         assert_eq!(
             err_msg,
-            "Cannot pass Value[var[j]] argument (non mutable) to a mutable parameter"
+            "Line 0 - \nCannot pass Value[var[j]] argument (non mutable) to a mutable parameter"
         );
     }
 
@@ -396,7 +412,9 @@ mod tests {
             test(2)(2)
         ";
 
-        let ast = check_mutability(build_ast(string).unwrap()).unwrap();
+        let mut ast = build_ast(string).unwrap();
+        check_mutability(&mut ast).unwrap();
+
         assert_eq!(ast.body.len(), 3);
     }
 
@@ -413,15 +431,14 @@ mod tests {
             test(i)(i)
         ";
 
-        let result = check_mutability(build_ast(string).unwrap());
+        let mut ast = build_ast(string).unwrap();
+        let result = check_mutability(&mut ast);
         assert!(result.is_err());
-        let err_msg = match result.unwrap_err() {
-            TypingError::Mutability(s) => s,
-            TypingError::Signature(s) => s,
-        };
+        let err_msg = result.unwrap_err().format(string);
+
         assert_eq!(
             err_msg,
-            "Cannot pass Value[var[i]] argument (non mutable) to a mutable parameter"
+            "Line 0 - \nCannot pass Value[var[i]] argument (non mutable) to a mutable parameter"
         );
     }
 
@@ -437,7 +454,9 @@ mod tests {
             assert callback() == 3
         ";
 
-        let result = check_mutability(build_ast(string).unwrap());
+        let mut ast = build_ast(string).unwrap();
+        let result = check_mutability(&mut ast);
+
         assert!(result.is_ok());
     }
 
@@ -453,12 +472,14 @@ mod tests {
             assert callback(2) == 3
         ";
 
-        let result = check_mutability(build_ast(string).unwrap());
+        let mut ast = build_ast(string).unwrap();
+        let result = check_mutability(&mut ast);
         assert!(result.is_err());
-        let err_msg = match result.unwrap_err() {
-            TypingError::Mutability(s) => s,
-            TypingError::Signature(s) => s,
-        };
-        assert!(err_msg.starts_with("Wrong arguments numbers for function"));
+        let err_msg = result.unwrap_err().format(string);
+
+        assert_eq!(
+            err_msg,
+            "Line 0 - \nWrong number of argument passed. Expected 0 but received 1"
+        );
     }
 }
