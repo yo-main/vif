@@ -1,6 +1,13 @@
-def coucou(a, mut b):
-    return a + b
+def test():
+    var mut a = 1
+    return a
 
-var i = 1
-var mut j = 2
-coucou(j, i)
+def test2():
+    return test()
+
+def test3(i, j):
+    return i
+
+var o = test2()
+
+print(test3(o, 3))

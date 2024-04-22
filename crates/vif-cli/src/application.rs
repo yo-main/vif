@@ -6,7 +6,6 @@ use vif_ast::build_ast;
 use vif_ast::print_ast_tree;
 use vif_compiler::compile;
 use vif_compiler::disassemble_application;
-use vif_error::CLIError;
 use vif_error::VifError;
 use vif_loader::log;
 use vif_loader::CONFIG;
@@ -28,21 +27,17 @@ impl Vif {
         };
     }
 
-    fn run_file(&mut self, path: &PathBuf) -> Result<(), VifError> {
+    fn run_file(&mut self, path: &PathBuf) {
         match fs::read_to_string(&path) {
             Ok(content) => self.exec(content.as_str()),
-            _ => {
-                return Err(CLIError::new(format!(
-                    "Could not read file {}",
-                    path.to_str().unwrap()
-                )))
-            }
+            _ => println!(
+                "{}",
+                format!("Could not read file {}", path.to_str().unwrap())
+            ),
         };
-
-        Ok(())
     }
 
-    fn run_prompt(&mut self) -> Result<(), VifError> {
+    fn run_prompt(&mut self) {
         loop {
             let mut line = String::new();
             print!(">>> ");
@@ -53,8 +48,6 @@ impl Vif {
                 Err(_) => break,
             }
         }
-
-        Ok(())
     }
 
     fn exec(&mut self, content: &str) {

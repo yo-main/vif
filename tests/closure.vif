@@ -17,7 +17,7 @@ def test(value):
 	print(1, value)
 	return closure
 
-# assert test("a")() == "a" // TODO FIX ME
+# assert test("a")() == "a" # TODO FIX ME
 
 
 def sum(a, b, c):
