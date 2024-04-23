@@ -4,9 +4,9 @@ use std::io::Write;
 use std::path::PathBuf;
 use vif_ast::build_ast;
 use vif_ast::print_ast_tree;
+use vif_ast::AstError;
 use vif_compiler::compile;
 use vif_compiler::disassemble_application;
-use vif_error::VifError;
 use vif_loader::log;
 use vif_loader::CONFIG;
 use vif_objects::ast::Function;
@@ -54,7 +54,7 @@ impl Vif {
         let ast = match self.build_ast(content) {
             Ok(ast) => ast,
             Err(err) => {
-                println!("{}", err.format(content));
+                println!("{}", err);
                 return;
             }
         };
@@ -82,10 +82,15 @@ impl Vif {
         }
     }
 
-    fn build_ast(&self, content: &str) -> Result<Function, VifError> {
-        let mut ast = build_ast(content).unwrap(); // TRANSFORM THIS INTO A VIF ERROR
+    fn build_ast(&self, content: &str) -> Result<Function, String> {
+        let mut ast = match build_ast(content) {
+            Ok(ast) => ast,
+            Err(errors) => return Err(errors[0].to_string()),
+        };
 
-        run_typing_checks(&mut ast).map_err(|e| e.into())?;
-        Ok(ast)
+        match run_typing_checks(&mut ast) {
+            Err(err) => Err(err.format(content)),
+            _ => Ok(ast),
+        }
     }
 }

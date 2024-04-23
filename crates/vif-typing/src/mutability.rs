@@ -36,20 +36,20 @@ must be mutable. If not, the function return value is not considered as mutable.
 The module will look for var declaration, assignment and calls to do its checks.
 */
 
+use crate::error::DifferentSignatureBetweenFunction;
+use crate::error::NonMutableArgumentToMutableParameter;
+use crate::error::NonMutableArgumentToMutableVariable;
+use crate::error::TypingError;
+use crate::error::WrongArgumentNumberFunction;
 use crate::references::References;
 use crate::typer;
-use vif_error::DifferentSignatureBetweenFunction;
-use vif_error::NonMutableArgumentToMutableParameter;
-use vif_error::NonMutableArgumentToMutableVariable;
-use vif_error::VifError;
-use vif_error::WrongArgumentNumberFunction;
 use vif_objects::ast::Expr;
 use vif_objects::ast::ExprBody;
 use vif_objects::ast::Function;
 use vif_objects::ast::Stmt;
 use vif_objects::ast::Value;
 
-pub fn check_mutability(function: &mut Function) -> Result<(), VifError> {
+pub fn check_mutability(function: &mut Function) -> Result<(), TypingError> {
     let mut references = References::new();
     typer::add_missing_typing(function, &mut references)?;
 
@@ -57,18 +57,18 @@ pub fn check_mutability(function: &mut Function) -> Result<(), VifError> {
     Ok(())
 }
 
-fn check_function(function: &Function) -> Result<(), VifError> {
+fn check_function(function: &Function) -> Result<(), TypingError> {
     check_statements(&function.body)
 }
 
-fn check_statements(stmts: &Vec<Stmt>) -> Result<(), VifError> {
+fn check_statements(stmts: &Vec<Stmt>) -> Result<(), TypingError> {
     for stmt in stmts.iter() {
         check_statement(stmt)?;
     }
     Ok(())
 }
 
-fn check_statement(stmt: &Stmt) -> Result<(), VifError> {
+fn check_statement(stmt: &Stmt) -> Result<(), TypingError> {
     match stmt {
         Stmt::Var(v) => {
             check_expression(&v.value)?;
@@ -105,7 +105,7 @@ fn check_statement(stmt: &Stmt) -> Result<(), VifError> {
     }
 }
 
-fn check_expression(expr: &Expr) -> Result<(), VifError> {
+fn check_expression(expr: &Expr) -> Result<(), TypingError> {
     match &expr.body {
         ExprBody::Call(c) => {
             check_expression(&c.callee)?;

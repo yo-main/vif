@@ -288,7 +288,6 @@ version = "0.1.0"
 dependencies = [
  "vif-ast",
  "vif-compiler",
- "vif-error",
  "vif-loader",
  "vif-objects",
  "vif-typing",
@@ -302,14 +301,6 @@ dependencies = [
  "vif-loader",
  "vif-objects",
  "vif-scanner",
-]
-
-[[package]]
-name = "vif-error"
-version = "0.1.0"
-dependencies = [
- "vif-loader",
- "vif-objects",
 ]
 
 [[package]]
@@ -347,7 +338,6 @@ name = "vif-typing"
 version = "0.1.0"
 dependencies = [
  "vif-ast",
- "vif-error",
  "vif-loader",
  "vif-objects",
 ]

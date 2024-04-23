@@ -1,9 +1,9 @@
+use crate::error::DifferentSignatureBetweenReturns;
+use crate::error::TypingError;
 use crate::references::FunctionReference;
 use crate::references::Reference;
 use crate::references::References;
 use crate::references::VariableReference;
-use vif_error::DifferentSignatureBetweenReturns;
-use vif_error::VifError;
 use vif_objects::ast::Callable;
 use vif_objects::ast::Expr;
 use vif_objects::ast::ExprBody;
@@ -19,7 +19,7 @@ use vif_objects::ast::Value;
 pub fn add_missing_typing<'a>(
     function: &mut Function,
     references: &mut References,
-) -> Result<(), VifError> {
+) -> Result<(), TypingError> {
     let index = references.len();
 
     references.push(Reference::Function(FunctionReference {
@@ -50,7 +50,7 @@ pub fn add_missing_typing<'a>(
     Ok(())
 }
 
-fn update_function_typing(function: &mut Function) -> Result<(), VifError> {
+fn update_function_typing(function: &mut Function) -> Result<(), TypingError> {
     let returns = function
         .body
         .iter()
@@ -97,7 +97,7 @@ fn visit_statement<'a>(
     params: &mut Vec<FunctionParameter>,
     stmt: &mut Stmt,
     references: &mut References,
-) -> Result<(), VifError> {
+) -> Result<(), TypingError> {
     match stmt {
         Stmt::Expression(expr) => visit_expression(params, expr, references)?,
         Stmt::Block(block) => {
@@ -155,7 +155,7 @@ fn visit_expression<'a>(
     params: &mut Vec<FunctionParameter>,
     expr: &mut Expr,
     references: &mut References,
-) -> Result<(), VifError> {
+) -> Result<(), TypingError> {
     match &mut expr.body {
         ExprBody::Binary(binary) => {
             visit_expression(params, &mut binary.left, references)?;
