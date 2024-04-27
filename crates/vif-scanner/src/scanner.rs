@@ -9,6 +9,23 @@ use std::iter::Peekable;
 use std::str::Chars;
 use vif_loader::log;
 
+#[derive(Clone)]
+pub struct Span {
+    pub line: usize,
+    pub index: usize,
+}
+
+impl Span {
+    fn new(line: usize, index: usize) -> Self {
+        Span { line, index }
+    }
+
+    fn new_line(&mut self) {
+        self.line += 1;
+        self.index = 0;
+    }
+}
+
 pub struct Scanner<'a> {
     next: Option<Token>,
     tokenizer: Tokenizer<'a>,
@@ -47,8 +64,8 @@ impl<'a> Scanner<'a> {
         self.tokenizer.scan()
     }
 
-    pub fn get_line(&self) -> u64 {
-        self.tokenizer.get_line()
+    pub fn get_position(&self) -> &Span {
+        self.tokenizer.get_position()
     }
 
     pub fn is_at_line_start(&self) -> bool {
@@ -58,7 +75,7 @@ impl<'a> Scanner<'a> {
 
 pub struct Tokenizer<'a> {
     source: Peekable<Chars<'a>>,
-    line: u64,
+    span: Span,
     line_start: bool,
     indent_stack: Vec<u8>,
 }
@@ -67,14 +84,14 @@ impl<'a> Tokenizer<'a> {
     pub fn new(source: &'a str) -> Self {
         Self {
             source: source.chars().peekable(),
-            line: 0,
+            span: Span::new(0, 0),
             line_start: true,
             indent_stack: Vec::new(),
         }
     }
 
-    fn get_line(&self) -> u64 {
-        self.line
+    fn get_position(&self) -> &Span {
+        &self.span
     }
 
     pub fn scan(&mut self) -> Result<Token, ScannerError> {
@@ -89,8 +106,6 @@ impl<'a> Tokenizer<'a> {
 
     fn scan_token(&mut self) -> Result<Token, ScannerError> {
         let token_type = if self.line_start {
-            self.line += 1;
-            self.line_start = false;
             self.parse_indentation()?
         } else {
             match self.advance()? {
@@ -116,7 +131,7 @@ impl<'a> Tokenizer<'a> {
                     true => TokenType::BangEqual,
                     false => {
                         return Err(UnidentifiedError::new(
-                            self.line as usize,
+                            self.get_position().line,
                             0,
                             "!".to_owned(),
                         ))
@@ -162,7 +177,7 @@ impl<'a> Tokenizer<'a> {
                 '\n' => TokenType::NewLine,
                 c => {
                     return Err(UnidentifiedError::new(
-                        self.line as usize,
+                        self.get_position().line as usize,
                         0,
                         String::from(c),
                     ))
@@ -184,14 +199,15 @@ impl<'a> Tokenizer<'a> {
             TokenType::Ignore => self.scan_token(),
             TokenType::IgnoreNewLine => self.scan_token(),
             TokenType::Comment(_) => self.scan_token(),
-            t => Ok(Token::new(t, self.line)),
+            t => Ok(Token::new(t, self.get_position().line)),
         }
     }
 
     fn advance(&mut self) -> Result<char, ScannerError> {
+        self.span.index += 1;
         self.source
             .next()
-            .ok_or_else(|| EOFError::new(self.line as usize, 0))
+            .ok_or_else(|| EOFError::new(self.get_position().line, 0))
     }
 
     fn r#match(&mut self, expected: char) -> bool {
@@ -208,22 +224,24 @@ impl<'a> Tokenizer<'a> {
 
     fn parse_indentation(&mut self) -> Result<TokenType, ScannerError> {
         let mut stack = 0;
+        self.line_start = false;
 
         loop {
             match self.peek() {
-                &' ' => {
+                ' ' => {
                     self.advance().unwrap();
                     stack += 1;
                 }
-                &'\t' => {
+                '\t' => {
                     self.advance().unwrap();
                     stack += 4;
                 }
-                &'\n' => {
+                '\n' => {
                     self.advance().unwrap();
+                    self.span.new_line();
                     return Ok(TokenType::IgnoreNewLine);
                 }
-                &'\0' => {
+                '\0' => {
                     return Ok(TokenType::EOF);
                 }
                 _ => break,
@@ -236,24 +254,29 @@ impl<'a> Tokenizer<'a> {
         let current_stack = *self.indent_stack.last().unwrap();
 
         log::debug!("Scanning indentation: {} {}", stack, current_stack);
-        if stack == current_stack {
-            Ok(TokenType::Ignore)
+
+        let token = if stack == current_stack {
+            TokenType::Ignore
         } else if stack > current_stack {
             self.indent_stack.push(stack);
-            Ok(TokenType::Indent)
+            TokenType::Indent
         } else {
             self.indent_stack.pop().unwrap();
             let previous_stack = *self.indent_stack.last().unwrap();
             if stack == previous_stack {
-                return Ok(TokenType::Dedent);
+                TokenType::Dedent
             } else if previous_stack > stack {
+                // we need to return every dedent singely, even when consecutive
+                // so we return here but we decrease the line by 1 as it'll be incr back next iteration
+                self.span.line -= 1;
                 self.line_start = true;
-                self.line -= 1;
-                return Ok(TokenType::Dedent);
+                TokenType::Dedent
             } else {
-                return Err(IndentationError::new(self.line as usize, 0));
+                return Err(IndentationError::new(self.span.line, self.span.index));
             }
-        }
+        };
+
+        Ok(token)
     }
 
     fn parse_number(&mut self, initial: char) -> TokenType {
@@ -330,10 +353,10 @@ impl<'a> Tokenizer<'a> {
                     break;
                 }
                 &'\0' => {
-                    return Err(UnclosedString::new(self.line as usize, 0));
+                    return Err(UnclosedString::new(self.get_position().line, 0));
                 }
                 &'\n' => {
-                    return Err(UnclosedString::new(self.line as usize, 0));
+                    return Err(UnclosedString::new(self.get_position().line, 0));
                 }
                 _ => str.push(self.advance().unwrap()),
             };

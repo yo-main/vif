@@ -78,11 +78,11 @@ pub enum TokenType {
 #[derive(Debug, PartialEq, Clone)]
 pub struct Token {
     pub r#type: TokenType,
-    pub line: u64,
+    pub line: usize,
 }
 
 impl Token {
-    pub fn new(r#type: TokenType, line: u64) -> Self {
+    pub fn new(r#type: TokenType, line: usize) -> Self {
         Token { r#type, line }
     }
 

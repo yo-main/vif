@@ -72,7 +72,7 @@ impl<'a> Parser<'a> {
                 _ => {
                     return Err(SyntaxError::new(
                         format!("Expected an identifier after def"),
-                        self.scanner.get_line() as usize,
+                        self.scanner.get_position().line,
                         0,
                     ))
                 }
@@ -112,7 +112,7 @@ impl<'a> Parser<'a> {
                     _ => {
                         return Err(SyntaxError::new(
                             format!("Expected a parameter name"),
-                            self.scanner.get_line() as usize,
+                            self.scanner.get_position().line,
                             0,
                         ))
                     }
@@ -178,7 +178,7 @@ impl<'a> Parser<'a> {
             _ => {
                 return Err(SyntaxError::new(
                     format!("Expected a variable name, get EOF"),
-                    self.scanner.get_line() as usize,
+                    self.scanner.get_position().line,
                     0,
                 ))
             }
@@ -190,7 +190,7 @@ impl<'a> Parser<'a> {
                 t => {
                     return Err(SyntaxError::new(
                         format!("Expected an variable name, got {}", t),
-                        self.scanner.get_line() as usize,
+                        self.scanner.get_position().line,
                         0,
                     ))
                 }
@@ -198,7 +198,7 @@ impl<'a> Parser<'a> {
             _ => {
                 return Err(SyntaxError::new(
                     format!("Expected an variable name, got EOF"),
-                    self.scanner.get_line() as usize,
+                    self.scanner.get_position().line,
                     0,
                 ))
             }
@@ -339,7 +339,7 @@ impl<'a> Parser<'a> {
                 }
                 ref e => self.errors.push(SyntaxError::new(
                     format!("Invalid assignement target: {}", e),
-                    self.scanner.get_line() as usize,
+                    self.scanner.get_position().line,
                     0,
                 )),
             };
@@ -621,7 +621,7 @@ impl<'a> Parser<'a> {
 
         Err(SyntaxError::new(
             msg.to_owned(),
-            self.scanner.get_line() as usize,
+            self.scanner.get_position().line,
             0,
         ))
     }
@@ -629,8 +629,6 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod tests {
-    use vif_objects::ast;
-
     use super::ast::Binary;
     use super::ast::Call;
     use super::ast::Condition;
