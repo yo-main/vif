@@ -1,3 +1,4 @@
+use vif_objects::span::Span;
 use vif_scanner::ScannerError;
 
 #[derive(Debug)]
@@ -19,19 +20,18 @@ impl AstError {
 
 #[derive(Debug)]
 pub struct SyntaxError {
-    line: usize,
-    pos: usize,
+    span: Span,
     msg: String,
 }
 
 impl SyntaxError {
-    pub fn new(msg: String, line: usize, pos: usize) -> AstError {
-        AstError::SyntaxError(Self { line, pos, msg })
+    pub fn new(msg: String, span: Span) -> AstError {
+        AstError::SyntaxError(Self { msg, span })
     }
 
     pub fn format(&self, content: &str) -> String {
-        let row = content.split('\n').nth(self.line).unwrap();
-        format!("Line {} - {row}\n{}", self.line, self.msg)
+        let row = content.split('\n').nth(self.span.get_line() - 1).unwrap();
+        format!("Line {} - {row}\n{}", self.span.get_line(), self.msg)
     }
 }
 

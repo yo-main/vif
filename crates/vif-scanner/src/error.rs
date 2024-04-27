@@ -1,4 +1,4 @@
-use crate::scanner::Span;
+use vif_objects::span::Span;
 
 #[derive(Debug)]
 pub enum ScannerError {
@@ -30,8 +30,8 @@ impl IndentationError {
     }
 
     pub fn format(&self, content: &str) -> String {
-        let row = content.split('\n').nth(self.span.line).unwrap();
-        format!("Line {} - {row}\nIndentation error", self.span.line)
+        let row = content.split('\n').nth(self.span.get_line() - 1).unwrap();
+        format!("Line {} - {row}\nIndentation error", self.span.get_line())
     }
 }
 
@@ -46,8 +46,8 @@ impl EOFError {
     }
 
     pub fn format(&self, content: &str) -> String {
-        let row = content.split('\n').nth(self.span.line).unwrap();
-        format!("Line {} - {row}\nEOF", self.span.line)
+        let row = content.split('\n').nth(self.span.get_line() - 1).unwrap();
+        format!("Line {} - {row}\nEOF", self.span.get_line())
     }
 }
 
@@ -63,10 +63,11 @@ impl UnidentifiedError {
     }
 
     pub fn format(&self, content: &str) -> String {
-        let row = content.split('\n').nth(self.span.line).unwrap();
+        let row = content.split('\n').nth(self.span.get_line() - 1).unwrap();
         format!(
             "Line {} - {row}\nUndidentified characters: {}",
-            self.span.line, self.value
+            self.span.get_line(),
+            self.value
         )
     }
 }
@@ -82,7 +83,10 @@ impl UnclosedString {
     }
 
     pub fn format(&self, content: &str) -> String {
-        let row = content.split('\n').nth(self.span.line).unwrap();
-        format!("Line {} - {row}\nString is not closed", self.span.line)
+        let row = content.split('\n').nth(self.span.get_line() - 1).unwrap();
+        format!(
+            "Line {} - {row}\nString is not closed",
+            self.span.get_line()
+        )
     }
 }

@@ -8,23 +8,7 @@ use crate::token::TokenType;
 use std::iter::Peekable;
 use std::str::Chars;
 use vif_loader::log;
-
-#[derive(Clone, Debug)]
-pub struct Span {
-    pub line: usize,
-    pub index: usize,
-}
-
-impl Span {
-    fn new(line: usize, index: usize) -> Self {
-        Span { line, index }
-    }
-
-    fn new_line(&mut self) {
-        self.line += 1;
-        self.index = 0;
-    }
-}
+use vif_objects::span::Span;
 
 pub struct Scanner<'a> {
     next: Option<Token>,
@@ -64,7 +48,7 @@ impl<'a> Scanner<'a> {
         self.tokenizer.scan()
     }
 
-    pub fn get_position(&self) -> &Span {
+    pub fn get_span(&self) -> &Span {
         self.tokenizer.get_position()
     }
 
@@ -187,14 +171,17 @@ impl<'a> Tokenizer<'a> {
             TokenType::Ignore => self.scan_token(),
             TokenType::IgnoreNewLine => self.scan_token(),
             TokenType::Comment(_) => self.scan_token(),
-            t => Ok(Token::new(t, self.get_position().line)),
+            t => Ok(Token::new(t, self.get_position().get_line())),
         }
     }
 
     fn advance(&mut self) -> Result<char, ScannerError> {
-        self.span.index += 1;
         self.source
             .next()
+            .and_then(|r| {
+                self.span.incr_index();
+                Some(r)
+            })
             .ok_or_else(|| EOFError::new(self.span.clone()))
     }
 
@@ -212,6 +199,7 @@ impl<'a> Tokenizer<'a> {
 
     fn parse_indentation(&mut self) -> Result<TokenType, ScannerError> {
         let mut stack = 0;
+        self.span.new_line();
         self.line_start = false;
 
         loop {
@@ -226,7 +214,6 @@ impl<'a> Tokenizer<'a> {
                 }
                 '\n' => {
                     self.advance().unwrap();
-                    self.span.new_line();
                     return Ok(TokenType::IgnoreNewLine);
                 }
                 '\0' => {
@@ -256,7 +243,7 @@ impl<'a> Tokenizer<'a> {
             } else if previous_stack > stack {
                 // we need to return every dedent singely, even when consecutive
                 // so we return here but we decrease the line by 1 as it'll be incr back next iteration
-                self.span.line -= 1;
+                self.span.decr_line();
                 self.line_start = true;
                 TokenType::Dedent
             } else {

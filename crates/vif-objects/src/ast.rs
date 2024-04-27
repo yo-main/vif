@@ -1,3 +1,5 @@
+use crate::span::Span;
+
 #[derive(Debug, PartialEq)]
 pub enum Operator {
     Comma,
@@ -66,18 +68,6 @@ pub struct Grouping {
     pub expr: Box<Expr>,
     pub right: Group,
 }
-
-// #[derive(Debug, PartialEq)]
-// pub struct VariableReference {
-//     pub name: String,
-//     pub typing: Typing,
-// }
-
-// impl VariableReference {
-//     pub fn new(name: String, typing: Typing) -> Self {
-//         Self { name, typing }
-//     }
-// }
 
 #[derive(Debug, PartialEq)]
 pub struct Variable {
@@ -296,6 +286,7 @@ pub struct Logical {
 
 #[derive(Debug, PartialEq)]
 pub struct Expr {
+    pub span: Span,
     pub body: ExprBody,
     pub typing: Typing,
 }
@@ -325,8 +316,8 @@ pub enum Stmt {
 }
 
 impl Expr {
-    pub fn new(body: ExprBody, typing: Typing) -> Self {
-        Expr { body, typing }
+    pub fn new(body: ExprBody, typing: Typing, span: Span) -> Self {
+        Expr { body, typing, span }
     }
 }
 
