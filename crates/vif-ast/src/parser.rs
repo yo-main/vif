@@ -1,4 +1,5 @@
 use crate::error::AstError;
+use crate::error::SyntaxError;
 use vif_objects::ast;
 use vif_objects::ast::Expr;
 use vif_objects::ast::ExprBody;
@@ -69,9 +70,11 @@ impl<'a> Parser<'a> {
             Ok(t) => match t.r#type {
                 TokenType::Identifier(s) => s,
                 _ => {
-                    return Err(AstError::ParsingError(format!(
-                        "Expected an identifier after def"
-                    )))
+                    return Err(SyntaxError::new(
+                        format!("Expected an identifier after def"),
+                        self.scanner.get_line() as usize,
+                        0,
+                    ))
                 }
             },
             Err(e) => return Err(e.into()),
@@ -106,7 +109,13 @@ impl<'a> Parser<'a> {
                         });
                         self.scanner.scan().unwrap();
                     }
-                    _ => return Err(AstError::ParsingError(format!("Expected a parameter name"))),
+                    _ => {
+                        return Err(SyntaxError::new(
+                            format!("Expected a parameter name"),
+                            self.scanner.get_line() as usize,
+                            0,
+                        ))
+                    }
                 },
                 _ => break,
             };
@@ -167,9 +176,11 @@ impl<'a> Parser<'a> {
                 _ => false,
             },
             _ => {
-                return Err(AstError::ParsingError(format!(
-                    "Expected an variable name, got EOF"
-                )))
+                return Err(SyntaxError::new(
+                    format!("Expected a variable name, get EOF"),
+                    self.scanner.get_line() as usize,
+                    0,
+                ))
             }
         };
 
@@ -177,16 +188,19 @@ impl<'a> Parser<'a> {
             Ok(t) => match t.r#type {
                 TokenType::Identifier(s) => s,
                 t => {
-                    return Err(AstError::ParsingError(format!(
-                        "Expected an variable name, got {}",
-                        t
-                    )))
+                    return Err(SyntaxError::new(
+                        format!("Expected an variable name, got {}", t),
+                        self.scanner.get_line() as usize,
+                        0,
+                    ))
                 }
             },
             _ => {
-                return Err(AstError::ParsingError(format!(
-                    "Expected an variable name, got EOF"
-                )))
+                return Err(SyntaxError::new(
+                    format!("Expected an variable name, got EOF"),
+                    self.scanner.get_line() as usize,
+                    0,
+                ))
             }
         };
 
@@ -323,10 +337,11 @@ impl<'a> Parser<'a> {
                         typing,
                     )))
                 }
-                ref e => self.errors.push(AstError::ParsingError(format!(
-                    "Invalid assignement target: {}",
-                    e
-                ))),
+                ref e => self.errors.push(SyntaxError::new(
+                    format!("Invalid assignement target: {}", e),
+                    self.scanner.get_line() as usize,
+                    0,
+                )),
             };
         }
 
@@ -604,7 +619,11 @@ impl<'a> Parser<'a> {
             return Ok(self.scanner.scan()?);
         }
 
-        Err(AstError::ParsingError(msg.to_owned()))
+        Err(SyntaxError::new(
+            msg.to_owned(),
+            self.scanner.get_line() as usize,
+            0,
+        ))
     }
 }
 

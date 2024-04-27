@@ -85,7 +85,7 @@ impl Vif {
     fn build_ast(&self, content: &str) -> Result<Function, String> {
         let mut ast = match build_ast(content) {
             Ok(ast) => ast,
-            Err(errors) => return Err(errors[0].to_string()),
+            Err(errors) => return Err(errors[0].format(content)),
         };
 
         match run_typing_checks(&mut ast) {

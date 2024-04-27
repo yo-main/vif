@@ -1,9 +1,38 @@
 use vif_scanner::ScannerError;
 
+#[derive(Debug)]
 pub enum AstError {
     ScannerError(ScannerError),
-    ParsingError(String),
+    SyntaxError(SyntaxError),
     EOF,
+}
+
+impl AstError {
+    pub fn format(&self, content: &str) -> String {
+        match self {
+            Self::ScannerError(e) => e.format(content),
+            Self::SyntaxError(e) => e.format(content),
+            Self::EOF => "EOF".to_owned(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct SyntaxError {
+    line: usize,
+    pos: usize,
+    msg: String,
+}
+
+impl SyntaxError {
+    pub fn new(msg: String, line: usize, pos: usize) -> AstError {
+        AstError::SyntaxError(Self { line, pos, msg })
+    }
+
+    pub fn format(&self, content: &str) -> String {
+        let row = content.split('\n').nth(self.line).unwrap();
+        format!("Line {} - {row}\n{}", self.line, self.msg)
+    }
 }
 
 impl From<ScannerError> for AstError {
@@ -11,26 +40,6 @@ impl From<ScannerError> for AstError {
         match value {
             ScannerError::EOF(_) => AstError::EOF,
             _ => AstError::ScannerError(value),
-        }
-    }
-}
-
-impl std::fmt::Display for AstError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::ScannerError(err) => write!(f, "{}", err.format("")),
-            Self::ParsingError(s) => write!(f, "{}", s),
-            Self::EOF => write!(f, "EOF"),
-        }
-    }
-}
-
-impl std::fmt::Debug for AstError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::ScannerError(err) => write!(f, "{}", err.format("")),
-            Self::ParsingError(s) => write!(f, "{}", s),
-            Self::EOF => write!(f, "EOF"),
         }
     }
 }
