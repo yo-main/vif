@@ -9,7 +9,7 @@ use std::iter::Peekable;
 use std::str::Chars;
 use vif_loader::log;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Span {
     pub line: usize,
     pub index: usize,
@@ -129,13 +129,7 @@ impl<'a> Tokenizer<'a> {
                 }
                 '!' => match self.r#match('=') {
                     true => TokenType::BangEqual,
-                    false => {
-                        return Err(UnidentifiedError::new(
-                            self.get_position().line,
-                            0,
-                            "!".to_owned(),
-                        ))
-                    }
+                    false => return Err(UnidentifiedError::new(self.span.clone(), "!".to_owned())),
                 },
                 '=' => match self.r#match('=') {
                     true => TokenType::EqualEqual,
@@ -175,13 +169,7 @@ impl<'a> Tokenizer<'a> {
                 '\t' => TokenType::Ignore,
                 '\r' => TokenType::Ignore,
                 '\n' => TokenType::NewLine,
-                c => {
-                    return Err(UnidentifiedError::new(
-                        self.get_position().line as usize,
-                        0,
-                        String::from(c),
-                    ))
-                }
+                c => return Err(UnidentifiedError::new(self.span.clone(), String::from(c))),
             }
         };
 
@@ -207,7 +195,7 @@ impl<'a> Tokenizer<'a> {
         self.span.index += 1;
         self.source
             .next()
-            .ok_or_else(|| EOFError::new(self.get_position().line, 0))
+            .ok_or_else(|| EOFError::new(self.span.clone()))
     }
 
     fn r#match(&mut self, expected: char) -> bool {
@@ -272,7 +260,7 @@ impl<'a> Tokenizer<'a> {
                 self.line_start = true;
                 TokenType::Dedent
             } else {
-                return Err(IndentationError::new(self.span.line, self.span.index));
+                return Err(IndentationError::new(self.span.clone()));
             }
         };
 
@@ -353,10 +341,10 @@ impl<'a> Tokenizer<'a> {
                     break;
                 }
                 &'\0' => {
-                    return Err(UnclosedString::new(self.get_position().line, 0));
+                    return Err(UnclosedString::new(self.span.clone()));
                 }
                 &'\n' => {
-                    return Err(UnclosedString::new(self.get_position().line, 0));
+                    return Err(UnclosedString::new(self.span.clone()));
                 }
                 _ => str.push(self.advance().unwrap()),
             };

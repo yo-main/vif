@@ -1,3 +1,5 @@
+use crate::scanner::Span;
+
 #[derive(Debug)]
 pub enum ScannerError {
     UnclosedString(UnclosedString),
@@ -19,72 +21,68 @@ impl ScannerError {
 
 #[derive(Debug)]
 pub struct IndentationError {
-    line: usize,
-    pos: usize,
+    span: Span,
 }
 
 impl IndentationError {
-    pub fn new(line: usize, pos: usize) -> ScannerError {
-        ScannerError::Indentation(Self { line, pos })
+    pub fn new(span: Span) -> ScannerError {
+        ScannerError::Indentation(Self { span })
     }
 
     pub fn format(&self, content: &str) -> String {
-        let row = content.split('\n').nth(self.line).unwrap();
-        format!("Line {} - {row}\nIndentation error", self.line)
+        let row = content.split('\n').nth(self.span.line).unwrap();
+        format!("Line {} - {row}\nIndentation error", self.span.line)
     }
 }
 
 #[derive(Debug)]
 pub struct EOFError {
-    line: usize,
-    pos: usize,
+    span: Span,
 }
 
 impl EOFError {
-    pub fn new(line: usize, pos: usize) -> ScannerError {
-        ScannerError::EOF(Self { line, pos })
+    pub fn new(span: Span) -> ScannerError {
+        ScannerError::EOF(Self { span })
     }
 
     pub fn format(&self, content: &str) -> String {
-        let row = content.split('\n').nth(self.line).unwrap();
-        format!("Line {} - {row}\nEOF", self.line)
+        let row = content.split('\n').nth(self.span.line).unwrap();
+        format!("Line {} - {row}\nEOF", self.span.line)
     }
 }
 
 #[derive(Debug)]
 pub struct UnidentifiedError {
-    line: usize,
-    pos: usize,
+    span: Span,
     value: String,
 }
 
 impl UnidentifiedError {
-    pub fn new(line: usize, pos: usize, value: String) -> ScannerError {
-        ScannerError::Unidentified(Self { line, pos, value })
+    pub fn new(span: Span, value: String) -> ScannerError {
+        ScannerError::Unidentified(Self { span, value })
     }
 
     pub fn format(&self, content: &str) -> String {
-        let row = content.split('\n').nth(self.line).unwrap();
+        let row = content.split('\n').nth(self.span.line).unwrap();
         format!(
             "Line {} - {row}\nUndidentified characters: {}",
-            self.line, self.value
+            self.span.line, self.value
         )
     }
 }
 
 #[derive(Debug)]
 pub struct UnclosedString {
-    line: usize,
-    pos: usize,
+    span: Span,
 }
 
 impl UnclosedString {
-    pub fn new(line: usize, pos: usize) -> ScannerError {
-        ScannerError::UnclosedString(Self { line, pos })
+    pub fn new(span: Span) -> ScannerError {
+        ScannerError::UnclosedString(Self { span })
     }
 
     pub fn format(&self, content: &str) -> String {
-        let row = content.split('\n').nth(self.line).unwrap();
-        format!("Line {} - {row}\nString is not closed", self.line)
+        let row = content.split('\n').nth(self.span.line).unwrap();
+        format!("Line {} - {row}\nString is not closed", self.span.line)
     }
 }
