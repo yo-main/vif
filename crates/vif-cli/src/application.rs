@@ -4,7 +4,6 @@ use std::io::Write;
 use std::path::PathBuf;
 use vif_ast::build_ast;
 use vif_ast::print_ast_tree;
-use vif_ast::AstError;
 use vif_compiler::compile;
 use vif_compiler::disassemble_application;
 use vif_loader::log;

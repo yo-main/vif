@@ -300,15 +300,6 @@ pub struct Expr {
     pub typing: Typing,
 }
 
-// impl Expr {
-//     pub fn new(body: ExprBody) -> Self {
-//         Expr {
-//             typing: Typing::new(body.typing.mutable)
-//             body,
-//         }
-//     }
-// }
-
 #[derive(Debug, PartialEq)]
 pub enum ExprBody {
     Binary(Binary),
