@@ -1,57 +1,90 @@
 #[derive(Debug)]
-pub enum ScanningErrorType {
-    Generic,
-    EOF,
-    Indentation,
-    Unidentified(char),
-    UnclosedString,
+pub enum ScannerError {
+    UnclosedString(UnclosedString),
+    Indentation(IndentationError),
+    EOF(EOFError),
+    Unidentified(UnidentifiedError),
 }
 
-#[derive(Debug)]
-pub struct ScanningError {
-    pub msg: String,
-    pub line: u64,
-    pub r#type: ScanningErrorType,
-}
-
-impl ScanningError {
-    pub fn format(&self) -> String {
-        format!("[{}] Scanning error: {}", self.line, self.msg)
-    }
-
-    pub fn from_error_type(value: ScanningErrorType, line: u64) -> Self {
-        match value {
-            ScanningErrorType::EOF => Self {
-                msg: "EOF".to_owned(),
-                r#type: ScanningErrorType::EOF,
-                line,
-            },
-            ScanningErrorType::Generic => Self {
-                msg: "Generic Error".to_owned(),
-                r#type: ScanningErrorType::Generic,
-                line,
-            },
-            ScanningErrorType::Indentation => Self {
-                msg: "Indentation error".to_owned(),
-                r#type: ScanningErrorType::Indentation,
-                line,
-            },
-            ScanningErrorType::Unidentified(char) => Self {
-                msg: format!("Unidentified character: {char}"),
-                r#type: ScanningErrorType::Indentation,
-                line,
-            },
-            ScanningErrorType::UnclosedString => Self {
-                msg: "Unclosed string".to_owned(),
-                r#type: ScanningErrorType::UnclosedString,
-                line,
-            },
+impl ScannerError {
+    pub fn format(&self, content: &str) -> String {
+        match self {
+            Self::EOF(e) => e.format(content),
+            Self::UnclosedString(e) => e.format(content),
+            Self::Indentation(e) => e.format(content),
+            Self::Unidentified(e) => e.format(content),
         }
     }
 }
 
-impl std::fmt::Display for ScanningError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Scanning error [{}]: {}", self.line, self.msg)
+#[derive(Debug)]
+pub struct IndentationError {
+    line: usize,
+    pos: usize,
+}
+
+impl IndentationError {
+    pub fn new(line: usize, pos: usize) -> ScannerError {
+        ScannerError::Indentation(Self { line, pos })
+    }
+
+    pub fn format(&self, content: &str) -> String {
+        let row = content.split('\n').nth(self.line).unwrap();
+        format!("Line {} - {row}\nIndentation error", self.line)
+    }
+}
+
+#[derive(Debug)]
+pub struct EOFError {
+    line: usize,
+    pos: usize,
+}
+
+impl EOFError {
+    pub fn new(line: usize, pos: usize) -> ScannerError {
+        ScannerError::EOF(Self { line, pos })
+    }
+
+    pub fn format(&self, content: &str) -> String {
+        let row = content.split('\n').nth(self.line).unwrap();
+        format!("Line {} - {row}\nEOF", self.line)
+    }
+}
+
+#[derive(Debug)]
+pub struct UnidentifiedError {
+    line: usize,
+    pos: usize,
+    value: String,
+}
+
+impl UnidentifiedError {
+    pub fn new(line: usize, pos: usize, value: String) -> ScannerError {
+        ScannerError::Unidentified(Self { line, pos, value })
+    }
+
+    pub fn format(&self, content: &str) -> String {
+        let row = content.split('\n').nth(self.line).unwrap();
+        format!(
+            "Line {} - {row}\nUndidentified characters: {}",
+            self.line, self.value
+        )
+    }
+}
+
+#[derive(Debug)]
+pub struct UnclosedString {
+    line: usize,
+    pos: usize,
+}
+
+impl UnclosedString {
+    pub fn new(line: usize, pos: usize) -> ScannerError {
+        ScannerError::UnclosedString(Self { line, pos })
+    }
+
+    pub fn format(&self, content: &str) -> String {
+        let row = content.split('\n').nth(self.line).unwrap();
+        format!("Line {} - {row}\nString is not closed", self.line)
     }
 }

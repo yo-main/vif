@@ -1,5 +1,8 @@
-use crate::error::ScanningError;
-use crate::error::ScanningErrorType;
+use crate::error::EOFError;
+use crate::error::IndentationError;
+use crate::error::ScannerError;
+use crate::error::UnclosedString;
+use crate::error::UnidentifiedError;
 use crate::token::Token;
 use crate::token::TokenType;
 use std::iter::Peekable;
@@ -19,7 +22,7 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    fn advance(&mut self) -> Result<(), ScanningError> {
+    fn advance(&mut self) -> Result<(), ScannerError> {
         self.next = Some(self.tokenizer.scan()?);
         Ok(())
     }
@@ -28,7 +31,7 @@ impl<'a> Scanner<'a> {
         self.peek().is_ok_and(|t| &t.r#type == token_type)
     }
 
-    pub fn peek(&mut self) -> Result<&Token, ScanningError> {
+    pub fn peek(&mut self) -> Result<&Token, ScannerError> {
         if self.next.is_none() {
             self.advance()?;
         };
@@ -36,7 +39,7 @@ impl<'a> Scanner<'a> {
         return Ok(self.next.as_ref().unwrap());
     }
 
-    pub fn scan(&mut self) -> Result<Token, ScanningError> {
+    pub fn scan(&mut self) -> Result<Token, ScannerError> {
         if self.next.is_some() {
             return Ok(self.next.take().unwrap());
         };
@@ -74,23 +77,17 @@ impl<'a> Tokenizer<'a> {
         self.line
     }
 
-    pub fn scan(&mut self) -> Result<Token, ScanningError> {
+    pub fn scan(&mut self) -> Result<Token, ScannerError> {
         let token = self.scan_token();
         log::debug!("Scanned token: {:?}", token);
         token
-    }
-
-    fn report_error(&mut self, error_type: ScanningErrorType) -> ScanningError {
-        let err = ScanningError::from_error_type(error_type, self.line);
-        log::error!("{}", err.format());
-        err
     }
 
     fn is_at_line_start(&self) -> bool {
         self.line_start
     }
 
-    fn scan_token(&mut self) -> Result<Token, ScanningError> {
+    fn scan_token(&mut self) -> Result<Token, ScannerError> {
         let token_type = if self.line_start {
             self.line += 1;
             self.line_start = false;
@@ -117,7 +114,13 @@ impl<'a> Tokenizer<'a> {
                 }
                 '!' => match self.r#match('=') {
                     true => TokenType::BangEqual,
-                    false => return Err(self.report_error(ScanningErrorType::Unidentified('!'))),
+                    false => {
+                        return Err(UnidentifiedError::new(
+                            self.line as usize,
+                            0,
+                            "!".to_owned(),
+                        ))
+                    }
                 },
                 '=' => match self.r#match('=') {
                     true => TokenType::EqualEqual,
@@ -157,7 +160,13 @@ impl<'a> Tokenizer<'a> {
                 '\t' => TokenType::Ignore,
                 '\r' => TokenType::Ignore,
                 '\n' => TokenType::NewLine,
-                c => return Err(self.report_error(ScanningErrorType::Unidentified(c))),
+                c => {
+                    return Err(UnidentifiedError::new(
+                        self.line as usize,
+                        0,
+                        String::from(c),
+                    ))
+                }
             }
         };
 
@@ -179,9 +188,10 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn advance(&mut self) -> Result<char, ScanningError> {
-        let next = self.source.next();
-        next.ok_or_else(|| self.report_error(ScanningErrorType::EOF))
+    fn advance(&mut self) -> Result<char, ScannerError> {
+        self.source
+            .next()
+            .ok_or_else(|| EOFError::new(self.line as usize, 0))
     }
 
     fn r#match(&mut self, expected: char) -> bool {
@@ -196,7 +206,7 @@ impl<'a> Tokenizer<'a> {
         self.source.peek().unwrap_or(&'\0')
     }
 
-    fn parse_indentation(&mut self) -> Result<TokenType, ScanningError> {
+    fn parse_indentation(&mut self) -> Result<TokenType, ScannerError> {
         let mut stack = 0;
 
         loop {
@@ -241,7 +251,7 @@ impl<'a> Tokenizer<'a> {
                 self.line -= 1;
                 return Ok(TokenType::Dedent);
             } else {
-                return Err(self.report_error(ScanningErrorType::Indentation));
+                return Err(IndentationError::new(self.line as usize, 0));
             }
         }
     }
@@ -311,7 +321,7 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn parse_string(&mut self) -> Result<TokenType, ScanningError> {
+    fn parse_string(&mut self) -> Result<TokenType, ScannerError> {
         let mut str = String::new();
         loop {
             match self.peek() {
@@ -320,10 +330,10 @@ impl<'a> Tokenizer<'a> {
                     break;
                 }
                 &'\0' => {
-                    return Err(self.report_error(ScanningErrorType::UnclosedString));
+                    return Err(UnclosedString::new(self.line as usize, 0));
                 }
                 &'\n' => {
-                    return Err(self.report_error(ScanningErrorType::UnclosedString));
+                    return Err(UnclosedString::new(self.line as usize, 0));
                 }
                 _ => str.push(self.advance().unwrap()),
             };

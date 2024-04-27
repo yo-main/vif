@@ -1,16 +1,15 @@
-use vif_scanner::ScanningError;
-use vif_scanner::ScanningErrorType;
+use vif_scanner::ScannerError;
 
 pub enum AstError {
-    ScannerError(ScanningError),
+    ScannerError(ScannerError),
     ParsingError(String),
     EOF,
 }
 
-impl From<ScanningError> for AstError {
-    fn from(value: ScanningError) -> Self {
-        match value.r#type {
-            ScanningErrorType::EOF => AstError::EOF,
+impl From<ScannerError> for AstError {
+    fn from(value: ScannerError) -> Self {
+        match value {
+            ScannerError::EOF(_) => AstError::EOF,
             _ => AstError::ScannerError(value),
         }
     }
@@ -19,7 +18,7 @@ impl From<ScanningError> for AstError {
 impl std::fmt::Display for AstError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::ScannerError(err) => write!(f, "{}", err),
+            Self::ScannerError(err) => write!(f, "{}", err.format("")),
             Self::ParsingError(s) => write!(f, "{}", s),
             Self::EOF => write!(f, "EOF"),
         }
@@ -29,7 +28,7 @@ impl std::fmt::Display for AstError {
 impl std::fmt::Debug for AstError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::ScannerError(err) => write!(f, "{}", err),
+            Self::ScannerError(err) => write!(f, "{}", err.format("")),
             Self::ParsingError(s) => write!(f, "{}", s),
             Self::EOF => write!(f, "EOF"),
         }
