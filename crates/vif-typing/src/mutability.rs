@@ -77,8 +77,7 @@ fn check_statement(stmt: &Stmt) -> Result<(), TypingError> {
                 return Err(NonMutableArgumentToMutableVariable::new(
                     v.name.clone(),
                     format!("{}", v.value),
-                    0,
-                    0,
+                    v.value.span.clone(),
                 ));
             }
 
@@ -134,8 +133,7 @@ fn check_expression(expr: &Expr) -> Result<(), TypingError> {
                     format!("{}", c.callee),
                     nb_parameters,
                     c.arguments.len(),
-                    0,
-                    0,
+                    c.callee.span.clone(),
                 ));
             }
 
@@ -153,8 +151,7 @@ fn check_expression(expr: &Expr) -> Result<(), TypingError> {
                     return Err(NonMutableArgumentToMutableParameter::new(
                         format!("{}", c.callee),
                         format!("{}", arg.body),
-                        0,
-                        0,
+                        c.callee.span.clone(),
                     ));
                 }
             }
@@ -168,8 +165,7 @@ fn check_expression(expr: &Expr) -> Result<(), TypingError> {
                     format!("{}", b.right),
                     b.left.typing.callable.clone(),
                     b.right.typing.callable.clone(),
-                    0,
-                    0,
+                    b.right.span.clone(),
                 ));
             }
         }
@@ -184,8 +180,7 @@ fn check_expression(expr: &Expr) -> Result<(), TypingError> {
                 return Err(NonMutableArgumentToMutableVariable::new(
                     a.name.clone(),
                     format!("{}", a.value),
-                    0,
-                    0,
+                    a.value.span.clone(),
                 ));
             }
 
@@ -201,8 +196,7 @@ fn check_expression(expr: &Expr) -> Result<(), TypingError> {
                     format!("{}", l.right),
                     l.left.typing.callable.clone(),
                     l.right.typing.callable.clone(),
-                    0,
-                    0,
+                    l.right.span.clone(),
                 ));
             }
         }
@@ -243,7 +237,7 @@ mod tests {
         let err_msg = result.unwrap_err().format(string);
         assert_eq!(
             err_msg,
-            "Line 0 - \nCannot assign value Value[2] (non mutable) to mutable variable i"
+            "Line 3 -             i = 2\nCannot assign value Value[2] (non mutable) to mutable variable i"
         );
     }
 
@@ -272,7 +266,7 @@ mod tests {
         let err_msg = result.unwrap_err().format(string);
         assert_eq!(
             err_msg,
-            "Line 0 - \nCannot assign value Value[var[i]] (non mutable) to mutable variable j"
+            "Line 3 -             var mut j = i\nCannot assign value Value[var[i]] (non mutable) to mutable variable j"
         );
     }
 
@@ -337,7 +331,7 @@ mod tests {
 
         assert_eq!(
             err_msg,
-            "Line 0 - \nCannot pass Value[var[i]] argument (non mutable) to a mutable parameter"
+            "Line 7 -             coucou(j, i)\nCannot pass Value[var[i]] argument (non mutable) to a mutable parameter"
         );
     }
 
@@ -358,7 +352,7 @@ mod tests {
 
         assert_eq!(
             err_msg,
-            "Line 0 - \nCannot assign value Call[Function[Value[var[coucou]]]] (non mutable) to mutable variable k"
+            "Line 6 -             var mut k = coucou(i)\nCannot assign value Call[Function[Value[var[coucou]]]] (non mutable) to mutable variable k"
         );
     }
 
@@ -396,7 +390,7 @@ mod tests {
 
         assert_eq!(
             err_msg,
-            "Line 0 - \nCannot pass Value[var[j]] argument (non mutable) to a mutable parameter"
+            "Line 7 -             i(j)\nCannot pass Value[var[j]] argument (non mutable) to a mutable parameter"
         );
     }
 
@@ -438,7 +432,7 @@ mod tests {
 
         assert_eq!(
             err_msg,
-            "Line 0 - \nCannot pass Value[var[i]] argument (non mutable) to a mutable parameter"
+            "Line 9 -             test(i)(i)\nCannot pass Value[var[i]] argument (non mutable) to a mutable parameter"
         );
     }
 
@@ -479,7 +473,7 @@ mod tests {
 
         assert_eq!(
             err_msg,
-            "Line 0 - \nWrong number of argument passed. Expected 0 but received 1"
+            "Line 8 -             assert callback(2) == 3\nWrong number of argument passed. Expected 0 but received 1"
         );
     }
 }

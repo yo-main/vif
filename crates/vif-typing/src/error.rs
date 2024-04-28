@@ -1,4 +1,4 @@
-use vif_objects::ast::Callable;
+use vif_objects::{ast::Callable, span::Span};
 
 #[derive(Debug)]
 pub enum TypingError {
@@ -14,8 +14,7 @@ pub struct WrongArgumentNumberFunction {
     function_name: String,
     expected: usize,
     received: usize,
-    line: usize,
-    pos: usize,
+    span: Span,
 }
 
 impl TypingError {
@@ -31,27 +30,22 @@ impl TypingError {
 }
 
 impl WrongArgumentNumberFunction {
-    pub fn new(
-        function_name: String,
-        expected: usize,
-        received: usize,
-        line: usize,
-        pos: usize,
-    ) -> TypingError {
+    pub fn new(function_name: String, expected: usize, received: usize, span: Span) -> TypingError {
         TypingError::WrongArgumentNumberFunction(Self {
             expected,
             received,
             function_name,
-            line,
-            pos,
+            span,
         })
     }
 
     fn format(&self, content: &str) -> String {
-        let row = content.split('\n').nth(self.line).unwrap();
+        let row = content.split('\n').nth(self.span.get_line() - 1).unwrap();
         format!(
             "Line {} - {row}\nWrong number of argument passed. Expected {} but received {}",
-            self.line, self.expected, self.received
+            self.span.get_line(),
+            self.expected,
+            self.received
         )
     }
 }
@@ -60,30 +54,24 @@ impl WrongArgumentNumberFunction {
 pub struct NonMutableArgumentToMutableParameter {
     function_name: String,
     argument_name: String,
-    line: usize,
-    pos: usize,
+    span: Span,
 }
 
 impl NonMutableArgumentToMutableParameter {
-    pub fn new(
-        function_name: String,
-        argument_name: String,
-        line: usize,
-        pos: usize,
-    ) -> TypingError {
+    pub fn new(function_name: String, argument_name: String, span: Span) -> TypingError {
         TypingError::NonMutableArgumentToMutableParameter(Self {
             function_name,
             argument_name,
-            line,
-            pos,
+            span,
         })
     }
 
     fn format(&self, content: &str) -> String {
-        let row = content.split('\n').nth(self.line).unwrap();
+        let row = content.split('\n').nth(self.span.get_line() - 1).unwrap();
         format!(
             "Line {} - {row}\nCannot pass {} argument (non mutable) to a mutable parameter",
-            self.line, self.argument_name
+            self.span.get_line(),
+            self.argument_name
         )
     }
 }
@@ -92,25 +80,25 @@ impl NonMutableArgumentToMutableParameter {
 pub struct NonMutableArgumentToMutableVariable {
     variable_name: String,
     value: String,
-    line: usize,
-    pos: usize,
+    span: Span,
 }
 
 impl NonMutableArgumentToMutableVariable {
-    pub fn new(variable_name: String, value: String, line: usize, pos: usize) -> TypingError {
+    pub fn new(variable_name: String, value: String, span: Span) -> TypingError {
         TypingError::NonMutableArgumentToMutableVariable(Self {
             variable_name,
             value,
-            line,
-            pos,
+            span,
         })
     }
 
     fn format(&self, content: &str) -> String {
-        let row = content.split('\n').nth(self.line).unwrap();
+        let row = content.split('\n').nth(self.span.get_line() - 1).unwrap();
         format!(
             "Line {} - {row}\nCannot assign value {} (non mutable) to mutable variable {}",
-            self.line, self.value, self.variable_name
+            self.span.get_line(),
+            self.value,
+            self.variable_name
         )
     }
 }
@@ -121,8 +109,7 @@ pub struct DifferentSignatureBetweenFunction {
     function_b: String,
     signature_a: Option<Box<Callable>>,
     signature_b: Option<Box<Callable>>,
-    line: usize,
-    pos: usize,
+    span: Span,
 }
 
 impl DifferentSignatureBetweenFunction {
@@ -131,24 +118,22 @@ impl DifferentSignatureBetweenFunction {
         function_b: String,
         signature_a: Option<Box<Callable>>,
         signature_b: Option<Box<Callable>>,
-        line: usize,
-        pos: usize,
+        span: Span,
     ) -> TypingError {
         TypingError::DifferentSignatureBetweenFunction(Self {
             function_a,
             function_b,
             signature_a,
             signature_b,
-            line,
-            pos,
+            span,
         })
     }
 
     fn format(&self, content: &str) -> String {
-        let row = content.split('\n').nth(self.line).unwrap();
+        let row = content.split('\n').nth(self.span.get_line() - 1).unwrap();
         format!(
-            "Line {} - {row}\n{} and {} have different signature: {} against {}",
-            self.line,
+            "Line {} -{row}\n{} and {} have different signature: {} against {}",
+            self.span.get_line(),
             self.function_a,
             self.function_b,
             match &self.signature_a {
@@ -168,8 +153,7 @@ pub struct DifferentSignatureBetweenReturns {
     function: String,
     return_a: Option<Box<Callable>>,
     return_b: Option<Box<Callable>>,
-    line: usize,
-    pos: usize,
+    span: Span,
 }
 
 impl DifferentSignatureBetweenReturns {
@@ -177,23 +161,21 @@ impl DifferentSignatureBetweenReturns {
         function: String,
         return_a: Option<Box<Callable>>,
         return_b: Option<Box<Callable>>,
-        line: usize,
-        pos: usize,
+        span: Span,
     ) -> TypingError {
         TypingError::DifferentSignatureBetweenReturns(Self {
             function,
             return_a,
             return_b,
-            line,
-            pos,
+            span,
         })
     }
 
     fn format(&self, content: &str) -> String {
-        let row = content.split('\n').nth(self.line).unwrap();
+        let row = content.split('\n').nth(self.span.get_line() - 1).unwrap();
         format!(
             "Line {} - {row}\nThe function {} got several return signature: {} and {}",
-            self.line,
+            self.span.get_line(),
             self.function,
             match &self.return_a {
                 None => "None".to_owned(),

@@ -84,8 +84,7 @@ fn update_function_typing(function: &mut Function) -> Result<(), TypingError> {
                 function.name.clone(),
                 return_stmt.value.typing.callable.clone(),
                 function.typing.callable.clone(),
-                0,
-                0,
+                return_stmt.value.span.clone(),
             ));
         }
     }
