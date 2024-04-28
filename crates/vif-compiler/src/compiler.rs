@@ -8,7 +8,8 @@ use vif_objects::ast;
 use vif_objects::function::Arity;
 use vif_objects::function::Function;
 use vif_objects::global_store::GlobalStore;
-use vif_objects::op_code::Return;
+use vif_objects::op_code::ItemReference;
+use vif_objects::span::Span;
 use vif_objects::variable::InheritedLocalPos;
 use vif_objects::variable::InheritedVariable;
 use vif_objects::variable::Variable;
@@ -91,7 +92,9 @@ impl<'function> Compiler<'function> {
 
     fn return_statement(&mut self, token: &ast::Return) -> Result<(), CompilerError> {
         self.expression(&token.value)?;
-        self.emit_op_code(OpCode::Return(Return::new(Some(token.value.span.clone()))));
+        self.emit_op_code(OpCode::Return(ItemReference::new(Some(
+            token.value.span.clone(),
+        ))));
         Ok(())
     }
 
@@ -129,7 +132,9 @@ impl<'function> Compiler<'function> {
     fn assert_statement(&mut self, token: &ast::Assert) -> Result<(), CompilerError> {
         log::debug!("Starting assert statement");
         self.expression(&token.value)?;
-        self.emit_op_code(OpCode::AssertTrue);
+        self.emit_op_code(OpCode::AssertTrue(ItemReference::new(Some(
+            token.value.span.clone(),
+        ))));
         self.emit_op_code(OpCode::Pop);
         Ok(())
     }
@@ -154,7 +159,7 @@ impl<'function> Compiler<'function> {
 
     pub fn break_loop(&mut self) -> Result<(), CompilerError> {
         log::debug!("Starting break loop statement");
-        self.emit_op_code(OpCode::False); // fake a false condition
+        self.emit_op_code(OpCode::False(ItemReference::new(None))); // fake a false condition
         match self.loop_details.last() {
             Some(detail) => self.emit_op_code(OpCode::Goto(detail.1)),
             None => {
@@ -306,7 +311,7 @@ impl<'function> Compiler<'function> {
             ast::ExprBody::Binary(t) => self.binary(t),
             ast::ExprBody::Unary(t) => self.unary(t),
             ast::ExprBody::Grouping(t) => self.grouping(t),
-            ast::ExprBody::Value(t) => self.value(t),
+            ast::ExprBody::Value(t) => self.value(t, ItemReference::new(Some(token.span.clone()))),
             ast::ExprBody::Assign(t) => self.assign(t),
             ast::ExprBody::Logical(t) => self.logical(t),
             ast::ExprBody::Call(t) => self.call(t),
@@ -319,7 +324,7 @@ impl<'function> Compiler<'function> {
             ast::ExprBody::Binary(t) => self.binary(t),
             ast::ExprBody::Unary(t) => self.unary(t),
             ast::ExprBody::Grouping(t) => self.grouping(t),
-            ast::ExprBody::Value(t) => self.value(t),
+            ast::ExprBody::Value(t) => self.value(t, ItemReference::new(Some(token.span.clone()))),
             ast::ExprBody::Assign(t) => self.assign(t),
             ast::ExprBody::Logical(t) => self.logical(t),
             ast::ExprBody::Call(t) => self.call(t),
@@ -343,15 +348,15 @@ impl<'function> Compiler<'function> {
         self.set_variable(token.name.as_str())
     }
 
-    fn value(&mut self, token: &ast::Value) -> Result<(), CompilerError> {
+    fn value(&mut self, token: &ast::Value, reference: ItemReference) -> Result<(), CompilerError> {
         match token {
             ast::Value::String(s) => self.emit_global(Global::String(Box::new(s.clone()))),
             ast::Value::Integer(i) => self.emit_global(Global::Integer(*i)),
             ast::Value::Float(f) => self.emit_global(Global::Float(*f)),
             ast::Value::Variable(s) => self.get_variable(&s)?,
-            ast::Value::True => self.emit_op_code(OpCode::True),
-            ast::Value::False => self.emit_op_code(OpCode::False),
-            ast::Value::None => self.emit_op_code(OpCode::None),
+            ast::Value::True => self.emit_op_code(OpCode::True(reference)),
+            ast::Value::False => self.emit_op_code(OpCode::False(reference)),
+            ast::Value::None => self.emit_op_code(OpCode::None(reference)),
         };
 
         Ok(())
@@ -367,30 +372,31 @@ impl<'function> Compiler<'function> {
     }
 
     fn binary(&mut self, token: &ast::Binary) -> Result<(), CompilerError> {
+        let reference = ItemReference::new(Some(token.right.span.clone()));
         self.expression(&token.left)?;
         self.expression(&token.right)?;
-        self.operator(&token.operator);
+        self.operator(&token.operator, reference);
         Ok(())
     }
 
-    fn operator(&mut self, token: &ast::Operator) {
+    fn operator(&mut self, token: &ast::Operator, reference: ItemReference) {
         self.emit_op_code(match token {
-            ast::Operator::Plus => OpCode::Add,
-            ast::Operator::Minus => OpCode::Substract,
-            ast::Operator::Divide => OpCode::Divide,
-            ast::Operator::Multiply => OpCode::Multiply,
+            ast::Operator::Plus => OpCode::Add(reference),
+            ast::Operator::Minus => OpCode::Substract(reference),
+            ast::Operator::Divide => OpCode::Divide(reference),
+            ast::Operator::Multiply => OpCode::Multiply(reference),
             ast::Operator::PlusEqual => OpCode::NotImplemented,
             ast::Operator::MinusEqual => OpCode::NotImplemented,
             ast::Operator::DevideEqual => OpCode::NotImplemented,
             ast::Operator::MultiplyEqual => OpCode::NotImplemented,
-            ast::Operator::BangEqual => OpCode::NotEqual,
-            ast::Operator::Less => OpCode::Less,
-            ast::Operator::LessEqual => OpCode::LessOrEqual,
-            ast::Operator::Greater => OpCode::Greater,
-            ast::Operator::GreaterEqual => OpCode::GreaterOrEqual,
-            ast::Operator::Equal => OpCode::Equal,
+            ast::Operator::BangEqual => OpCode::NotEqual(reference),
+            ast::Operator::Less => OpCode::Less(reference),
+            ast::Operator::LessEqual => OpCode::LessOrEqual(reference),
+            ast::Operator::Greater => OpCode::Greater(reference),
+            ast::Operator::GreaterEqual => OpCode::GreaterOrEqual(reference),
+            ast::Operator::Equal => OpCode::Equal(reference),
             ast::Operator::Comma => OpCode::NotImplemented,
-            ast::Operator::Modulo => OpCode::Modulo,
+            ast::Operator::Modulo => OpCode::Modulo(reference),
         })
     }
 
@@ -493,14 +499,17 @@ impl<'function> Compiler<'function> {
 
     fn unary(&mut self, token: &ast::Unary) -> Result<(), CompilerError> {
         self.expression(&token.right)?;
-        self.unary_operator(&token.operator);
+        self.unary_operator(
+            &token.operator,
+            ItemReference::new(Some(token.right.span.clone())),
+        );
         Ok(())
     }
 
-    fn unary_operator(&mut self, token: &ast::UnaryOperator) {
+    fn unary_operator(&mut self, token: &ast::UnaryOperator, reference: ItemReference) {
         self.emit_op_code(match token {
-            ast::UnaryOperator::Minus => OpCode::Negate,
-            ast::UnaryOperator::Not => OpCode::Not,
+            ast::UnaryOperator::Minus => OpCode::Negate(reference),
+            ast::UnaryOperator::Not => OpCode::Not(reference),
         })
     }
 
@@ -512,8 +521,8 @@ impl<'function> Compiler<'function> {
         match self.function.chunk.code.last() {
             Some(OpCode::Return(r)) => (),
             _ => {
-                self.emit_op_code(OpCode::None);
-                self.emit_op_code(OpCode::Return(Return::new(None)));
+                self.emit_op_code(OpCode::None(ItemReference::new(None)));
+                self.emit_op_code(OpCode::Return(ItemReference::new(None)));
             }
         }
         self.globals
