@@ -25,4 +25,9 @@ impl Span {
     pub fn decr_line(&mut self) {
         self.line -= 1
     }
+
+    pub fn format(&self, content: &str, msg: &str) -> String {
+        let row = content.split('\n').nth(self.line - 1).unwrap();
+        format!("Line {} - {row}\n{msg}", self.line)
+    }
 }

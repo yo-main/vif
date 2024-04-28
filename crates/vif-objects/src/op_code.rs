@@ -10,6 +10,13 @@ impl ItemReference {
     pub fn new(span: Option<Span>) -> Self {
         Self { span }
     }
+
+    pub fn format(&self, content: &str, msg: &str) -> String {
+        match &self.span {
+            Some(span) => span.format(content, msg),
+            None => msg.to_owned(),
+        }
+    }
 }
 
 #[derive(PartialEq, Debug)]

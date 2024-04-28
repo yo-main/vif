@@ -17,7 +17,7 @@ fn vif_tests() {
         run_typing_checks(&mut ast).unwrap();
         let (f, g) = compile(&ast).unwrap();
 
-        let result = vif_vm::interpret(f, g);
+        let result = vif_vm::interpret(f, g, content.as_str());
         assert!(result.is_ok(), "{}", result.unwrap_err());
     }
 }

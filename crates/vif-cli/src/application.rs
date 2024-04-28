@@ -74,9 +74,9 @@ impl Vif {
         if CONFIG.assembly {
             disassemble_application(&function, &globals);
         } else {
-            match interpret(function, globals) {
+            match interpret(function, globals, content) {
                 Ok(_) => log::info!("Interpreter says Bye"),
-                Err(e) => println!("Intepreter error: {e}"),
+                Err(e) => println!("Interpreter error: {e}"),
             };
         }
     }

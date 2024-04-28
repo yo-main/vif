@@ -7,6 +7,7 @@ use vif_objects::function::Function;
 use vif_objects::function::NativeFunction;
 use vif_objects::global::Global;
 use vif_objects::global_store::GlobalStore;
+use vif_objects::op_code::ItemReference;
 use vif_objects::op_code::OpCode;
 use vif_objects::stack::Stack;
 use vif_objects::stack_value::StackValue;
@@ -37,7 +38,7 @@ impl std::fmt::Display for SoftTrunc {
     }
 }
 
-pub struct VM<'function, 'stack, 'value, 'variables, 'globals>
+pub struct VM<'content, 'function, 'stack, 'value, 'variables, 'globals>
 where
     'globals: 'value,
 {
@@ -47,10 +48,11 @@ where
     pub frame: CallFrame<'stack, 'function>,
     pub previous_frames: Vec<CallFrame<'stack, 'function>>,
     soft_trunc: Option<SoftTrunc>,
+    content: &'content str,
 }
 
-impl<'function, 'stack, 'value, 'variables, 'globals>
-    VM<'function, 'stack, 'value, 'variables, 'globals>
+impl<'content, 'function, 'stack, 'value, 'variables, 'globals>
+    VM<'content, 'function, 'stack, 'value, 'variables, 'globals>
 where
     'globals: 'value,
     'value: 'function,
@@ -60,6 +62,7 @@ where
         variables: &'variables mut VariableStore<'globals, 'value>,
         globals: &'globals GlobalStore,
         frame: CallFrame<'stack, 'function>,
+        content: &'content str,
     ) -> Self {
         VM {
             stack,
@@ -68,6 +71,7 @@ where
             frame,
             previous_frames: Vec::with_capacity(100),
             soft_trunc: None,
+            content,
         }
     }
 
@@ -107,7 +111,7 @@ where
             OpCode::Goto(i) => self.reset_ip(*i),
             OpCode::Jump(i) => self.advance_by(*i),
             OpCode::JumpIfFalse(i) => self.jump_if_false(*i),
-            OpCode::AssertTrue(_) => self.assert_true()?,
+            OpCode::AssertTrue(reference) => self.assert_true(reference)?,
             OpCode::Not(_) => self.not()?,
             OpCode::Negate(_) => self.negate()?,
             OpCode::True(_) => self.r#true(),
@@ -318,32 +322,34 @@ where
         })
     }
 
-    fn assert_true(&mut self) -> Result<(), InterpreterError> {
+    fn assert_true(&mut self, reference: &ItemReference) -> Result<(), InterpreterError> {
         let value = self.stack.peek_last();
         match value {
             StackValue::Integer(0) => {
                 return Err(InterpreterError::RuntimeError(
-                    RuntimeErrorType::AssertFail(format!("0 is not true")),
+                    RuntimeErrorType::AssertFail(reference.format(self.content, "0 is not true")),
                 ))
             }
             StackValue::Float(v) if v == &0.0 => {
                 return Err(InterpreterError::RuntimeError(
-                    RuntimeErrorType::AssertFail(format!("0.0 is not true")),
+                    RuntimeErrorType::AssertFail(reference.format(self.content, "0.0 is not true")),
                 ))
             }
             StackValue::String(s) if s.is_empty() => {
                 return Err(InterpreterError::RuntimeError(
-                    RuntimeErrorType::AssertFail(format!("Empty string is not true")),
+                    RuntimeErrorType::AssertFail(
+                        reference.format(self.content, "Empty string is not true"),
+                    ),
                 ))
             }
             StackValue::Boolean(false) => {
                 return Err(InterpreterError::RuntimeError(
-                    RuntimeErrorType::AssertFail(format!("False")),
+                    RuntimeErrorType::AssertFail(reference.format(self.content, "is False")),
                 ))
             }
             StackValue::None => {
                 return Err(InterpreterError::RuntimeError(
-                    RuntimeErrorType::AssertFail(format!("None")),
+                    RuntimeErrorType::AssertFail(reference.format(self.content, "is None")),
                 ))
             }
             _ => (),

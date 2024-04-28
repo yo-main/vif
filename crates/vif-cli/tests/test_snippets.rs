@@ -29,7 +29,7 @@ fn test_variable_declaration() {
     let (function, globals) = compile(&ast).unwrap();
     assert_eq!(function.chunk.code, bytes);
 
-    let result = interpret(function, globals);
+    let result = interpret(function, globals, string);
     assert!(result.is_ok(), "{}", result.unwrap_err());
 }
 
@@ -70,6 +70,6 @@ fn test_simple() {
     let (function, globals) = compile(&ast).unwrap();
     assert_eq!(function.chunk.code, bytes);
 
-    let result = interpret(function, globals);
+    let result = interpret(function, globals, string);
     assert!(result.is_ok(), "{}", result.unwrap_err());
 }

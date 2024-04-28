@@ -11,7 +11,11 @@ use vif_objects::global_store::GlobalStore;
 use vif_objects::stack::Stack;
 use vif_objects::variable_storage::VariableStore;
 
-pub fn interpret(function: Function, globals: GlobalStore) -> Result<(), InterpreterError> {
+pub fn interpret(
+    function: Function,
+    globals: GlobalStore,
+    content: &str,
+) -> Result<(), InterpreterError> {
     let mut stack = Stack::new();
     let mut variables = VariableStore::new();
 
@@ -20,6 +24,7 @@ pub fn interpret(function: Function, globals: GlobalStore) -> Result<(), Interpr
         &mut variables,
         &globals,
         CallFrame::new(&function, 0, 0),
+        content,
     );
 
     vm.interpret_loop()?;

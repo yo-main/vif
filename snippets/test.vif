@@ -11,3 +11,6 @@ def test3(i, j):
 var o = test2()
 
 print(test3(o, 3))
+
+var p = 3
+assert p == 4

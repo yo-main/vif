@@ -36,7 +36,7 @@ impl std::fmt::Display for RuntimeErrorType {
             Self::UndeclaredVariable(s) => write!(f, "Undeclared variable: {s}"),
             Self::FunctionCall(s) => write!(f, "Function call error: {s}"),
             Self::FunctionFailed(s) => write!(f, "Function failed: {s}"),
-            Self::AssertFail(s) => write!(f, "Assert failed: {s}"),
+            Self::AssertFail(s) => write!(f, "Assert failed: \n{s}"),
         }
     }
 }
@@ -46,7 +46,7 @@ impl std::fmt::Display for InterpreterError {
         match self {
             Self::Ok => write!(f, "OK error"),
             Self::CompileError(e) => write!(f, "Compiling error: {e}"),
-            Self::RuntimeError(e) => write!(f, "Interpreter error: {e}"),
+            Self::RuntimeError(e) => write!(f, "{e}"),
             Self::EmptyStack => write!(f, "Empty Stack"),
             Self::ConstantNotFound => write!(f, "Constant not found"),
             Self::Impossible => write!(f, "Impossible"),
@@ -59,7 +59,7 @@ impl std::fmt::Debug for InterpreterError {
         match self {
             Self::Ok => write!(f, "OK error"),
             Self::CompileError(e) => write!(f, "Compiling error: {e}"),
-            Self::RuntimeError(e) => write!(f, "Interpreter error: {e}"),
+            Self::RuntimeError(e) => write!(f, "{e}"),
             Self::EmptyStack => write!(f, "Empty Stack"),
             Self::ConstantNotFound => write!(f, "Constant not found"),
             Self::Impossible => write!(f, "Impossible"),
