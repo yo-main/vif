@@ -8,6 +8,7 @@ use vif_objects::ast;
 use vif_objects::function::Arity;
 use vif_objects::function::Function;
 use vif_objects::global_store::GlobalStore;
+use vif_objects::op_code::Return;
 use vif_objects::variable::InheritedLocalPos;
 use vif_objects::variable::InheritedVariable;
 use vif_objects::variable::Variable;
@@ -90,7 +91,7 @@ impl<'function> Compiler<'function> {
 
     fn return_statement(&mut self, token: &ast::Return) -> Result<(), CompilerError> {
         self.expression(&token.value)?;
-        self.emit_op_code(OpCode::Return);
+        self.emit_op_code(OpCode::Return(Return::new(Some(token.value.span.clone()))));
         Ok(())
     }
 
@@ -509,10 +510,10 @@ impl<'function> Compiler<'function> {
 
     pub fn end(mut self) -> GlobalStore {
         match self.function.chunk.code.last() {
-            Some(OpCode::Return) => (),
+            Some(OpCode::Return(r)) => (),
             _ => {
                 self.emit_op_code(OpCode::None);
-                self.emit_op_code(OpCode::Return);
+                self.emit_op_code(OpCode::Return(Return::new(None)));
             }
         }
         self.globals

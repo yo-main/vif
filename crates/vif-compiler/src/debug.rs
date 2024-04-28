@@ -44,7 +44,7 @@ fn disassemble_instruction(offset: usize, op_code: &OpCode, chunk: &Chunk, globa
     }
 
     match op_code {
-        OpCode::Return => simple_instruction("OP_RETURN"),
+        OpCode::Return(_) => simple_instruction("OP_RETURN"),
         OpCode::Global(i) => constant_instruction("OP_GLOBAL", chunk, *i, globals),
         OpCode::GlobalVariable(i) => constant_instruction("OP_GLOBAL_VARIABLE", chunk, *i, globals),
         OpCode::GetGlobal(i) => constant_instruction("OP_GET_GLOBAL", chunk, *i, globals),

@@ -103,7 +103,7 @@ where
             OpCode::Add => self.add()?,
             OpCode::Substract => self.substract()?,
             OpCode::Pop => self.pop(),
-            OpCode::Return => self.r#return(),
+            OpCode::Return(r) => self.r#return(),
             OpCode::Goto(i) => self.reset_ip(*i),
             OpCode::Jump(i) => self.advance_by(*i),
             OpCode::JumpIfFalse(i) => self.jump_if_false(*i),

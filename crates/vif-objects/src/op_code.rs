@@ -1,8 +1,20 @@
+use crate::span::Span;
 use crate::variable::InheritedLocalPos;
 
 #[derive(PartialEq, Debug)]
+pub struct Return {
+    span: Option<Span>,
+}
+
+impl Return {
+    pub fn new(span: Option<Span>) -> Self {
+        Self { span }
+    }
+}
+
+#[derive(PartialEq, Debug)]
 pub enum OpCode {
-    Return,
+    Return(Return),
     Global(usize),
     GlobalVariable(usize),
     GetGlobal(usize),
@@ -40,7 +52,7 @@ pub enum OpCode {
 impl std::fmt::Display for OpCode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Return => write!(f, "OP_RETURN"),
+            Self::Return(_) => write!(f, "OP_RETURN"),
             Self::Global(c) => write!(f, "OP_GLOBAL({c})"),
             Self::GlobalVariable(c) => write!(f, "OP_GLOBAL_VARIABLE({c})"),
             Self::GetGlobal(c) => write!(f, "OP_GET_GLOBAL({c})"),
