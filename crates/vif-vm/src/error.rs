@@ -1,16 +1,8 @@
-use vif_objects::errors::ValueError;
+use vif_objects::{errors::ValueError, op_code::ItemReference, span::Span};
 
 pub enum InterpreterError {
-    Ok,
-    EmptyStack,
-    ConstantNotFound,
-    CompileError(String),
-    RuntimeError(RuntimeErrorType),
-    Impossible,
-}
-
-pub enum RuntimeErrorType {
     ValueError(String),
+    WrongValue(String),
     KeyError(String),
     DivideByZero(String),
     UndeclaredVariable(String),
@@ -19,56 +11,46 @@ pub enum RuntimeErrorType {
     AssertFail(String),
 }
 
+impl InterpreterError {
+    pub fn add_span(&mut self, content: &str, reference: &ItemReference) {
+        match self {
+            Self::ValueError(ref mut e) => *e = reference.format(content, e.as_str()),
+            Self::WrongValue(ref mut e) => *e = reference.format(content, e.as_str()),
+            Self::KeyError(ref mut e) => *e = reference.format(content, e.as_str()),
+            Self::DivideByZero(ref mut e) => *e = reference.format(content, e.as_str()),
+            Self::UndeclaredVariable(ref mut e) => *e = reference.format(content, e.as_str()),
+            Self::FunctionCall(ref mut e) => *e = reference.format(content, e.as_str()),
+            Self::FunctionFailed(ref mut e) => *e = reference.format(content, e.as_str()),
+            Self::AssertFail(ref mut e) => *e = reference.format(content, e.as_str()),
+        };
+    }
+}
+
 #[macro_export]
 macro_rules! value_error {
     ($($arg:tt)*) => {{
         let res = format!($($arg)*);
-        Err($crate::error::InterpreterError::RuntimeError($crate::error::RuntimeErrorType::ValueError(res)))
+        Err($crate::error::InterpreterError::ValueError(res))
     }}
-}
-
-impl std::fmt::Display for RuntimeErrorType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::ValueError(s) => write!(f, "ValueError: {s}"),
-            Self::KeyError(s) => write!(f, "KeyError: {s}"),
-            Self::DivideByZero(s) => write!(f, "Divide by zero: {s}"),
-            Self::UndeclaredVariable(s) => write!(f, "Undeclared variable: {s}"),
-            Self::FunctionCall(s) => write!(f, "Function call error: {s}"),
-            Self::FunctionFailed(s) => write!(f, "Function failed: {s}"),
-            Self::AssertFail(s) => write!(f, "Assert failed: \n{s}"),
-        }
-    }
 }
 
 impl std::fmt::Display for InterpreterError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Ok => write!(f, "OK error"),
-            Self::CompileError(e) => write!(f, "Compiling error: {e}"),
-            Self::RuntimeError(e) => write!(f, "{e}"),
-            Self::EmptyStack => write!(f, "Empty Stack"),
-            Self::ConstantNotFound => write!(f, "Constant not found"),
-            Self::Impossible => write!(f, "Impossible"),
-        }
-    }
-}
-
-impl std::fmt::Debug for InterpreterError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Ok => write!(f, "OK error"),
-            Self::CompileError(e) => write!(f, "Compiling error: {e}"),
-            Self::RuntimeError(e) => write!(f, "{e}"),
-            Self::EmptyStack => write!(f, "Empty Stack"),
-            Self::ConstantNotFound => write!(f, "Constant not found"),
-            Self::Impossible => write!(f, "Impossible"),
+            Self::ValueError(s) => write!(f, "{s} (ValueError)"),
+            Self::WrongValue(s) => write!(f, "{s} (WrongValue)"),
+            Self::KeyError(s) => write!(f, "{s} (KeyError)"),
+            Self::DivideByZero(s) => write!(f, "{s} (DivideByZero)"),
+            Self::UndeclaredVariable(s) => write!(f, "{s} (Undeclared Variable)"),
+            Self::FunctionCall(s) => write!(f, "{s} (FunctionCall)"),
+            Self::FunctionFailed(s) => write!(f, "{s} (FunctionFailed)"),
+            Self::AssertFail(s) => write!(f, "{s}"),
         }
     }
 }
 
 impl From<ValueError> for InterpreterError {
     fn from(value: ValueError) -> Self {
-        InterpreterError::RuntimeError(RuntimeErrorType::ValueError(format!("{value}")))
+        InterpreterError::ValueError(format!("{value}"))
     }
 }

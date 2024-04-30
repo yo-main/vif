@@ -1,6 +1,7 @@
+use std::net::Incoming;
+
 use crate::callframe::CallFrame;
 use crate::error::InterpreterError;
-use crate::error::RuntimeErrorType;
 use crate::value_error;
 use vif_native::execute_native_call;
 use vif_objects::function::Function;
@@ -103,29 +104,80 @@ where
             OpCode::SetGlobal(i) => self.set_global(*i),
             OpCode::SetInheritedLocal(v) => self.set_inherited_local(v),
             OpCode::GlobalVariable(i) => self.global_variable(*i),
-            OpCode::Call(arg_count) => self.call(*arg_count)?,
-            OpCode::Add(_) => self.add()?,
-            OpCode::Substract(_) => self.substract()?,
+            OpCode::Call((arg_count, r)) => self.call(*arg_count).map_err(|mut e| {
+                e.add_span(self.content, r);
+                e
+            })?,
+
+            OpCode::Add(r) => self.add().map_err(|mut e| {
+                e.add_span(self.content, r);
+                e
+            })?,
+
+            OpCode::Substract(r) => self.substract().map_err(|mut e| {
+                e.add_span(self.content, r);
+                e
+            })?,
+
             OpCode::Pop => self.pop(),
-            OpCode::Return(r) => self.r#return(),
+            OpCode::Return(_) => self.r#return(),
             OpCode::Goto(i) => self.reset_ip(*i),
             OpCode::Jump(i) => self.advance_by(*i),
             OpCode::JumpIfFalse(i) => self.jump_if_false(*i),
-            OpCode::AssertTrue(reference) => self.assert_true(reference)?,
-            OpCode::Not(_) => self.not()?,
-            OpCode::Negate(_) => self.negate()?,
+            OpCode::AssertTrue(r) => self.assert_true().map_err(|mut e| {
+                e.add_span(self.content, r);
+                e
+            })?,
+
+            OpCode::Not(r) => self.not().map_err(|mut e| {
+                e.add_span(self.content, r);
+                e
+            })?,
+
+            OpCode::Negate(r) => self.negate().map_err(|mut e| {
+                e.add_span(self.content, r);
+                e
+            })?,
+
             OpCode::True(_) => self.r#true(),
             OpCode::False(_) => self.r#false(),
             OpCode::None(_) => self.r#none(),
             OpCode::Equal(_) => self.equal(),
             OpCode::NotEqual(_) => self.not_equal(),
-            OpCode::Greater(_) => self.greater()?,
-            OpCode::GreaterOrEqual(_) => self.greater_or_equal()?,
-            OpCode::Less(_) => self.less()?,
-            OpCode::LessOrEqual(_) => self.less_or_equal()?,
-            OpCode::Multiply(_) => self.multiply()?,
-            OpCode::Divide(_) => self.divide()?,
-            OpCode::Modulo(_) => self.modulo()?,
+            OpCode::Greater(r) => self.greater().map_err(|mut e| {
+                e.add_span(self.content, r);
+                e
+            })?,
+
+            OpCode::GreaterOrEqual(r) => self.greater_or_equal().map_err(|mut e| {
+                e.add_span(self.content, r);
+                e
+            })?,
+
+            OpCode::Less(r) => self.less().map_err(|mut e| {
+                e.add_span(self.content, r);
+                e
+            })?,
+
+            OpCode::LessOrEqual(r) => self.less_or_equal().map_err(|mut e| {
+                e.add_span(self.content, r);
+                e
+            })?,
+
+            OpCode::Multiply(r) => self.multiply().map_err(|mut e| {
+                e.add_span(self.content, r);
+                e
+            })?,
+
+            OpCode::Divide(r) => self.divide().map_err(|mut e| {
+                e.add_span(self.content, r);
+                e
+            })?,
+
+            OpCode::Modulo(r) => self.modulo().map_err(|mut e| {
+                e.add_span(self.content, r);
+                e
+            })?,
             OpCode::NotImplemented => panic!("Not implemented"),
         })
     }
@@ -199,9 +251,8 @@ where
         func: &NativeFunction,
         arg_count: usize,
     ) -> Result<(), InterpreterError> {
-        let res = execute_native_call(self.stack, arg_count, func).map_err(|e| {
-            InterpreterError::RuntimeError(RuntimeErrorType::FunctionFailed(format!("{e}")))
-        })?;
+        let res = execute_native_call(self.stack, arg_count, func)
+            .map_err(|e| InterpreterError::FunctionFailed(format!("{e}")))?;
         self.stack.truncate(self.stack.len() - arg_count - 1);
 
         self.stack.push(res);
@@ -213,7 +264,11 @@ where
         match self.stack.peek(self.stack.len() - arg_count - 1) {
             StackValue::Function(func) => self.call_function(func, arg_count),
             StackValue::Native(func) => self.call_native(func, arg_count)?,
-            v => panic!("Expected function, got {v}"),
+            v => {
+                return Err(InterpreterError::WrongValue(format!(
+                    "Expected function, got {v}"
+                )))
+            }
         };
 
         Ok(())
@@ -322,36 +377,24 @@ where
         })
     }
 
-    fn assert_true(&mut self, reference: &ItemReference) -> Result<(), InterpreterError> {
+    fn assert_true(&mut self) -> Result<(), InterpreterError> {
         let value = self.stack.peek_last();
         match value {
             StackValue::Integer(0) => {
-                return Err(InterpreterError::RuntimeError(
-                    RuntimeErrorType::AssertFail(reference.format(self.content, "0 is not true")),
-                ))
+                return Err(InterpreterError::AssertFail("0 is not true".to_owned()))
             }
             StackValue::Float(v) if v == &0.0 => {
-                return Err(InterpreterError::RuntimeError(
-                    RuntimeErrorType::AssertFail(reference.format(self.content, "0.0 is not true")),
-                ))
+                return Err(InterpreterError::AssertFail("0.0 is not true".to_owned()))
             }
             StackValue::String(s) if s.is_empty() => {
-                return Err(InterpreterError::RuntimeError(
-                    RuntimeErrorType::AssertFail(
-                        reference.format(self.content, "Empty string is not true"),
-                    ),
+                return Err(InterpreterError::AssertFail(
+                    "Empty string is not true".to_owned(),
                 ))
             }
             StackValue::Boolean(false) => {
-                return Err(InterpreterError::RuntimeError(
-                    RuntimeErrorType::AssertFail(reference.format(self.content, "is False")),
-                ))
+                return Err(InterpreterError::AssertFail("Assert failed".to_owned()))
             }
-            StackValue::None => {
-                return Err(InterpreterError::RuntimeError(
-                    RuntimeErrorType::AssertFail(reference.format(self.content, "is None")),
-                ))
-            }
+            StackValue::None => return Err(InterpreterError::AssertFail("is None".to_owned())),
             _ => (),
         }
 
@@ -365,8 +408,13 @@ where
             StackValue::Float(f) => StackValue::Boolean(f == &0.0),
             StackValue::Boolean(b) => StackValue::Boolean(!b),
             StackValue::None => StackValue::Boolean(true),
-            _ => return value_error!("Can't compare {value}"),
+            _ => {
+                return Err(InterpreterError::ValueError(
+                    "Can't compare {value}".to_owned(),
+                ))
+            }
         };
+
         Ok(self.stack.push(c))
     }
 

@@ -6,11 +6,9 @@ def test2():
     return test()
 
 def test3(i, j):
-    return i
+    return j + 1
 
 var o = test2()
 
-print(test3(o, 3))
-
-var p = 3
-assert p == 4
+assert o == 2
+print(test3(o, "az"))

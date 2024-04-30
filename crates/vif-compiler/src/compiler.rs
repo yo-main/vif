@@ -106,7 +106,10 @@ impl<'function> Compiler<'function> {
         for arg in token.arguments.iter() {
             self.function_parameter(arg)?;
         }
-        self.emit_op_code(OpCode::Call(token.arguments.len()));
+        self.emit_op_code(OpCode::Call((
+            token.arguments.len(),
+            ItemReference::new(Some(token.callee.span.clone())),
+        )));
         Ok(())
     }
 

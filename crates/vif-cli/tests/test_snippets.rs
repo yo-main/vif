@@ -14,13 +14,13 @@ fn test_variable_declaration() {
 ";
 
     let bytes = vec![
-        OpCode::Global(3),                        // constant 1
-        OpCode::CreateLocal(0),                   // save 1 in a variable named i
-        OpCode::GetGlobal(1),                     // get print
-        OpCode::GetLocal(0),                      // get i
-        OpCode::Call(1),                          // call print
-        OpCode::Pop,                              // pop print function
-        OpCode::None(ItemReference::new(None)),   // implicit None
+        OpCode::Global(3),                                             // constant 1
+        OpCode::CreateLocal(0), // save 1 in a variable named i
+        OpCode::GetGlobal(1),   // get print
+        OpCode::GetLocal(0),    // get i
+        OpCode::Call((1, ItemReference::new(Some(Span::new(3, 13))))), // call print
+        OpCode::Pop,            // pop print function
+        OpCode::None(ItemReference::new(None)), // implicit None
         OpCode::Return(ItemReference::new(None)), // return
     ];
 
@@ -43,26 +43,26 @@ fn test_simple() {
 ";
 
     let bytes = vec![
-        OpCode::Global(3),                                        // constant 1
-        OpCode::CreateLocal(0),                                   // save 1 in a variable named i
-        OpCode::GetLocal(0),                                      // get i
-        OpCode::Global(4),                                        // get constant 5
+        OpCode::Global(3),                                             // constant 1
+        OpCode::CreateLocal(0), // save 1 in a variable named i
+        OpCode::GetLocal(0),    // get i
+        OpCode::Global(4),      // get constant 5
         OpCode::Less(ItemReference::new(Some(Span::new(3, 19)))), // substract them
-        OpCode::JumpIfFalse(11),                                  // if branch
-        OpCode::Pop,                                              // pop jump op (if is true)
-        OpCode::GetGlobal(1),                                     // get print
-        OpCode::GetLocal(0),                                      // get i
-        OpCode::Call(1),                                          // call print
-        OpCode::Pop,                                              // pop print op
-        OpCode::GetLocal(0),                                      // get i
-        OpCode::Global(5),                                        // get constant 1
-        OpCode::Add(ItemReference::new(Some(Span::new(5, 21)))),  // add them
-        OpCode::SetLocal(0),                                      // store them in a new global
-        OpCode::Pop,                                              // pop set op
-        OpCode::Goto(2),                                          // while loop
-        OpCode::Pop,                                              // pop while cond value
-        OpCode::None(ItemReference::new(None)),                   // Implicit none
-        OpCode::Return(ItemReference::new(None)),                 // return
+        OpCode::JumpIfFalse(11), // if branch
+        OpCode::Pop,            // pop jump op (if is true)
+        OpCode::GetGlobal(1),   // get print
+        OpCode::GetLocal(0),    // get i
+        OpCode::Call((1, ItemReference::new(Some(Span::new(4, 17))))), // call print
+        OpCode::Pop,            // pop print op
+        OpCode::GetLocal(0),    // get i
+        OpCode::Global(5),      // get constant 1
+        OpCode::Add(ItemReference::new(Some(Span::new(5, 21)))), // add them
+        OpCode::SetLocal(0),    // store them in a new global
+        OpCode::Pop,            // pop set op
+        OpCode::Goto(2),        // while loop
+        OpCode::Pop,            // pop while cond value
+        OpCode::None(ItemReference::new(None)), // Implicit none
+        OpCode::Return(ItemReference::new(None)), // return
     ];
 
     let mut ast = build_ast(string).unwrap();

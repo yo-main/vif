@@ -78,7 +78,7 @@ fn disassemble_instruction(offset: usize, op_code: &OpCode, chunk: &Chunk, globa
         OpCode::JumpIfFalse(i) => jump_instruction("OP_JUMP_IF_FALSE", i),
         OpCode::Jump(i) => jump_instruction("OP_JUMP", i),
         OpCode::Goto(i) => jump_instruction("OP_GOTO", i),
-        OpCode::Call(i) => jump_instruction("OP_CALL", i),
+        OpCode::Call((i, _)) => jump_instruction("OP_CALL", i),
         OpCode::AssertTrue(_) => simple_instruction("OP_ASSERT_TRUE"),
         OpCode::NotImplemented => simple_instruction("NOT_IMPLEMENTED"),
     }

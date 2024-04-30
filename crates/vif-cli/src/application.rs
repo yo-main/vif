@@ -76,7 +76,7 @@ impl Vif {
         } else {
             match interpret(function, globals, content) {
                 Ok(_) => log::info!("Interpreter says Bye"),
-                Err(e) => println!("Interpreter error: {e}"),
+                Err(e) => println!("{e}"),
             };
         }
     }
