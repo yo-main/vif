@@ -1,25 +1,48 @@
 # VIF
 
-Blam, say hi to Vif, the language that will take over python.
+Vif is a programing language under development.
 
-## Overview
+Vif looks like python, because I like how readable python is. But I also like rust a lot and took some inpiration from it in the design. In the end, you get something similar to python, but with a very different mechanic behind the scene.
 
-Vif is a programing language under development. I have no experience whatsoever in buiding languages, but it looked interesting and I wanted to try building a new one.
-
-https://craftinginterpreters.com/ gave me a huge boost, and then I went rogue with my own, strange, ideas...
-
-Vif aims to look like python, because I look how python looks like. But a few things are very different from it:
-
-- variables are declared with the `var` keyword
-- variables are constant by default.
-- to override an existing variable, it must be declared with the `mut` keyword
+- variables must be declared with the `var` keyword
+- variables can be declared as mutable with the `mut` keyword.
 - variables are __always__ passed by reference
 
-Most of those things are handled during compilation, to not burden the livetime with pointless checks.
+Vif is a dynamic language, but the compiler does its best to do as much things as it can.
 
-Vif's compiler and VM are made in rust. I plan to switch to LLVM at some point, but for now I'm exploring on my own.
+Vif's compiler and VM are made in rust, because I like rust. But I plan to switch to LLVM at some point, but for now I'm exploring on my own.
 
-### Examples
+## Motivation
+
+None, except me wanting to play and learn how to build a programing language.
+https://craftinginterpreters.com/ gave me a huge boost, and then I went rogue with my own, strange, ideas...
+
+I really believe a language like vif can find its place in between python and rust. I would like to to be flexible enough for some scripting/small stuffs but also strong enough for big teams to collobarate on it easily (typing and mutability would help a lot).
+
+I also wish for it to be much more performant than python. I really love python, for damn it's slow and not energy friendly at all. It's one of the most used language despite that. I wish for python to be much less energyvore, but given the age of the language and the size of its users base, it'll be hard to drastically change this (I guess). So at some point I forecast that a new language, more performant, will take python place.
+
+It surely won't be Vif, but that won't prevent me from attempting it to build it with that mindset.
+
+## Roadmap
+
+I have been able to implement a solid base (at least according to my capabilities).
+
+- [x] variables
+- [x] mutability concept
+- [x] functions
+- [x] closures
+- [x] error management
+- [ ] typing
+- [ ] classes
+- [ ] modules
+- [ ] decorator
+- [ ] cloning object (since everything is passed by reference)
+- [ ] standard library
+- [ ] tooling
+
+Currently, as I have been able to add functions and closures concepts, I am spending most of my time on refactoring stuff and building a solid base before conctinuing to add more functionalities. Hence, most of my time is spent on improving performances and having a nice error management.
+
+## Examples
 
 Let's start with a simple "Hello world" program !
 ```python
@@ -38,15 +61,15 @@ To modify a variable, it needs to be declared with `mut`
 
 ```python
 var mut word = "hello"
-word = "olleh"
-assert word == "olleh"
+word = "bye"
+assert word == "bye"
 ```
 
 The compiler will raise an error if you try to modify a non-mutable variable
 
 ```python
 var word = "hello"
-word = "olleh" # crash
+word = "bye" # crash
 ```
 
 This mutability also applies to function parameters
@@ -93,10 +116,10 @@ cargo test --workspace
 
 ### Benchmarking
 
-In term of performance, I was deeply hoping to be much faster than python. But well I'm still an amateur and I'm still slower than python when computing the fibonacci sequence through recursive calls (like 3 or 4 times slower).
+In term of performance, I was deeply hoping to be much faster than python. I'm just a tiddy bit faster than python, and it took me some efforts to get there ! I'm very happy about it, but I hope this can be improved a lot in the future.
 
-I have not given up through. It's a never ending journey than optimizing Vif !
-The script below helps me to benchmark different version of Vif.
+It's a never ending journey than optimizing Vif !
+The commands below helps me to benchmark different version of Vif.
 
 ```bash
 # if not done already
@@ -109,23 +132,3 @@ cargo build --release
 hyperfine -w 10 -r 100 './target/release/vif-cli ./snippets/benchmark.vif' './target/release/faster ./snippets/benchmark.vif'
 ```
 
-## Road map
-
-Well for now I'm frankly happy to have come that far.
-
-Lot of bugs are still presents, and lot of features are missing, but here's what I am proud to have achieved:
-
-- functions
-- closures (limited to F+1, don't try to encapsulate a closure inside another closure)
-- mutability
-- passing by reference
-
-I struggled a lot to make that happens and I have something which is good enough and tested enough so that I'm can confidently say that it's working as expected for common cases.
-
-
-What I would like to add in the future ?
-
-- Class or Interface, to be decided which one
-- Modules
-- Typing
-- LLVM as backend ? (whoooa dude stop dreaming)
