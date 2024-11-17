@@ -3,6 +3,7 @@ use crate::Global;
 use crate::NativeFunction;
 use crate::NativeFunctionCallee;
 use crate::OpCode;
+
 use vif_loader::log;
 use vif_objects::ast;
 use vif_objects::function::Arity;
