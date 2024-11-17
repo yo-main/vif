@@ -4,3 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+vif-native = { version = "0.1.0", path = "../vif-native" }
+vif-objects = { version = "0.1.0", path = "../vif-objects" }
+vif-loader = { version = "0.1.0", path = "../vif-loader" }
+vif-scanner = { version = "0.1.0", path = "../vif-scanner" }
+inkwell = { version = "0.5.0", features = ["llvm16-0"] }

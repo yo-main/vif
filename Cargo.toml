@@ -1,6 +1,6 @@
 [workspace]
 members = [
-  "crates/vif-vm",
+  # "crates/vif-vm",
   "crates/vif-cli",
   "crates/vif-objects",
   "crates/vif-native",

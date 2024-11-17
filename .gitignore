@@ -13,5 +13,6 @@ perf.data
 perf.data.old
 flamegraph.svg
 profile.pb
+here.ll
 
 .direnv/*
