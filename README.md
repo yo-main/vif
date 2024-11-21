@@ -12,16 +12,13 @@ Vif is a dynamic language, but the compiler does its best to do as much things a
 
 Vif's compiler and VM are made in rust, because I like rust. But I plan to switch to LLVM at some point, but for now I'm exploring on my own.
 
-## Motivation
+## Requirements
 
-None, except me wanting to play and learn how to build a programing language.
-https://craftinginterpreters.com/ gave me a huge boost, and then I went rogue with my own, strange, ideas...
+To build the project locally, you will need to have installed:
 
-I really believe a language like vif can find its place in between python and rust. I would like to to be flexible enough for some scripting/small stuffs but also strong enough for big teams to collobarate on it easily (typing and mutability would help a lot).
+- llvm 16
 
-I also wish for it to be much more performant than python. I really love python, for damn it's slow and not energy friendly at all. It's one of the most used language despite that. I wish for python to be much less energyvore, but given the age of the language and the size of its users base, it'll be hard to drastically change this (I guess). So at some point I forecast that a new language, more performant, will take python place.
-
-It surely won't be Vif, but that won't prevent me from attempting it to build it with that mindset.
+If you are using nixOs, everything is in the `shell.nix`.
 
 ## Roadmap
 
