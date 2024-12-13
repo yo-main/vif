@@ -61,8 +61,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     pub fn compile(&mut self, function: &ast::Function) -> Result<(), CompilerError> {
         let module = self.llvm_builder.create_module("vif");
 
-        let func = self.llvm_builder.declare_function(function, &module);
-        self.llvm_builder.set_cursor_to_function(func);
+        self.llvm_builder.declare_user_function(function, &module);
 
         // let i8_ptr_type = context.i32_type();
         // let puts_type = i8_ptr_type.fn_type(
@@ -83,9 +82,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
 
         let hello_world = self
             .llvm_builder
-            .builder
-            .build_global_string_ptr("Hello, World!\n", "hello_world")
-            .map_err(|e| CompilerError::Unknown(format!("LLVM issue: {}", e)))?;
+            .declare_global_string("hello_world", "Hello, World!\n");
 
         // self.llvm_builder
         //     .builder

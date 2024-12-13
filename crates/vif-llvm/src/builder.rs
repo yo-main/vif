@@ -1,4 +1,5 @@
-use inkwell::{self, module::Module, types::BasicMetadataTypeEnum};
+use crate::error::LLVMError;
+use inkwell::{self, llvm_sys::LLVMContext, module::Module, types::BasicMetadataTypeEnum};
 use vif_objects::ast;
 
 pub struct Builder<'ctx> {
@@ -21,7 +22,17 @@ impl<'ctx> Builder<'ctx> {
         self.context.i32_type() // make this smarter lol
     }
 
-    pub fn declare_function(
+    pub fn declare_global_string(
+        &self,
+        name: &str,
+        value: &str,
+    ) -> Result<inkwell::values::GlobalValue<'ctx>, LLVMError> {
+        self.builder
+            .build_global_string_ptr(value, name)
+            .map_err(|e| LLVMError::Issue(format!("LLVM issue: {}", e)))
+    }
+
+    fn declare_function(
         &self,
         function: &ast::Function,
         module: &Module<'ctx>,
@@ -38,8 +49,11 @@ impl<'ctx> Builder<'ctx> {
         module.add_function(function.name.as_str(), llvm_function, None)
     }
 
-    pub fn set_cursor_to_function(&self, function: inkwell::values::FunctionValue) {
-        let block = self.context.append_basic_block(function, "entry");
+    pub fn declare_user_function(&self, function: &ast::Function, module: &Module<'ctx>) {
+        let block = self
+            .context
+            .append_basic_block(self.declare_function(function, module), "entry");
+
         self.builder.position_at_end(block);
     }
 }
