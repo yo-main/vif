@@ -28,7 +28,7 @@ impl<'a> Parser<'a> {
 
     pub fn get_ast(self) -> Function {
         Function {
-            name: "Main".to_owned(),
+            name: "main".to_owned(),
             params: Vec::new(),
             body: self.ast,
             typing: Typing::new(false),

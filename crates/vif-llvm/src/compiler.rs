@@ -1,3 +1,4 @@
+use crate::builder::Builder;
 use crate::error::CompilerError;
 use crate::Global;
 use crate::NativeFunction;
@@ -18,18 +19,26 @@ use vif_objects::variable::InheritedVariable;
 use vif_objects::variable::Variable;
 use vif_objects::variable::VariableType;
 
-pub struct Compiler<'function> {
+pub struct Compiler<'function, 'ctx> {
+    llvm_builder: Builder<'ctx>,
     scope_depth: usize,
     loop_details: Vec<(usize, usize)>,
     globals: GlobalStore,
     function: &'function mut Function,
 }
 
-impl<'function> Compiler<'function> {
-    pub fn new(function: &'function mut Function, scope_depth: usize) -> Self {
+impl<'function, 'ctx> Compiler<'function, 'ctx> {
+    pub fn new(
+        function: &'function mut Function,
+        scope_depth: usize,
+        context: &'ctx inkwell::context::Context,
+    ) -> Self {
+        let builder = Builder::new(context);
+
         let mut compiler = Compiler {
             function,
             scope_depth,
+            llvm_builder: builder,
             loop_details: Vec::new(),
             globals: GlobalStore::new(),
         };
@@ -50,30 +59,44 @@ impl<'function> Compiler<'function> {
     }
 
     pub fn compile(&mut self, function: &ast::Function) -> Result<(), CompilerError> {
-        let context = inkwell::context::Context::create();
-        let builder = context.create_builder();
+        let module = self.llvm_builder.create_module("vif");
 
-        let module = context.create_module("vif");
+        let func = self.llvm_builder.declare_function(function, &module);
+        self.llvm_builder.set_cursor_to_function(func);
 
-        let i8_ptr_type = context.ptr_type(inkwell::AddressSpace::default());
-        let puts_type = i8_ptr_type.fn_type(&[i8_ptr_type.into()], false);
-        let puts = module.add_function("puts", puts_type, None);
+        // let i8_ptr_type = context.i32_type();
+        // let puts_type = i8_ptr_type.fn_type(
+        //     &[
+        //         context.ptr_type(inkwell::AddressSpace::default()).into(),
+        //         context.i32_type().into(),
+        //     ],
+        //     false,
+        // );
+        // let puts = module.add_function("puts", puts_type, None);
 
-        let main_type = context.i32_type().fn_type(&[], false);
-        let main_func = module.add_function("main", main_type, None);
-        let entry_block = context.append_basic_block(main_func, "entry");
-        builder.position_at_end(entry_block);
+        // let main_type = context.i32_type().fn_type(&[], false);
+        // let main_func = module.add_function("main", main_type, None);
 
-        let hello_world = builder
+        // let entry_block = context.append_basic_block(main_func, "entry");
+
+        // builder.position_at_end(entry_block);
+
+        let hello_world = self
+            .llvm_builder
+            .builder
             .build_global_string_ptr("Hello, World!\n", "hello_world")
             .map_err(|e| CompilerError::Unknown(format!("LLVM issue: {}", e)))?;
 
-        builder
-            .build_call(puts, &[hello_world.as_pointer_value().into()], "call_puts")
-            .map_err(|e| CompilerError::Unknown(format!("LLVM issue: {}", e)))?;
+        // self.llvm_builder
+        //     .builder
+        //     .build_call(puts, &[hello_world.as_pointer_value().into()], "call_puts")
+        //     .map_err(|e| CompilerError::Unknown(format!("LLVM issue: {}", e)))?;
 
-        builder
-            .build_return(Some(&context.i32_type().const_int(0, false)))
+        self.llvm_builder
+            .builder
+            .build_return(Some(
+                &self.llvm_builder.context.i32_type().const_int(0, false),
+            ))
             .map_err(|e| CompilerError::Unknown(format!("LLVM issue: {}", e)))?;
 
         module.print_to_file(Path::new("here.ll"));
