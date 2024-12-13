@@ -7,6 +7,7 @@ pub enum CompilerError {
     ScanningError(String),
     SyntaxError(String),
     Unknown(String),
+    LLVM(String),
 }
 
 impl std::fmt::Display for CompilerError {
@@ -19,19 +20,7 @@ impl std::fmt::Display for CompilerError {
             Self::ScanningError(e) => write!(f, "ScanningError: {e}"),
             Self::SyntaxError(e) => write!(f, "SyntaxError: {e}"),
             Self::Unknown(e) => write!(f, "Unknown: {e}"),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum LLVMError {
-    Issue(String),
-}
-
-impl std::fmt::Display for LLVMError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Issue(s) => write!(f, "{}", s),
+            Self::LLVM(e) => write!(f, "LLVM error: {e}"),
         }
     }
 }

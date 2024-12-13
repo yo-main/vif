@@ -1,0 +1,3 @@
+def coucou():
+	var v = 2
+	return 1

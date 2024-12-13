@@ -1,9 +1,11 @@
 use crate::builder::Builder;
 use crate::error::CompilerError;
+use crate::value::LLVMValue;
 use crate::Global;
 use crate::NativeFunction;
 use crate::NativeFunctionCallee;
 use crate::OpCode;
+
 use inkwell;
 use std::path::Path;
 
@@ -20,27 +22,30 @@ use vif_objects::variable::Variable;
 use vif_objects::variable::VariableType;
 
 pub struct Compiler<'function, 'ctx> {
+    context: &'ctx inkwell::context::Context,
+    module: inkwell::module::Module<'ctx>,
     llvm_builder: Builder<'ctx>,
-    scope_depth: usize,
-    loop_details: Vec<(usize, usize)>,
-    globals: GlobalStore,
+    // scope_depth: usize,
+    // loop_details: Vec<(usize, usize)>,
+    // globals: GlobalStore,
     function: &'function mut Function,
 }
 
 impl<'function, 'ctx> Compiler<'function, 'ctx> {
     pub fn new(
         function: &'function mut Function,
-        scope_depth: usize,
         context: &'ctx inkwell::context::Context,
     ) -> Self {
         let builder = Builder::new(context);
 
-        let mut compiler = Compiler {
+        let compiler = Compiler {
+            context,
             function,
-            scope_depth,
+            // scope_depth,
+            module: context.create_module("vif"),
             llvm_builder: builder,
-            loop_details: Vec::new(),
-            globals: GlobalStore::new(),
+            // loop_details: Vec::new(),
+            // globals: GlobalStore::new(),
         };
 
         // if scope_depth == 0 {
@@ -58,10 +63,9 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         compiler
     }
 
-    pub fn compile(&mut self, function: &ast::Function) -> Result<(), CompilerError> {
-        let module = self.llvm_builder.create_module("vif");
-
-        self.llvm_builder.declare_user_function(function, &module);
+    pub fn compile(&self, function: &ast::Function) -> Result<(), CompilerError> {
+        self.llvm_builder
+            .declare_user_function(function, &self.module);
 
         // let i8_ptr_type = context.i32_type();
         // let puts_type = i8_ptr_type.fn_type(
@@ -80,29 +84,31 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
 
         // builder.position_at_end(entry_block);
 
-        let hello_world = self
-            .llvm_builder
-            .declare_global_string("hello_world", "Hello, World!\n");
+        // let hello_world = self
+        //     .llvm_builder
+        //     .declare_global_string("hello_world", "Hello, World!\n");
 
         // self.llvm_builder
         //     .builder
         //     .build_call(puts, &[hello_world.as_pointer_value().into()], "call_puts")
         //     .map_err(|e| CompilerError::Unknown(format!("LLVM issue: {}", e)))?;
 
-        self.llvm_builder
-            .builder
-            .build_return(Some(
-                &self.llvm_builder.context.i32_type().const_int(0, false),
-            ))
-            .map_err(|e| CompilerError::Unknown(format!("LLVM issue: {}", e)))?;
-
-        module.print_to_file(Path::new("here.ll"));
-
-        // for token in function.body.iter() {
-        //     self.statement(token)?;
-        // }
+        for token in function.body.iter() {
+            self.statement(token)?;
+        }
 
         Ok(())
+    }
+
+    pub fn add_return(&self) -> Result<(), CompilerError> {
+        self.llvm_builder
+            .return_statement(&self.llvm_builder.value_int(1))
+    }
+
+    pub fn print_module_to_file(&self, path: &str) -> Result<(), CompilerError> {
+        self.module
+            .print_to_file(Path::new(path))
+            .map_err(|e| CompilerError::LLVM(format!("{e}")))
     }
 
     // fn emit_op_code(&mut self, op_code: OpCode) {
@@ -128,27 +134,27 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     //     }
     // }
 
-    // pub fn statement(&mut self, token: &ast::Stmt) -> Result<(), CompilerError> {
-    //     log::debug!("Starting statement");
-    //     match token {
-    //         ast::Stmt::Expression(expr) => self.expression_statement(expr),
-    //         ast::Stmt::Return(ret) => self.return_statement(ret),
-    //         ast::Stmt::Block(blocks) => self.block(blocks),
-    //         ast::Stmt::Condition(cond) => self.if_statement(cond),
-    //         ast::Stmt::While(whi) => self.while_statement(whi),
-    //         ast::Stmt::Function(func) => self.function_declaration(func),
-    //         ast::Stmt::Var(var) => self.var_declaration(var),
-    //         ast::Stmt::Assert(ass) => self.assert_statement(ass),
-    //     }
-    // }
+    pub fn statement(&self, token: &ast::Stmt) -> Result<(), CompilerError> {
+        log::debug!("Starting statement");
+        match token {
+            ast::Stmt::Expression(expr) => self.expression_statement(expr),
+            ast::Stmt::Return(ret) => self.return_statement(ret),
+            ast::Stmt::Function(func) => self.function_declaration(func),
+            _ => unreachable!(),
+            // ast::Stmt::Block(blocks) => self.block(blocks),
+            // ast::Stmt::Condition(cond) => self.if_statement(cond),
+            // ast::Stmt::While(whi) => self.while_statement(whi),
+            // ast::Stmt::Var(var) => self.var_declaration(var),
+            // ast::Stmt::Assert(ass) => self.assert_statement(ass),
+        }
+    }
 
-    // fn return_statement(&mut self, token: &ast::Return) -> Result<(), CompilerError> {
-    //     self.expression(&token.value)?;
-    //     self.emit_op_code(OpCode::Return(ItemReference::new(Some(
-    //         token.value.span.clone(),
-    //     ))));
-    //     Ok(())
-    // }
+    fn return_statement(&self, token: &ast::Return) -> Result<(), CompilerError> {
+        let value = self.expression(&token.value)?;
+        self.llvm_builder.return_statement(&value).unwrap();
+
+        Ok(())
+    }
 
     // pub fn call(&mut self, token: &ast::Call) -> Result<(), CompilerError> {
     //     log::debug!("Starting call");
@@ -239,67 +245,32 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     //     Ok(())
     // }
 
-    // fn function_declaration(&mut self, token: &ast::Function) -> Result<(), CompilerError> {
-    //     log::debug!("Starting function declaration");
-    //     let index = self.register_variable(Box::new(token.name.clone()));
-    //     self.function_statement(token)?;
-    //     self.define_variable(index);
-    //     Ok(())
+    fn function_declaration(&self, token: &ast::Function) -> Result<(), CompilerError> {
+        log::debug!("Starting function declaration");
+
+        let block = self.llvm_builder.get_current_block().unwrap();
+        self.compile(token)?;
+        self.llvm_builder.set_position_at(block);
+
+        // let function_block = self.llvm_builder.declare_user_function(token, &self.module);
+        // self.function_statement(token)?;
+        Ok(())
+    }
+
+    // fn function_statement(&self, token: &ast::Function) -> Result<(), CompilerError> {
+    // let mut compiler = Compiler::new(&mut function, self.context);
+
+    // for variable in token.params.iter() {
+    //     compiler.register_function_parameter(Box::new(variable.name.clone()));
     // }
 
-    // fn function_statement(&mut self, token: &ast::Function) -> Result<(), CompilerError> {
-    //     log::debug!("Starting function statement");
-    //     let arity = if self.scope_depth > 0 {
-    //         token.params.len()
-    //     } else {
-    //         token.params.len()
-    //     };
+    // compiler.compile(&token)?;
 
-    //     let mut function = Function::new(Arity::Fixed(arity), token.name.clone());
-
-    //     function.locals.push(Variable::new(
-    //         Box::new(token.name.clone()),
-    //         Some(self.scope_depth),
-    //     ));
-
-    //     for (i, local) in self.function.locals.iter().enumerate() {
-    //         function.inherited_locals.push(InheritedVariable {
-    //             var_name: local.name.clone(),
-    //             depth: self.scope_depth,
-    //             pos: i + 1,
-    //         });
-    //     }
-
-    //     for v in self.function.inherited_locals.iter() {
-    //         if function
-    //             .inherited_locals
-    //             .iter()
-    //             .any(|x| x.var_name == v.var_name)
-    //         {
-    //             continue;
-    //         }
-    //         function.inherited_locals.push(InheritedVariable {
-    //             var_name: v.var_name.clone(),
-    //             depth: v.depth,
-    //             pos: v.pos,
-    //         })
-    //     }
-
-    //     let mut compiler = Compiler::new(&mut function, self.scope_depth + 1);
-    //     std::mem::swap(&mut compiler.globals, &mut self.globals);
-
-    //     for variable in token.params.iter() {
-    //         compiler.register_function_parameter(Box::new(variable.name.clone()));
-    //     }
-
-    //     log::debug!("Function compiling starting");
-    //     compiler.compile(&token)?;
-
-    //     let mut globals = compiler.end();
-    //     std::mem::swap(&mut globals, &mut self.globals);
-    //     log::debug!("Function compiling terminated");
-    //     self.emit_global(Global::Function(Box::new(function)));
-    //     Ok(())
+    // let mut globals = compiler.end();
+    // std::mem::swap(&mut globals, &mut self.globals);
+    // log::debug!("Function compiling terminated");
+    // self.emit_global(Global::Function(Box::new(function)));
+    // Ok(())
     // }
 
     // fn block(&mut self, token: &Vec<ast::Stmt>) -> Result<(), CompilerError> {
@@ -354,25 +325,27 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     //     }
     // }
 
-    //     fn expression_statement(&mut self, token: &Box<ast::Expr>) -> Result<(), CompilerError> {
-    //         log::debug!("Starting expression statement");
-    //         self.expression(token)?;
-    //         self.emit_op_code(OpCode::Pop);
-    //         Ok(())
-    //     }
+    fn expression_statement(&self, token: &Box<ast::Expr>) -> Result<(), CompilerError> {
+        log::debug!("Starting expression statement");
+        self.expression(token)?;
+        // self.emit_op_code(OpCode::Pop);
+        Ok(())
+    }
 
-    //     fn expression(&mut self, token: &Box<ast::Expr>) -> Result<(), CompilerError> {
-    //         match &token.body {
-    //             ast::ExprBody::Binary(t) => self.binary(t),
-    //             ast::ExprBody::Unary(t) => self.unary(t),
-    //             ast::ExprBody::Grouping(t) => self.grouping(t),
-    //             ast::ExprBody::Value(t) => self.value(t, ItemReference::new(Some(token.span.clone()))),
-    //             ast::ExprBody::Assign(t) => self.assign(t),
-    //             ast::ExprBody::Logical(t) => self.logical(t),
-    //             ast::ExprBody::Call(t) => self.call(t),
-    //             ast::ExprBody::LoopKeyword(t) => self.loop_keyword(t),
-    //         }
-    //     }
+    fn expression(&self, token: &Box<ast::Expr>) -> Result<LLVMValue, CompilerError> {
+        match &token.body {
+            ast::ExprBody::Value(t) => self.value(t, ItemReference::new(Some(token.span.clone()))),
+            _ => unreachable!(),
+            // ast::ExprBody::Binary(t) => self.binary(t),
+            // ast::ExprBody::Unary(t) => self.unary(t),
+            // ast::ExprBody::Grouping(t) => self.grouping(t),
+            // ast::ExprBody::Value(t) => self.value(t, ItemReference::new(Some(token.span.clone()))),
+            // ast::ExprBody::Assign(t) => self.assign(t),
+            // ast::ExprBody::Logical(t) => self.logical(t),
+            // ast::ExprBody::Call(t) => self.call(t),
+            // ast::ExprBody::LoopKeyword(t) => self.loop_keyword(t),
+        }
+    }
 
     //     fn function_parameter(&mut self, token: &Box<ast::Expr>) -> Result<(), CompilerError> {
     //         match &token.body {
@@ -403,19 +376,21 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     //         self.set_variable(token.name.as_str())
     //     }
 
-    //     fn value(&mut self, token: &ast::Value, reference: ItemReference) -> Result<(), CompilerError> {
-    //         match token {
-    //             ast::Value::String(s) => self.emit_global(Global::String(Box::new(s.clone()))),
-    //             ast::Value::Integer(i) => self.emit_global(Global::Integer(*i)),
-    //             ast::Value::Float(f) => self.emit_global(Global::Float(*f)),
-    //             ast::Value::Variable(s) => self.get_variable(&s)?,
-    //             ast::Value::True => self.emit_op_code(OpCode::True(reference)),
-    //             ast::Value::False => self.emit_op_code(OpCode::False(reference)),
-    //             ast::Value::None => self.emit_op_code(OpCode::None(reference)),
-    //         };
-
-    //         Ok(())
-    //     }
+    fn value(
+        &self,
+        token: &ast::Value,
+        reference: ItemReference,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        match token {
+            ast::Value::Integer(i) => Ok(self.llvm_builder.value_int(*i)),
+            _ => unreachable!(), // ast::Value::String(s) => self.emit_global(Global::String(Box::new(s.clone()))),
+                                 // ast::Value::Float(f) => self.emit_global(Global::Float(*f)),
+                                 // ast::Value::Variable(s) => self.get_variable(&s)?,
+                                 // ast::Value::True => self.emit_op_code(OpCode::True(reference)),
+                                 // ast::Value::False => self.emit_op_code(OpCode::False(reference)),
+                                 // ast::Value::None => self.emit_op_code(OpCode::None(reference)),
+        }
+    }
 
     //     fn loop_keyword(&mut self, token: &ast::LoopKeyword) -> Result<(), CompilerError> {
     //         match token {

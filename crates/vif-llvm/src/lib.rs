@@ -1,6 +1,7 @@
 mod builder;
 mod compiler;
 mod error;
+mod value;
 
 use crate::error::CompilerError;
 use compiler::Compiler;
@@ -16,9 +17,12 @@ use vif_objects::op_code::OpCode;
 pub fn compile(ast_function: &vif_objects::ast::Function) -> Result<(), CompilerError> {
     let context = inkwell::context::Context::create();
     let mut function = Function::new(Arity::None, ast_function.name.clone());
-    let mut compiler = Compiler::new(&mut function, 0, &context);
+    let compiler = Compiler::new(&mut function, &context);
 
     compiler.compile(&ast_function)?;
+    compiler.add_return()?;
+
+    compiler.print_module_to_file("here.ll");
 
     // let globals = compiler.end();
     // Ok((function, globals))

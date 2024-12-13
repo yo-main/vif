@@ -1,5 +1,7 @@
-use crate::error::LLVMError;
-use inkwell::{self, llvm_sys::LLVMContext, module::Module, types::BasicMetadataTypeEnum};
+use crate::error::CompilerError;
+use crate::value::LLVMValue;
+use inkwell::module::Module;
+use inkwell::types::BasicMetadataTypeEnum;
 use vif_objects::ast;
 
 pub struct Builder<'ctx> {
@@ -22,14 +24,14 @@ impl<'ctx> Builder<'ctx> {
         self.context.i32_type() // make this smarter lol
     }
 
-    pub fn declare_global_string(
+    pub fn global_string(
         &self,
         name: &str,
         value: &str,
-    ) -> Result<inkwell::values::GlobalValue<'ctx>, LLVMError> {
+    ) -> Result<inkwell::values::GlobalValue<'ctx>, CompilerError> {
         self.builder
             .build_global_string_ptr(value, name)
-            .map_err(|e| LLVMError::Issue(format!("LLVM issue: {}", e)))
+            .map_err(|e| CompilerError::LLVM(format!("{}", e)))
     }
 
     fn declare_function(
@@ -49,11 +51,42 @@ impl<'ctx> Builder<'ctx> {
         module.add_function(function.name.as_str(), llvm_function, None)
     }
 
-    pub fn declare_user_function(&self, function: &ast::Function, module: &Module<'ctx>) {
+    pub fn declare_user_function(
+        &self,
+        function: &ast::Function,
+        module: &Module<'ctx>,
+    ) -> inkwell::basic_block::BasicBlock<'ctx> {
         let block = self
             .context
             .append_basic_block(self.declare_function(function, module), "entry");
 
+        self.set_position_at(block);
+
+        block
+    }
+
+    pub fn get_current_block(&self) -> Option<inkwell::basic_block::BasicBlock<'ctx>> {
+        self.builder.get_insert_block()
+    }
+
+    pub fn set_position_at(&self, block: inkwell::basic_block::BasicBlock<'ctx>) {
         self.builder.position_at_end(block);
+    }
+
+    pub fn value_int(&self, i: i64) -> LLVMValue<'ctx> {
+        let value_type = self.context.i32_type();
+        if i >= 0 {
+            LLVMValue::Int(value_type.const_int(i as u64, false))
+        } else {
+            LLVMValue::Int(value_type.const_int(i as u64, true))
+        }
+    }
+
+    pub fn return_statement(&self, value: &LLVMValue) -> Result<(), CompilerError> {
+        self.builder
+            .build_return(Some(value))
+            .map_err(|e| CompilerError::LLVM(format!("{}", e)))?;
+
+        Ok(())
     }
 }
