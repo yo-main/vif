@@ -21,7 +21,7 @@ impl<'ctx> Builder<'ctx> {
     }
 
     fn get_pointer(&self, typing: &ast::Typing) -> inkwell::types::IntType<'ctx> {
-        self.context.i32_type() // make this smarter lol
+        self.context.i64_type() // make this smarter lol
     }
 
     pub fn global_string(
@@ -32,6 +32,24 @@ impl<'ctx> Builder<'ctx> {
         self.builder
             .build_global_string_ptr(value, name)
             .map_err(|e| CompilerError::LLVM(format!("{}", e)))
+    }
+
+    pub fn declare_variable(
+        &self,
+        token: &ast::Variable,
+        value: LLVMValue,
+    ) -> Result<(), CompilerError> {
+        match value {
+            LLVMValue::Int(i) => {
+                let ptr = self
+                    .builder
+                    .build_alloca(i.get_type(), token.name.as_str())
+                    .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
+                self.builder.build_store(ptr, i);
+            }
+        };
+
+        Ok(())
     }
 
     fn declare_function(
@@ -74,7 +92,7 @@ impl<'ctx> Builder<'ctx> {
     }
 
     pub fn value_int(&self, i: i64) -> LLVMValue<'ctx> {
-        let value_type = self.context.i32_type();
+        let value_type = self.context.i64_type();
         if i >= 0 {
             LLVMValue::Int(value_type.const_int(i as u64, false))
         } else {

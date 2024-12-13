@@ -140,11 +140,11 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             ast::Stmt::Expression(expr) => self.expression_statement(expr),
             ast::Stmt::Return(ret) => self.return_statement(ret),
             ast::Stmt::Function(func) => self.function_declaration(func),
+            ast::Stmt::Var(var) => self.var_declaration(var),
             _ => unreachable!(),
             // ast::Stmt::Block(blocks) => self.block(blocks),
             // ast::Stmt::Condition(cond) => self.if_statement(cond),
             // ast::Stmt::While(whi) => self.while_statement(whi),
-            // ast::Stmt::Var(var) => self.var_declaration(var),
             // ast::Stmt::Assert(ass) => self.assert_statement(ass),
         }
     }
@@ -281,13 +281,10 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     //     Ok(())
     // }
 
-    // fn var_declaration(&mut self, token: &ast::Variable) -> Result<(), CompilerError> {
-    //     log::debug!("Starting variable declaration");
-    //     let index = self.register_variable(Box::new(token.name.to_owned()));
-    //     self.expression(&token.value)?;
-    //     self.define_variable(index);
-    //     Ok(())
-    // }
+    fn var_declaration(&self, token: &ast::Variable) -> Result<(), CompilerError> {
+        let value = self.expression(&token.value)?;
+        self.llvm_builder.declare_variable(token, value)
+    }
 
     // fn initialize_variable(&mut self) {
     //     if let Some(var) = self.function.locals.last_mut() {
