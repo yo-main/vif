@@ -3,6 +3,7 @@ mod compiler;
 mod error;
 mod value;
 
+use crate::compiler::Store;
 use crate::error::CompilerError;
 use compiler::Compiler;
 
@@ -19,7 +20,8 @@ pub fn compile(ast_function: &vif_objects::ast::Function) -> Result<(), Compiler
     let mut function = Function::new(Arity::None, ast_function.name.clone());
     let compiler = Compiler::new(&mut function, &context);
 
-    compiler.compile(&ast_function)?;
+    let mut store = Store::new();
+    compiler.compile(&ast_function, &mut store)?;
     compiler.add_return()?;
 
     compiler.print_module_to_file("here.ll");

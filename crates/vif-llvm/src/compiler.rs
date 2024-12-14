@@ -7,6 +7,9 @@ use crate::NativeFunctionCallee;
 use crate::OpCode;
 
 use inkwell;
+use inkwell::llvm_sys::LLVMCallConv;
+use std::any::Any;
+use std::collections::HashMap;
 use std::path::Path;
 
 use vif_loader::log;
@@ -20,6 +23,49 @@ use vif_objects::variable::InheritedLocalPos;
 use vif_objects::variable::InheritedVariable;
 use vif_objects::variable::Variable;
 use vif_objects::variable::VariableType;
+
+struct StoredVariable<'ctx, 'function> {
+    ptr: LLVMValue<'ctx>,
+    v: &'function ast::Variable,
+}
+
+impl<'ctx, 'function> StoredVariable<'ctx, 'function> {
+    fn new(ptr: LLVMValue<'ctx>, v: &'function ast::Variable) -> Self {
+        Self { ptr, v }
+    }
+}
+
+struct Variables<'ctx, 'function> {
+    data: HashMap<String, StoredVariable<'ctx, 'function>>,
+}
+
+impl<'ctx, 'function> Variables<'ctx, 'function> {
+    fn new() -> Self {
+        Self {
+            data: HashMap::new(),
+        }
+    }
+
+    fn add(&mut self, var_name: String, value: LLVMValue<'ctx>, v: &'function ast::Variable) {
+        self.data.insert(var_name, StoredVariable::new(value, v));
+    }
+
+    fn get(&self, var_name: String) -> Option<&StoredVariable<'ctx, 'function>> {
+        self.data.get(&var_name)
+    }
+}
+
+pub struct Store<'ctx, 'function> {
+    variables: Variables<'ctx, 'function>,
+}
+
+impl<'ctx, 'function> Store<'ctx, 'function> {
+    pub fn new() -> Self {
+        Self {
+            variables: Variables::new(),
+        }
+    }
+}
 
 pub struct Compiler<'function, 'ctx> {
     context: &'ctx inkwell::context::Context,
@@ -63,8 +109,13 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         compiler
     }
 
-    pub fn compile(&self, function: &ast::Function) -> Result<(), CompilerError> {
-        self.llvm_builder
+    pub fn compile(
+        &self,
+        function: &'function ast::Function,
+        store: &mut Store<'ctx, 'function>,
+    ) -> Result<inkwell::basic_block::BasicBlock<'ctx>, CompilerError> {
+        let block = self
+            .llvm_builder
             .declare_user_function(function, &self.module);
 
         // let i8_ptr_type = context.i32_type();
@@ -94,10 +145,10 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         //     .map_err(|e| CompilerError::Unknown(format!("LLVM issue: {}", e)))?;
 
         for token in function.body.iter() {
-            self.statement(token)?;
+            self.statement(token, store)?;
         }
 
-        Ok(())
+        Ok(block)
     }
 
     pub fn add_return(&self) -> Result<(), CompilerError> {
@@ -134,26 +185,34 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     //     }
     // }
 
-    pub fn statement(&self, token: &ast::Stmt) -> Result<(), CompilerError> {
+    pub fn statement(
+        &self,
+        token: &'function ast::Stmt,
+        store: &mut Store<'ctx, 'function>,
+    ) -> Result<(), CompilerError> {
         log::debug!("Starting statement");
         match token {
-            ast::Stmt::Expression(expr) => self.expression_statement(expr),
-            ast::Stmt::Return(ret) => self.return_statement(ret),
-            ast::Stmt::Function(func) => self.function_declaration(func),
-            ast::Stmt::Var(var) => self.var_declaration(var),
+            ast::Stmt::Expression(expr) => self.expression_statement(expr, store)?,
+            ast::Stmt::Return(ret) => self.return_statement(ret, store)?,
+            ast::Stmt::Function(func) => self.function_declaration(func, store)?,
+            ast::Stmt::Var(var) => self.var_declaration(var, store)?,
             _ => unreachable!(),
             // ast::Stmt::Block(blocks) => self.block(blocks),
             // ast::Stmt::Condition(cond) => self.if_statement(cond),
             // ast::Stmt::While(whi) => self.while_statement(whi),
             // ast::Stmt::Assert(ass) => self.assert_statement(ass),
-        }
-    }
-
-    fn return_statement(&self, token: &ast::Return) -> Result<(), CompilerError> {
-        let value = self.expression(&token.value)?;
-        self.llvm_builder.return_statement(&value).unwrap();
+        };
 
         Ok(())
+    }
+
+    fn return_statement(
+        &self,
+        token: &'function ast::Return,
+        store: &mut Store<'ctx, 'function>,
+    ) -> Result<(), CompilerError> {
+        let value = self.expression(&token.value, store)?;
+        self.llvm_builder.return_statement(&value)
     }
 
     // pub fn call(&mut self, token: &ast::Call) -> Result<(), CompilerError> {
@@ -245,16 +304,21 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     //     Ok(())
     // }
 
-    fn function_declaration(&self, token: &ast::Function) -> Result<(), CompilerError> {
+    fn function_declaration(
+        &self,
+        token: &ast::Function,
+        store: &mut Store<'ctx, 'function>,
+    ) -> Result<(), CompilerError> {
         log::debug!("Starting function declaration");
 
-        let block = self.llvm_builder.get_current_block().unwrap();
-        self.compile(token)?;
-        self.llvm_builder.set_position_at(block);
+        let mut function_store = Store::new();
+        let previous_block = self.llvm_builder.get_current_block().unwrap();
+        let function_block = self.compile(token, &mut function_store)?;
+        self.llvm_builder.set_position_at(previous_block);
+        Ok(())
 
         // let function_block = self.llvm_builder.declare_user_function(token, &self.module);
         // self.function_statement(token)?;
-        Ok(())
     }
 
     // fn function_statement(&self, token: &ast::Function) -> Result<(), CompilerError> {
@@ -281,9 +345,17 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     //     Ok(())
     // }
 
-    fn var_declaration(&self, token: &ast::Variable) -> Result<(), CompilerError> {
-        let value = self.expression(&token.value)?;
-        self.llvm_builder.declare_variable(token, value)
+    fn var_declaration(
+        &self,
+        token: &'function ast::Variable,
+        store: &mut Store<'ctx, 'function>,
+    ) -> Result<(), CompilerError> {
+        let value = self.expression(&token.value, store)?;
+        let var_ptr = self.llvm_builder.declare_variable(token, value)?;
+        store
+            .variables
+            .add(token.name.to_owned(), var_ptr.clone(), token);
+        Ok(())
     }
 
     // fn initialize_variable(&mut self) {
@@ -322,16 +394,25 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     //     }
     // }
 
-    fn expression_statement(&self, token: &Box<ast::Expr>) -> Result<(), CompilerError> {
+    fn expression_statement(
+        &self,
+        token: &'function Box<ast::Expr>,
+        store: &mut Store<'ctx, 'function>,
+    ) -> Result<(), CompilerError> {
         log::debug!("Starting expression statement");
-        self.expression(token)?;
-        // self.emit_op_code(OpCode::Pop);
+        self.expression(token, store)?;
         Ok(())
     }
 
-    fn expression(&self, token: &Box<ast::Expr>) -> Result<LLVMValue, CompilerError> {
+    fn expression(
+        &self,
+        token: &'function Box<ast::Expr>,
+        store: &mut Store<'ctx, 'function>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
         match &token.body {
-            ast::ExprBody::Value(t) => self.value(t, ItemReference::new(Some(token.span.clone()))),
+            ast::ExprBody::Value(t) => {
+                self.value(t, ItemReference::new(Some(token.span.clone())), store)
+            }
             _ => unreachable!(),
             // ast::ExprBody::Binary(t) => self.binary(t),
             // ast::ExprBody::Unary(t) => self.unary(t),
@@ -375,14 +456,15 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
 
     fn value(
         &self,
-        token: &ast::Value,
+        token: &'function ast::Value,
         reference: ItemReference,
+        store: &mut Store<'ctx, 'function>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         match token {
             ast::Value::Integer(i) => Ok(self.llvm_builder.value_int(*i)),
+            ast::Value::Variable(s) => self.get_variable(&s, store),
             _ => unreachable!(), // ast::Value::String(s) => self.emit_global(Global::String(Box::new(s.clone()))),
                                  // ast::Value::Float(f) => self.emit_global(Global::Float(*f)),
-                                 // ast::Value::Variable(s) => self.get_variable(&s)?,
                                  // ast::Value::True => self.emit_op_code(OpCode::True(reference)),
                                  // ast::Value::False => self.emit_op_code(OpCode::False(reference)),
                                  // ast::Value::None => self.emit_op_code(OpCode::None(reference)),
@@ -464,18 +546,31 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     //         Ok(())
     //     }
 
-    //     pub fn get_variable(&mut self, var_name: &str) -> Result<(), CompilerError> {
-    //         log::debug!("Starting variable");
+    pub fn get_variable(
+        &self,
+        var_name: &str,
+        store: &mut Store<'ctx, 'function>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        log::debug!("Starting variable");
 
-    //         let op_code = match self.resolve_local(var_name)? {
-    //             VariableType::Local(index) => OpCode::GetLocal(index),
-    //             VariableType::Inherited(v) => OpCode::GetInheritedLocal(v),
-    //             VariableType::Global(v) => OpCode::GetGlobal(v),
-    //         };
+        if let Some(ptr) = store.variables.get(var_name.to_owned()) {
+            self.llvm_builder
+                .load_variable(var_name, &ptr.ptr, self.context.i64_type())
+        } else {
+            Err(CompilerError::Unknown(format!(
+                "Variable {} not found",
+                var_name
+            )))
+        }
 
-    //         self.emit_op_code(op_code);
-    //         Ok(())
-    //     }
+        // let op_code = match self.resolve_local(var_name)? {
+        //     VariableType::Local(index) => OpCode::GetLocal(index),
+        //     VariableType::Inherited(v) => OpCode::GetInheritedLocal(v),
+        //     VariableType::Global(v) => OpCode::GetGlobal(v),
+        // };
+
+        // self.emit_op_code(op_code);
+    }
 
     //     fn resolve_local(&mut self, var_name: &str) -> Result<VariableType, CompilerError> {
     //         log::debug!("Resolve variable {}", var_name);

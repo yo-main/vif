@@ -37,8 +37,8 @@ impl<'ctx> Builder<'ctx> {
     pub fn declare_variable(
         &self,
         token: &ast::Variable,
-        value: LLVMValue,
-    ) -> Result<(), CompilerError> {
+        value: LLVMValue<'ctx>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
         match value {
             LLVMValue::Int(i) => {
                 let ptr = self
@@ -46,10 +46,11 @@ impl<'ctx> Builder<'ctx> {
                     .build_alloca(i.get_type(), token.name.as_str())
                     .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
                 self.builder.build_store(ptr, i);
+                Ok(LLVMValue::Ptr(ptr))
             }
-        };
-
-        Ok(())
+            LLVMValue::Ptr(_) => unreachable!(),
+            LLVMValue::LoadedVariable(_) => unreachable!(),
+        }
     }
 
     fn declare_function(
@@ -100,7 +101,26 @@ impl<'ctx> Builder<'ctx> {
         }
     }
 
-    pub fn return_statement(&self, value: &LLVMValue) -> Result<(), CompilerError> {
+    pub fn load_variable<T>(
+        &self,
+        name: &str,
+        value: &LLVMValue<'ctx>,
+        t: T,
+    ) -> Result<LLVMValue<'ctx>, CompilerError>
+    where
+        T: inkwell::types::BasicType<'ctx>,
+    {
+        match value {
+            LLVMValue::Ptr(ptr) => Ok(LLVMValue::LoadedVariable(
+                self.builder
+                    .build_load(t, *ptr, name)
+                    .map_err(|e| CompilerError::LLVM(format!("{e}")))?,
+            )),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn return_statement(&self, value: &LLVMValue<'ctx>) -> Result<(), CompilerError> {
         self.builder
             .build_return(Some(value))
             .map_err(|e| CompilerError::LLVM(format!("{}", e)))?;
