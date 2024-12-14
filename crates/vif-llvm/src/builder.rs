@@ -46,11 +46,22 @@ impl<'ctx> Builder<'ctx> {
                     .builder
                     .build_alloca(i.get_type(), token.name.as_str())
                     .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
-                self.builder.build_store(ptr, i);
+                self.builder
+                    .build_store(ptr, i)
+                    .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
                 Ok(LLVMValue::Ptr(ptr))
             }
             LLVMValue::Ptr(_) => unreachable!(),
-            LLVMValue::LoadedVariable(_) => unreachable!(),
+            LLVMValue::LoadedVariable(v) => {
+                let ptr = self
+                    .builder
+                    .build_alloca(v.get_type(), token.name.as_str())
+                    .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
+                self.builder
+                    .build_store(ptr, v)
+                    .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
+                Ok(LLVMValue::Ptr(ptr))
+            }
         }
     }
 
