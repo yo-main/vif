@@ -1,8 +1,8 @@
 use crate::error::CompilerError;
-use crate::value::LLVMValue;
 use inkwell::llvm_sys::LLVMCallConv;
 use inkwell::module::Module;
 use inkwell::types::BasicMetadataTypeEnum;
+use inkwell::values::BasicValueEnum;
 use vif_objects::ast;
 
 pub struct Builder<'ctx> {
@@ -38,10 +38,10 @@ impl<'ctx> Builder<'ctx> {
     pub fn declare_variable(
         &self,
         token: &ast::Variable,
-        value: LLVMValue<'ctx>,
-    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        value: BasicValueEnum<'ctx>,
+    ) -> Result<BasicValueEnum<'ctx>, CompilerError> {
         match value {
-            LLVMValue::Int(i) => {
+            BasicValueEnum::IntValue(i) => {
                 let ptr = self
                     .builder
                     .build_alloca(i.get_type(), token.name.as_str())
@@ -49,19 +49,19 @@ impl<'ctx> Builder<'ctx> {
                 self.builder
                     .build_store(ptr, i)
                     .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
-                Ok(LLVMValue::Ptr(ptr))
+                Ok(BasicValueEnum::PointerValue(ptr))
             }
-            LLVMValue::Ptr(_) => unreachable!(),
-            LLVMValue::LoadedVariable(v) => {
+            BasicValueEnum::FloatValue(f) => {
                 let ptr = self
                     .builder
-                    .build_alloca(v.get_type(), token.name.as_str())
+                    .build_alloca(f.get_type(), token.name.as_str())
                     .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
                 self.builder
-                    .build_store(ptr, v)
+                    .build_store(ptr, f)
                     .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
-                Ok(LLVMValue::Ptr(ptr))
+                Ok(BasicValueEnum::PointerValue(ptr))
             }
+            _ => unreachable!(),
         }
     }
 
@@ -104,35 +104,34 @@ impl<'ctx> Builder<'ctx> {
         self.builder.position_at_end(block);
     }
 
-    pub fn value_int(&self, i: i64) -> LLVMValue<'ctx> {
+    pub fn value_int(&self, i: i64) -> BasicValueEnum<'ctx> {
         let value_type = self.context.i64_type();
         if i >= 0 {
-            LLVMValue::Int(value_type.const_int(i as u64, false))
+            BasicValueEnum::IntValue(value_type.const_int(i as u64, false))
         } else {
-            LLVMValue::Int(value_type.const_int(i as u64, true))
+            BasicValueEnum::IntValue(value_type.const_int(i as u64, true))
         }
     }
 
     pub fn load_variable<T>(
         &self,
         name: &str,
-        value: &LLVMValue<'ctx>,
+        value: &BasicValueEnum<'ctx>,
         t: T,
-    ) -> Result<LLVMValue<'ctx>, CompilerError>
+    ) -> Result<BasicValueEnum<'ctx>, CompilerError>
     where
         T: inkwell::types::BasicType<'ctx>,
     {
         match value {
-            LLVMValue::Ptr(ptr) => Ok(LLVMValue::LoadedVariable(
-                self.builder
-                    .build_load(t, *ptr, name)
-                    .map_err(|e| CompilerError::LLVM(format!("{e}")))?,
-            )),
+            BasicValueEnum::PointerValue(ptr) => self
+                .builder
+                .build_load(t, *ptr, name)
+                .map_err(|e| CompilerError::LLVM(format!("{e}"))),
             _ => unreachable!(),
         }
     }
 
-    pub fn return_statement(&self, value: &LLVMValue<'ctx>) -> Result<(), CompilerError> {
+    pub fn return_statement(&self, value: &BasicValueEnum<'ctx>) -> Result<(), CompilerError> {
         self.builder
             .build_return(Some(value))
             .map_err(|e| CompilerError::LLVM(format!("{}", e)))?;
@@ -142,20 +141,25 @@ impl<'ctx> Builder<'ctx> {
 
     pub fn add(
         &self,
-        value_left: LLVMValue<'ctx>,
-        value_right: LLVMValue<'ctx>,
-    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        value_left: BasicValueEnum<'ctx>,
+        value_right: BasicValueEnum<'ctx>,
+    ) -> Result<BasicValueEnum<'ctx>, CompilerError> {
         let l = match value_left {
-            LLVMValue::Int(i) => i,
+            BasicValueEnum::IntValue(i) => i,
             v => return Err(CompilerError::Unknown(format!("Cannot add {:?}", v))),
         };
 
         let r = match value_right {
-            LLVMValue::Int(i) => i,
-            v => return Err(CompilerError::Unknown(format!("Cannot add {:?}", v))),
+            BasicValueEnum::IntValue(i) => i,
+            v => {
+                return Err(CompilerError::Unknown(format!(
+                    "Cannot add {:?} with {:?}",
+                    v, l
+                )))
+            }
         };
 
-        Ok(LLVMValue::Int(
+        Ok(BasicValueEnum::IntValue(
             self.builder
                 .build_int_add(l, r, "coucou")
                 .map_err(|e| CompilerError::LLVM(format!("{e}")))?,

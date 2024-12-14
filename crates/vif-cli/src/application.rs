@@ -63,7 +63,7 @@ impl Vif {
             return;
         }
 
-        compile(&ast);
+        compile(&ast).unwrap();
         // let (function, globals) = match compile(&ast) {
         //     Err(e) => {
         //         println!("Compiler error! {e}");

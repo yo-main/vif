@@ -1,7 +1,6 @@
 mod builder;
 mod compiler;
 mod error;
-mod value;
 
 use crate::compiler::Store;
 use crate::error::CompilerError;
@@ -24,7 +23,7 @@ pub fn compile(ast_function: &vif_objects::ast::Function) -> Result<(), Compiler
     compiler.compile(&ast_function, &mut store)?;
     compiler.add_return()?;
 
-    compiler.print_module_to_file("here.ll");
+    compiler.print_module_to_file("here.ll")?;
 
     // let globals = compiler.end();
     // Ok((function, globals))
