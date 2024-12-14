@@ -1,5 +1,6 @@
 use crate::error::CompilerError;
 use crate::value::LLVMValue;
+use inkwell::llvm_sys::LLVMCallConv;
 use inkwell::module::Module;
 use inkwell::types::BasicMetadataTypeEnum;
 use vif_objects::ast;
@@ -12,7 +13,7 @@ pub struct Builder<'ctx> {
 impl<'ctx> Builder<'ctx> {
     pub fn new(context: &'ctx inkwell::context::Context) -> Self {
         Builder {
-            context: context,
+            context,
             builder: context.create_builder(),
         }
     }
@@ -126,5 +127,27 @@ impl<'ctx> Builder<'ctx> {
             .map_err(|e| CompilerError::LLVM(format!("{}", e)))?;
 
         Ok(())
+    }
+
+    pub fn add(
+        &self,
+        value_left: LLVMValue<'ctx>,
+        value_right: LLVMValue<'ctx>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        let l = match value_left {
+            LLVMValue::Int(i) => i,
+            v => return Err(CompilerError::Unknown(format!("Cannot add {:?}", v))),
+        };
+
+        let r = match value_right {
+            LLVMValue::Int(i) => i,
+            v => return Err(CompilerError::Unknown(format!("Cannot add {:?}", v))),
+        };
+
+        Ok(LLVMValue::Int(
+            self.builder
+                .build_int_add(l, r, "coucou")
+                .map_err(|e| CompilerError::LLVM(format!("{e}")))?,
+        ))
     }
 }

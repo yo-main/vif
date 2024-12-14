@@ -1,3 +1,4 @@
 def coucou():
 	var v = 2
-	return v
+	var y = v
+	return y

@@ -8,6 +8,7 @@ use crate::OpCode;
 
 use inkwell;
 use inkwell::llvm_sys::LLVMCallConv;
+use inkwell::llvm_sys::LLVMIntPredicate;
 use std::any::Any;
 use std::collections::HashMap;
 use std::path::Path;
@@ -313,7 +314,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
 
         let mut function_store = Store::new();
         let previous_block = self.llvm_builder.get_current_block().unwrap();
-        let function_block = self.compile(token, &mut function_store)?;
+        self.compile(token, &mut function_store)?;
         self.llvm_builder.set_position_at(previous_block);
         Ok(())
 
@@ -413,11 +414,10 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             ast::ExprBody::Value(t) => {
                 self.value(t, ItemReference::new(Some(token.span.clone())), store)
             }
+            ast::ExprBody::Binary(t) => self.binary(t, store),
             _ => unreachable!(),
-            // ast::ExprBody::Binary(t) => self.binary(t),
             // ast::ExprBody::Unary(t) => self.unary(t),
             // ast::ExprBody::Grouping(t) => self.grouping(t),
-            // ast::ExprBody::Value(t) => self.value(t, ItemReference::new(Some(token.span.clone()))),
             // ast::ExprBody::Assign(t) => self.assign(t),
             // ast::ExprBody::Logical(t) => self.logical(t),
             // ast::ExprBody::Call(t) => self.call(t),
@@ -480,34 +480,44 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     //         Ok(())
     //     }
 
-    //     fn binary(&mut self, token: &ast::Binary) -> Result<(), CompilerError> {
-    //         let reference = ItemReference::new(Some(token.right.span.clone()));
-    //         self.expression(&token.left)?;
-    //         self.expression(&token.right)?;
-    //         self.operator(&token.operator, reference);
-    //         Ok(())
-    //     }
+    fn binary(
+        &self,
+        token: &'function ast::Binary,
+        store: &mut Store<'ctx, 'function>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        let reference = ItemReference::new(Some(token.right.span.clone()));
+        let value_left = self.expression(&token.left, store)?;
+        let value_right = self.expression(&token.right, store)?;
+        self.operator(&token.operator, value_left, value_right, reference, store)
+    }
 
-    //     fn operator(&mut self, token: &ast::Operator, reference: ItemReference) {
-    //         self.emit_op_code(match token {
-    //             ast::Operator::Plus => OpCode::Add(reference),
-    //             ast::Operator::Minus => OpCode::Substract(reference),
-    //             ast::Operator::Divide => OpCode::Divide(reference),
-    //             ast::Operator::Multiply => OpCode::Multiply(reference),
-    //             ast::Operator::PlusEqual => OpCode::NotImplemented,
-    //             ast::Operator::MinusEqual => OpCode::NotImplemented,
-    //             ast::Operator::DevideEqual => OpCode::NotImplemented,
-    //             ast::Operator::MultiplyEqual => OpCode::NotImplemented,
-    //             ast::Operator::BangEqual => OpCode::NotEqual(reference),
-    //             ast::Operator::Less => OpCode::Less(reference),
-    //             ast::Operator::LessEqual => OpCode::LessOrEqual(reference),
-    //             ast::Operator::Greater => OpCode::Greater(reference),
-    //             ast::Operator::GreaterEqual => OpCode::GreaterOrEqual(reference),
-    //             ast::Operator::Equal => OpCode::Equal(reference),
-    //             ast::Operator::Comma => OpCode::NotImplemented,
-    //             ast::Operator::Modulo => OpCode::Modulo(reference),
-    //         })
-    //     }
+    fn operator(
+        &self,
+        token: &'function ast::Operator,
+        value_left: LLVMValue<'ctx>,
+        value_right: LLVMValue<'ctx>,
+        reference: ItemReference,
+        store: &mut Store<'ctx, 'function>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        match token {
+            ast::Operator::Plus => self.llvm_builder.add(value_left, value_right),
+            _ => unreachable!(), // ast::Operator::Minus => OpCode::Substract(reference),
+                                 // ast::Operator::Divide => OpCode::Divide(reference),
+                                 // ast::Operator::Multiply => OpCode::Multiply(reference),
+                                 // ast::Operator::PlusEqual => OpCode::NotImplemented,
+                                 // ast::Operator::MinusEqual => OpCode::NotImplemented,
+                                 // ast::Operator::DevideEqual => OpCode::NotImplemented,
+                                 // ast::Operator::MultiplyEqual => OpCode::NotImplemented,
+                                 // ast::Operator::BangEqual => OpCode::NotEqual(reference),
+                                 // ast::Operator::Less => OpCode::Less(reference),
+                                 // ast::Operator::LessEqual => OpCode::LessOrEqual(reference),
+                                 // ast::Operator::Greater => OpCode::Greater(reference),
+                                 // ast::Operator::GreaterEqual => OpCode::GreaterOrEqual(reference),
+                                 // ast::Operator::Equal => OpCode::Equal(reference),
+                                 // ast::Operator::Comma => OpCode::NotImplemented,
+                                 // ast::Operator::Modulo => OpCode::Modulo(reference),
+        }
+    }
 
     //     pub fn and(&mut self, token: &ast::Logical) -> Result<(), CompilerError> {
     //         log::debug!("Starting and operation");
