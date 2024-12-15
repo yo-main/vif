@@ -20,6 +20,7 @@ pub fn compile(ast_function: &vif_objects::ast::Function) -> Result<(), Compiler
     let compiler = Compiler::new(&mut function, &context);
 
     let mut store = Store::new();
+    compiler.add_builtin_functions(&mut store);
     compiler.compile(&ast_function, &mut store)?;
     compiler.add_return()?;
 

@@ -1,6 +1,7 @@
 def coucou():
 	var v = 2
 	var y = v
+	print(y+v)
 	return y + v
 
 

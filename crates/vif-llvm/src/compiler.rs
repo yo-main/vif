@@ -6,7 +6,9 @@ use crate::NativeFunctionCallee;
 use crate::OpCode;
 
 use inkwell;
+use inkwell::types::BasicMetadataTypeEnum;
 use inkwell::types::BasicTypeEnum;
+use inkwell::values::BasicMetadataValueEnum;
 use inkwell::values::BasicValueEnum;
 use inkwell::values::FunctionValue;
 use inkwell::values::IntMathValue;
@@ -60,14 +62,14 @@ impl<'ctx, 'function> StoredVariable<'ctx, 'function> {
 }
 
 #[derive(Debug, Clone)]
-struct StoredFunction<'ctx, 'function> {
+struct StoredFunction<'ctx> {
     ptr: FunctionValue<'ctx>,
-    f: &'function ast::Function,
+    // f: &'function ast::Function,
 }
 
-impl<'ctx, 'function> StoredFunction<'ctx, 'function> {
-    fn new(ptr: FunctionValue<'ctx>, f: &'function ast::Function) -> Self {
-        Self { ptr, f }
+impl<'ctx, 'function> StoredFunction<'ctx> {
+    fn new(ptr: FunctionValue<'ctx>) -> Self {
+        Self { ptr }
     }
 }
 
@@ -93,22 +95,22 @@ impl<'ctx, 'function> Variables<'ctx, 'function> {
 }
 
 #[derive(Debug, Clone)]
-struct Functions<'ctx, 'function> {
-    data: HashMap<String, StoredFunction<'ctx, 'function>>,
+struct Functions<'ctx> {
+    data: HashMap<String, StoredFunction<'ctx>>,
 }
 
-impl<'ctx, 'function> Functions<'ctx, 'function> {
+impl<'ctx, 'function> Functions<'ctx> {
     fn new() -> Self {
         Self {
             data: HashMap::new(),
         }
     }
 
-    fn add(&mut self, var_name: String, value: FunctionValue<'ctx>, v: &'function ast::Function) {
-        self.data.insert(var_name, StoredFunction::new(value, v));
+    fn add(&mut self, var_name: String, value: FunctionValue<'ctx>) {
+        self.data.insert(var_name, StoredFunction::new(value));
     }
 
-    fn get(&self, var_name: String) -> Option<&StoredFunction<'ctx, 'function>> {
+    fn get(&self, var_name: String) -> Option<&StoredFunction<'ctx>> {
         self.data.get(&var_name)
     }
 }
@@ -116,7 +118,7 @@ impl<'ctx, 'function> Functions<'ctx, 'function> {
 #[derive(Debug, Clone)]
 pub struct Store<'ctx, 'function> {
     variables: Variables<'ctx, 'function>,
-    functions: Functions<'ctx, 'function>,
+    functions: Functions<'ctx>,
 }
 
 impl<'ctx, 'function> Store<'ctx, 'function> {
@@ -155,19 +157,29 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             // globals: GlobalStore::new(),
         };
 
-        // if scope_depth == 0 {
         //     compiler.make_global(Global::Native(NativeFunction::new(
         //         NativeFunctionCallee::GetTime,
         //     )));
-        //     compiler.make_global(Global::Native(NativeFunction::new(
-        //         NativeFunctionCallee::Print,
-        //     )));
+
         //     compiler.make_global(Global::Native(NativeFunction::new(
         //         NativeFunctionCallee::Sleep,
         //     )));
         // };
 
         compiler
+    }
+
+    pub fn add_builtin_functions(&self, store: &mut Store<'ctx, 'function>) {
+        let printf_type = self.context.i64_type().fn_type(
+            &[self
+                .context
+                .ptr_type(inkwell::AddressSpace::default())
+                .into()],
+            true,
+        );
+        let printf = self.module.add_function("printf", printf_type, None);
+
+        store.functions.add("print".to_owned(), printf);
     }
 
     pub fn compile(
@@ -179,10 +191,9 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             .llvm_builder
             .declare_user_function(function, &self.module);
 
-        println!("ADD {}", function.name.to_owned());
         store
             .functions
-            .add(function.name.to_owned(), function_value, function);
+            .add(function.name.to_owned(), function_value);
 
         let block = self
             .llvm_builder
@@ -292,10 +303,37 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         store: &mut Store<'ctx, 'function>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         let function_value = self.expression(&token.callee, store)?.get_function_value();
+        let mut args = token
+            .arguments
+            .iter()
+            .map(|e| self.expression(e, store).unwrap())
+            .map(|e| match e.get_basic_value_enum() {
+                BasicValueEnum::ArrayValue(a) => BasicMetadataValueEnum::ArrayValue(a),
+                BasicValueEnum::FloatValue(f) => BasicMetadataValueEnum::FloatValue(f),
+                BasicValueEnum::IntValue(i) => BasicMetadataValueEnum::IntValue(i),
+                BasicValueEnum::PointerValue(p) => BasicMetadataValueEnum::PointerValue(p),
+                BasicValueEnum::StructValue(s) => BasicMetadataValueEnum::StructValue(s),
+                BasicValueEnum::VectorValue(v) => BasicMetadataValueEnum::VectorValue(v),
+            })
+            .collect::<Vec<BasicMetadataValueEnum>>();
 
-        let value = self
-            .llvm_builder
-            .call(function_value, function_value.get_name().to_str().unwrap())?;
+        if function_value.get_name().to_str().unwrap() == "printf" {
+            let s_fmt = self
+                .llvm_builder
+                .builder
+                .build_global_string_ptr("%d\n", "format_str")
+                .unwrap();
+            args.insert(
+                0,
+                BasicMetadataValueEnum::PointerValue(s_fmt.as_pointer_value()),
+            )
+        }
+
+        let value = self.llvm_builder.call(
+            function_value,
+            &args,
+            function_value.get_name().to_str().unwrap(),
+        )?;
         // for arg in token.arguments.iter() {
         //     self.function_parameter(arg)?;
         // }
@@ -403,6 +441,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         } else {
             self.compile(token, store)?;
         }
+
         self.llvm_builder.set_position_at(previous_block);
         Ok(())
 
@@ -683,7 +722,6 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         function_name: &str,
         store: &mut Store<'ctx, 'function>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
-        println!("GET {}", function_name);
         if let Some(ptr) = store.functions.get(function_name.to_owned()) {
             Ok(LLVMValue::FunctionValue(ptr.ptr))
         } else {

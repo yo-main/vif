@@ -3,7 +3,7 @@ use crate::error::CompilerError;
 use inkwell::llvm_sys::LLVMCallConv;
 use inkwell::module::Module;
 use inkwell::types::BasicMetadataTypeEnum;
-use inkwell::values::{BasicValueEnum, FunctionValue};
+use inkwell::values::{BasicMetadataValueEnum, BasicValueEnum, FunctionValue};
 use vif_objects::ast;
 
 pub struct Builder<'ctx> {
@@ -150,11 +150,12 @@ impl<'ctx> Builder<'ctx> {
     pub fn call(
         &self,
         function: FunctionValue<'ctx>,
+        args: &[BasicMetadataValueEnum<'ctx>],
         name: &str,
     ) -> Result<Option<BasicValueEnum<'ctx>>, CompilerError> {
         let call_value = self
             .builder
-            .build_direct_call(function, &[], name)
+            .build_direct_call(function, args, name)
             .map_err(|e| CompilerError::LLVM(format!("{e}")))?
             .try_as_basic_value();
 
