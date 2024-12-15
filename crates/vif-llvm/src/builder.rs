@@ -1,8 +1,9 @@
+use crate::compiler::LLVMValue;
 use crate::error::CompilerError;
 use inkwell::llvm_sys::LLVMCallConv;
 use inkwell::module::Module;
 use inkwell::types::BasicMetadataTypeEnum;
-use inkwell::values::BasicValueEnum;
+use inkwell::values::{BasicValueEnum, FunctionValue};
 use vif_objects::ast;
 
 pub struct Builder<'ctx> {
@@ -38,10 +39,10 @@ impl<'ctx> Builder<'ctx> {
     pub fn declare_variable(
         &self,
         token: &ast::Variable,
-        value: BasicValueEnum<'ctx>,
+        value: LLVMValue<'ctx>,
     ) -> Result<BasicValueEnum<'ctx>, CompilerError> {
         match value {
-            BasicValueEnum::IntValue(i) => {
+            LLVMValue::BasicValueEnum(BasicValueEnum::IntValue(i)) => {
                 let ptr = self
                     .builder
                     .build_alloca(i.get_type(), token.name.as_str())
@@ -51,7 +52,7 @@ impl<'ctx> Builder<'ctx> {
                     .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
                 Ok(BasicValueEnum::PointerValue(ptr))
             }
-            BasicValueEnum::FloatValue(f) => {
+            LLVMValue::BasicValueEnum(BasicValueEnum::FloatValue(f)) => {
                 let ptr = self
                     .builder
                     .build_alloca(f.get_type(), token.name.as_str())
@@ -61,6 +62,7 @@ impl<'ctx> Builder<'ctx> {
                     .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
                 Ok(BasicValueEnum::PointerValue(ptr))
             }
+            LLVMValue::FunctionValue(f) => unimplemented!(),
             _ => unreachable!(),
         }
     }
@@ -69,7 +71,7 @@ impl<'ctx> Builder<'ctx> {
         &self,
         function: &ast::Function,
         module: &Module<'ctx>,
-    ) -> inkwell::values::FunctionValue<'ctx> {
+    ) -> FunctionValue<'ctx> {
         let function_ptr_type = self.get_pointer(&function.typing);
 
         let args = function
@@ -86,10 +88,16 @@ impl<'ctx> Builder<'ctx> {
         &self,
         function: &ast::Function,
         module: &Module<'ctx>,
+    ) -> FunctionValue<'ctx> {
+        self.declare_function(function, module)
+    }
+
+    pub fn create_function_block(
+        &self,
+        function: FunctionValue<'ctx>,
+        block_name: &str,
     ) -> inkwell::basic_block::BasicBlock<'ctx> {
-        let block = self
-            .context
-            .append_basic_block(self.declare_function(function, module), "entry");
+        let block = self.context.append_basic_block(function, block_name);
 
         self.set_position_at(block);
 
@@ -137,6 +145,20 @@ impl<'ctx> Builder<'ctx> {
             .map_err(|e| CompilerError::LLVM(format!("{}", e)))?;
 
         Ok(())
+    }
+
+    pub fn call(
+        &self,
+        function: FunctionValue<'ctx>,
+        name: &str,
+    ) -> Result<Option<BasicValueEnum<'ctx>>, CompilerError> {
+        let call_value = self
+            .builder
+            .build_direct_call(function, &[], name)
+            .map_err(|e| CompilerError::LLVM(format!("{e}")))?
+            .try_as_basic_value();
+
+        Ok(call_value.left())
     }
 
     pub fn add(

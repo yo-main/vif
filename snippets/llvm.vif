@@ -2,3 +2,6 @@ def coucou():
 	var v = 2
 	var y = v
 	return y + v
+
+
+coucou()

@@ -6,7 +6,10 @@ use crate::NativeFunctionCallee;
 use crate::OpCode;
 
 use inkwell;
+use inkwell::types::BasicTypeEnum;
 use inkwell::values::BasicValueEnum;
+use inkwell::values::FunctionValue;
+use inkwell::values::IntMathValue;
 use std::any::Any;
 use std::collections::HashMap;
 use std::path::Path;
@@ -23,6 +26,27 @@ use vif_objects::variable::InheritedVariable;
 use vif_objects::variable::Variable;
 use vif_objects::variable::VariableType;
 
+pub enum LLVMValue<'ctx> {
+    BasicValueEnum(BasicValueEnum<'ctx>),
+    FunctionValue(FunctionValue<'ctx>),
+}
+
+impl<'ctx> LLVMValue<'ctx> {
+    pub fn get_basic_value_enum(self) -> BasicValueEnum<'ctx> {
+        match self {
+            Self::BasicValueEnum(v) => v,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn get_function_value(self) -> FunctionValue<'ctx> {
+        match self {
+            Self::FunctionValue(f) => f,
+            _ => unreachable!(),
+        }
+    }
+}
+
 struct StoredVariable<'ctx, 'function> {
     ptr: BasicValueEnum<'ctx>,
     v: &'function ast::Variable,
@@ -31,6 +55,17 @@ struct StoredVariable<'ctx, 'function> {
 impl<'ctx, 'function> StoredVariable<'ctx, 'function> {
     fn new(ptr: BasicValueEnum<'ctx>, v: &'function ast::Variable) -> Self {
         Self { ptr, v }
+    }
+}
+
+struct StoredFunction<'ctx, 'function> {
+    ptr: FunctionValue<'ctx>,
+    f: &'function ast::Function,
+}
+
+impl<'ctx, 'function> StoredFunction<'ctx, 'function> {
+    fn new(ptr: FunctionValue<'ctx>, f: &'function ast::Function) -> Self {
+        Self { ptr, f }
     }
 }
 
@@ -54,14 +89,36 @@ impl<'ctx, 'function> Variables<'ctx, 'function> {
     }
 }
 
+struct Functions<'ctx, 'function> {
+    data: HashMap<String, StoredFunction<'ctx, 'function>>,
+}
+
+impl<'ctx, 'function> Functions<'ctx, 'function> {
+    fn new() -> Self {
+        Self {
+            data: HashMap::new(),
+        }
+    }
+
+    fn add(&mut self, var_name: String, value: FunctionValue<'ctx>, v: &'function ast::Function) {
+        self.data.insert(var_name, StoredFunction::new(value, v));
+    }
+
+    fn get(&self, var_name: String) -> Option<&StoredFunction<'ctx, 'function>> {
+        self.data.get(&var_name)
+    }
+}
+
 pub struct Store<'ctx, 'function> {
     variables: Variables<'ctx, 'function>,
+    functions: Functions<'ctx, 'function>,
 }
 
 impl<'ctx, 'function> Store<'ctx, 'function> {
     pub fn new() -> Self {
         Self {
             variables: Variables::new(),
+            functions: Functions::new(),
         }
     }
 }
@@ -113,9 +170,18 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         function: &'function ast::Function,
         store: &mut Store<'ctx, 'function>,
     ) -> Result<inkwell::basic_block::BasicBlock<'ctx>, CompilerError> {
-        let block = self
+        let function_value = self
             .llvm_builder
             .declare_user_function(function, &self.module);
+
+        println!("ADD {}", function.name.to_owned());
+        store
+            .functions
+            .add(function.name.to_owned(), function_value, function);
+
+        let block = self
+            .llvm_builder
+            .create_function_block(function_value, "entry");
 
         // let i8_ptr_type = context.i32_type();
         // let puts_type = i8_ptr_type.fn_type(
@@ -211,23 +277,38 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         store: &mut Store<'ctx, 'function>,
     ) -> Result<(), CompilerError> {
         let value = self.expression(&token.value, store)?;
-        self.llvm_builder.return_statement(&value)
+        self.llvm_builder
+            .return_statement(&value.get_basic_value_enum())
     }
 
-    // pub fn call(&mut self, token: &ast::Call) -> Result<(), CompilerError> {
-    //     log::debug!("Starting call");
+    pub fn call(
+        &self,
+        token: &'function ast::Call,
+        store: &mut Store<'ctx, 'function>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        let function_value = self.expression(&token.callee, store)?.get_function_value();
 
-    //     self.expression(&token.callee)?;
+        let value = self
+            .llvm_builder
+            .call(function_value, function_value.get_name().to_str().unwrap())?;
+        // for arg in token.arguments.iter() {
+        //     self.function_parameter(arg)?;
+        // }
 
-    //     for arg in token.arguments.iter() {
-    //         self.function_parameter(arg)?;
-    //     }
-    //     self.emit_op_code(OpCode::Call((
-    //         token.arguments.len(),
-    //         ItemReference::new(Some(token.callee.span.clone())),
-    //     )));
-    //     Ok(())
-    // }
+        // self.emit_op_code(OpCode::Call((
+        //     token.arguments.len(),
+        //     ItemReference::new(Some(token.callee.span.clone())),
+        // )));
+
+        Ok(LLVMValue::BasicValueEnum(
+            value
+                .or_else(|| {
+                    let value = self.context.i64_type().const_int(0, false);
+                    Some(BasicValueEnum::IntValue(value))
+                })
+                .unwrap(),
+        ))
+    }
 
     // fn if_statement(&mut self, token: &ast::Condition) -> Result<(), CompilerError> {
     //     log::debug!("Starting if statement");
@@ -305,14 +386,13 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
 
     fn function_declaration(
         &self,
-        token: &ast::Function,
+        token: &'function ast::Function,
         store: &mut Store<'ctx, 'function>,
     ) -> Result<(), CompilerError> {
         log::debug!("Starting function declaration");
 
-        let mut function_store = Store::new();
         let previous_block = self.llvm_builder.get_current_block().unwrap();
-        self.compile(token, &mut function_store)?;
+        self.compile(token, store)?;
         self.llvm_builder.set_position_at(previous_block);
         Ok(())
 
@@ -407,18 +487,18 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         &self,
         token: &'function Box<ast::Expr>,
         store: &mut Store<'ctx, 'function>,
-    ) -> Result<BasicValueEnum<'ctx>, CompilerError> {
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
         match &token.body {
             ast::ExprBody::Value(t) => {
                 self.value(t, ItemReference::new(Some(token.span.clone())), store)
             }
             ast::ExprBody::Binary(t) => self.binary(t, store),
+            ast::ExprBody::Call(t) => self.call(t, store),
             _ => unreachable!(),
             // ast::ExprBody::Unary(t) => self.unary(t),
             // ast::ExprBody::Grouping(t) => self.grouping(t),
             // ast::ExprBody::Assign(t) => self.assign(t),
             // ast::ExprBody::Logical(t) => self.logical(t),
-            // ast::ExprBody::Call(t) => self.call(t),
             // ast::ExprBody::LoopKeyword(t) => self.loop_keyword(t),
         }
     }
@@ -457,10 +537,14 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         token: &'function ast::Value,
         reference: ItemReference,
         store: &mut Store<'ctx, 'function>,
-    ) -> Result<BasicValueEnum<'ctx>, CompilerError> {
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
         match token {
-            ast::Value::Integer(i) => Ok(self.llvm_builder.value_int(*i)),
-            ast::Value::Variable(s) => self.get_variable(&s, store),
+            ast::Value::Integer(i) => {
+                Ok(LLVMValue::BasicValueEnum(self.llvm_builder.value_int(*i)))
+            }
+            ast::Value::Variable(s) => self
+                .get_variable(&s, store)
+                .or_else(|_| self.get_function(&s, store)),
             _ => unreachable!(), // ast::Value::String(s) => self.emit_global(Global::String(Box::new(s.clone()))),
                                  // ast::Value::Float(f) => self.emit_global(Global::Float(*f)),
                                  // ast::Value::True => self.emit_op_code(OpCode::True(reference)),
@@ -482,7 +566,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         &self,
         token: &'function ast::Binary,
         store: &mut Store<'ctx, 'function>,
-    ) -> Result<BasicValueEnum<'ctx>, CompilerError> {
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
         let reference = ItemReference::new(Some(token.right.span.clone()));
         let value_left = self.expression(&token.left, store)?;
         let value_right = self.expression(&token.right, store)?;
@@ -492,13 +576,16 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     fn operator(
         &self,
         token: &'function ast::Operator,
-        value_left: BasicValueEnum<'ctx>,
-        value_right: BasicValueEnum<'ctx>,
+        value_left: LLVMValue<'ctx>,
+        value_right: LLVMValue<'ctx>,
         reference: ItemReference,
         store: &mut Store<'ctx, 'function>,
-    ) -> Result<BasicValueEnum<'ctx>, CompilerError> {
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
         match token {
-            ast::Operator::Plus => self.llvm_builder.add(value_left, value_right),
+            ast::Operator::Plus => Ok(LLVMValue::BasicValueEnum(self.llvm_builder.add(
+                value_left.get_basic_value_enum(),
+                value_right.get_basic_value_enum(),
+            )?)),
             _ => unreachable!(), // ast::Operator::Minus => OpCode::Substract(reference),
                                  // ast::Operator::Divide => OpCode::Divide(reference),
                                  // ast::Operator::Multiply => OpCode::Multiply(reference),
@@ -558,16 +645,41 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         &self,
         var_name: &str,
         store: &mut Store<'ctx, 'function>,
-    ) -> Result<BasicValueEnum<'ctx>, CompilerError> {
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
         log::debug!("Starting variable");
 
         if let Some(ptr) = store.variables.get(var_name.to_owned()) {
             self.llvm_builder
                 .load_variable(var_name, &ptr.ptr, self.context.i64_type())
+                .and_then(|v| Ok(LLVMValue::BasicValueEnum(v)))
         } else {
             Err(CompilerError::Unknown(format!(
                 "Variable {} not found",
                 var_name
+            )))
+        }
+
+        // let op_code = match self.resolve_local(var_name)? {
+        //     VariableType::Local(index) => OpCode::GetLocal(index),
+        //     VariableType::Inherited(v) => OpCode::GetInheritedLocal(v),
+        //     VariableType::Global(v) => OpCode::GetGlobal(v),
+        // };
+
+        // self.emit_op_code(op_code);
+    }
+
+    pub fn get_function(
+        &self,
+        function_name: &str,
+        store: &mut Store<'ctx, 'function>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        println!("GET {}", function_name);
+        if let Some(ptr) = store.functions.get(function_name.to_owned()) {
+            Ok(LLVMValue::FunctionValue(ptr.ptr))
+        } else {
+            Err(CompilerError::Unknown(format!(
+                "Function {} not found",
+                function_name
             )))
         }
 
