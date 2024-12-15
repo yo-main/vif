@@ -164,15 +164,15 @@ impl<'ctx> Builder<'ctx> {
 
     pub fn add(
         &self,
-        value_left: BasicValueEnum<'ctx>,
-        value_right: BasicValueEnum<'ctx>,
-    ) -> Result<BasicValueEnum<'ctx>, CompilerError> {
-        let l = match value_left {
+        value_left: LLVMValue<'ctx>,
+        value_right: LLVMValue<'ctx>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        let l = match value_left.get_basic_value_enum() {
             BasicValueEnum::IntValue(i) => i,
             v => return Err(CompilerError::Unknown(format!("Cannot add {:?}", v))),
         };
 
-        let r = match value_right {
+        let r = match value_right.get_basic_value_enum() {
             BasicValueEnum::IntValue(i) => i,
             v => {
                 return Err(CompilerError::Unknown(format!(
@@ -182,10 +182,91 @@ impl<'ctx> Builder<'ctx> {
             }
         };
 
-        Ok(BasicValueEnum::IntValue(
+        Ok(LLVMValue::BasicValueEnum(BasicValueEnum::IntValue(
             self.builder
                 .build_int_add(l, r, "coucou")
                 .map_err(|e| CompilerError::LLVM(format!("{e}")))?,
-        ))
+        )))
+    }
+
+    pub fn sub(
+        &self,
+        value_left: LLVMValue<'ctx>,
+        value_right: LLVMValue<'ctx>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        let l = match value_left.get_basic_value_enum() {
+            BasicValueEnum::IntValue(i) => i,
+            v => return Err(CompilerError::Unknown(format!("Cannot add {:?}", v))),
+        };
+
+        let r = match value_right.get_basic_value_enum() {
+            BasicValueEnum::IntValue(i) => i,
+            v => {
+                return Err(CompilerError::Unknown(format!(
+                    "Cannot add {:?} with {:?}",
+                    v, l
+                )))
+            }
+        };
+
+        Ok(LLVMValue::BasicValueEnum(BasicValueEnum::IntValue(
+            self.builder
+                .build_int_sub(l, r, "coucou")
+                .map_err(|e| CompilerError::LLVM(format!("{e}")))?,
+        )))
+    }
+
+    pub fn divide(
+        &self,
+        value_left: LLVMValue<'ctx>,
+        value_right: LLVMValue<'ctx>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        let l = match value_left.get_basic_value_enum() {
+            BasicValueEnum::IntValue(i) => i,
+            v => return Err(CompilerError::Unknown(format!("Cannot add {:?}", v))),
+        };
+
+        let r = match value_right.get_basic_value_enum() {
+            BasicValueEnum::IntValue(i) => i,
+            v => {
+                return Err(CompilerError::Unknown(format!(
+                    "Cannot add {:?} with {:?}",
+                    v, l
+                )))
+            }
+        };
+
+        Ok(LLVMValue::BasicValueEnum(BasicValueEnum::IntValue(
+            self.builder
+                .build_int_signed_div(l, r, "coucou")
+                .map_err(|e| CompilerError::LLVM(format!("{e}")))?,
+        )))
+    }
+
+    pub fn multiply(
+        &self,
+        value_left: LLVMValue<'ctx>,
+        value_right: LLVMValue<'ctx>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        let l = match value_left.get_basic_value_enum() {
+            BasicValueEnum::IntValue(i) => i,
+            v => return Err(CompilerError::Unknown(format!("Cannot add {:?}", v))),
+        };
+
+        let r = match value_right.get_basic_value_enum() {
+            BasicValueEnum::IntValue(i) => i,
+            v => {
+                return Err(CompilerError::Unknown(format!(
+                    "Cannot add {:?} with {:?}",
+                    v, l
+                )))
+            }
+        };
+
+        Ok(LLVMValue::BasicValueEnum(BasicValueEnum::IntValue(
+            self.builder
+                .build_int_mul(l, r, "coucou")
+                .map_err(|e| CompilerError::LLVM(format!("{e}")))?,
+        )))
     }
 }

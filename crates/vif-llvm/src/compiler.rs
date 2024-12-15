@@ -631,25 +631,25 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         store: &mut Store<'ctx, 'function>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         match token {
-            ast::Operator::Plus => Ok(LLVMValue::BasicValueEnum(self.llvm_builder.add(
-                value_left.get_basic_value_enum(),
-                value_right.get_basic_value_enum(),
-            )?)),
-            _ => unreachable!(), // ast::Operator::Minus => OpCode::Substract(reference),
-                                 // ast::Operator::Divide => OpCode::Divide(reference),
-                                 // ast::Operator::Multiply => OpCode::Multiply(reference),
-                                 // ast::Operator::PlusEqual => OpCode::NotImplemented,
-                                 // ast::Operator::MinusEqual => OpCode::NotImplemented,
-                                 // ast::Operator::DevideEqual => OpCode::NotImplemented,
-                                 // ast::Operator::MultiplyEqual => OpCode::NotImplemented,
-                                 // ast::Operator::BangEqual => OpCode::NotEqual(reference),
-                                 // ast::Operator::Less => OpCode::Less(reference),
-                                 // ast::Operator::LessEqual => OpCode::LessOrEqual(reference),
-                                 // ast::Operator::Greater => OpCode::Greater(reference),
-                                 // ast::Operator::GreaterEqual => OpCode::GreaterOrEqual(reference),
-                                 // ast::Operator::Equal => OpCode::Equal(reference),
-                                 // ast::Operator::Comma => OpCode::NotImplemented,
-                                 // ast::Operator::Modulo => OpCode::Modulo(reference),
+            ast::Operator::Plus => self.llvm_builder.add(value_left, value_right),
+            ast::Operator::Minus => self.llvm_builder.sub(value_left, value_right),
+            ast::Operator::Divide => self.llvm_builder.divide(value_left, value_right),
+            ast::Operator::Multiply => self.llvm_builder.multiply(value_left, value_right),
+            _ => unreachable!(),
+            // ast::Operator::BangEqual => OpCode::NotEqual(reference),
+            // ast::Operator::Less => OpCode::Less(reference),
+            // ast::Operator::LessEqual => OpCode::LessOrEqual(reference),
+            // ast::Operator::Greater => OpCode::Greater(reference),
+            // ast::Operator::GreaterEqual => OpCode::GreaterOrEqual(reference),
+            // ast::Operator::Equal => OpCode::Equal(reference),
+            // ast::Operator::Comma => OpCode::NotImplemented,
+            // ast::Operator::Modulo => OpCode::Modulo(reference),
+
+            // might have to transform them earlier because we don't know the ptr to update here
+            // ast::Operator::PlusEqual => OpCode::NotImplemented,
+            // ast::Operator::MinusEqual => OpCode::NotImplemented,
+            // ast::Operator::DevideEqual => OpCode::NotImplemented,
+            // ast::Operator::MultiplyEqual => OpCode::NotImplemented,
         }
     }
 

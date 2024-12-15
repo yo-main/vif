@@ -1,8 +1,8 @@
 def coucou():
 	var v = 2
 	var y = v
-	print(y+v)
-	return y + v
+	print(1)
+	return y + v - 1 * 100
 
 
-coucou()
+print(coucou())
