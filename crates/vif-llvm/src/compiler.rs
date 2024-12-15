@@ -47,6 +47,7 @@ impl<'ctx> LLVMValue<'ctx> {
     }
 }
 
+#[derive(Debug, Clone)]
 struct StoredVariable<'ctx, 'function> {
     ptr: BasicValueEnum<'ctx>,
     v: &'function ast::Variable,
@@ -58,6 +59,7 @@ impl<'ctx, 'function> StoredVariable<'ctx, 'function> {
     }
 }
 
+#[derive(Debug, Clone)]
 struct StoredFunction<'ctx, 'function> {
     ptr: FunctionValue<'ctx>,
     f: &'function ast::Function,
@@ -69,6 +71,7 @@ impl<'ctx, 'function> StoredFunction<'ctx, 'function> {
     }
 }
 
+#[derive(Debug, Clone)]
 struct Variables<'ctx, 'function> {
     data: HashMap<String, StoredVariable<'ctx, 'function>>,
 }
@@ -89,6 +92,7 @@ impl<'ctx, 'function> Variables<'ctx, 'function> {
     }
 }
 
+#[derive(Debug, Clone)]
 struct Functions<'ctx, 'function> {
     data: HashMap<String, StoredFunction<'ctx, 'function>>,
 }
@@ -109,6 +113,7 @@ impl<'ctx, 'function> Functions<'ctx, 'function> {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Store<'ctx, 'function> {
     variables: Variables<'ctx, 'function>,
     functions: Functions<'ctx, 'function>,
@@ -392,7 +397,12 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         log::debug!("Starting function declaration");
 
         let previous_block = self.llvm_builder.get_current_block().unwrap();
-        self.compile(token, store)?;
+        if self.function.name != "main" {
+            let mut new_store = store.clone();
+            self.compile(token, &mut new_store)?;
+        } else {
+            self.compile(token, store)?;
+        }
         self.llvm_builder.set_position_at(previous_block);
         Ok(())
 
