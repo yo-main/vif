@@ -1,4 +1,7 @@
-use vif_objects::{ast::Callable, span::Span};
+use vif_objects::{
+    ast::{Callable, Type},
+    span::Span,
+};
 
 #[derive(Debug)]
 pub enum TypingError {
@@ -7,14 +10,8 @@ pub enum TypingError {
     NonMutableArgumentToMutableVariable(NonMutableArgumentToMutableVariable),
     DifferentSignatureBetweenFunction(DifferentSignatureBetweenFunction),
     DifferentSignatureBetweenReturns(DifferentSignatureBetweenReturns),
-}
-
-#[derive(Debug)]
-pub struct WrongArgumentNumberFunction {
-    function_name: String,
-    expected: usize,
-    received: usize,
-    span: Span,
+    FunctionReturnsDifferentTypes(FunctionReturnsDifferentTypes),
+    IncompatibleTypes(IncompatibleTypes),
 }
 
 impl TypingError {
@@ -25,8 +22,60 @@ impl TypingError {
             Self::NonMutableArgumentToMutableVariable(a) => a.format(content),
             Self::DifferentSignatureBetweenFunction(a) => a.format(content),
             Self::DifferentSignatureBetweenReturns(a) => a.format(content),
+            Self::FunctionReturnsDifferentTypes(a) => a.format(content),
+            Self::IncompatibleTypes(a) => a.format(content),
         }
     }
+}
+
+#[derive(Debug)]
+pub struct IncompatibleTypes {
+    type_left: String,
+    type_right: String,
+    span: Span,
+}
+
+impl IncompatibleTypes {
+    pub fn new(type_left: String, type_right: String, span: Span) -> TypingError {
+        TypingError::IncompatibleTypes(Self {
+            type_left,
+            type_right,
+            span,
+        })
+    }
+
+    fn format(&self, content: &str) -> String {
+        let row = content.split('\n').nth(self.span.get_line() - 1).unwrap();
+        format!(
+            "Line {} - {row}\nIncompatible type: {} vs {}",
+            self.span.get_line(),
+            self.type_left,
+            self.type_right
+        )
+    }
+}
+
+#[derive(Debug)]
+pub struct FunctionReturnsDifferentTypes {
+    function_name: String,
+}
+
+impl FunctionReturnsDifferentTypes {
+    pub fn new(function_name: String) -> TypingError {
+        TypingError::FunctionReturnsDifferentTypes(Self { function_name })
+    }
+
+    fn format(&self, content: &str) -> String {
+        format!("Function {} returns incompatible types", self.function_name,)
+    }
+}
+
+#[derive(Debug)]
+pub struct WrongArgumentNumberFunction {
+    function_name: String,
+    expected: usize,
+    received: usize,
+    span: Span,
 }
 
 impl WrongArgumentNumberFunction {

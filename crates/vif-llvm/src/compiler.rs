@@ -9,6 +9,7 @@ use inkwell;
 use inkwell::types::BasicMetadataTypeEnum;
 use inkwell::types::BasicTypeEnum;
 use inkwell::values::BasicMetadataValueEnum;
+use inkwell::values::BasicValue;
 use inkwell::values::BasicValueEnum;
 use inkwell::values::FunctionValue;
 use inkwell::values::IntMathValue;
@@ -329,7 +330,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             let s_fmt = self
                 .llvm_builder
                 .builder
-                .build_global_string_ptr("%d\n", "format_str")
+                .build_global_string_ptr("%s\n", "format_str")
                 .unwrap();
             args.insert(
                 0,
@@ -599,14 +600,23 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             ast::Value::Integer(i) => {
                 Ok(LLVMValue::BasicValueEnum(self.llvm_builder.value_int(*i)))
             }
+            ast::Value::Float(f) => {
+                Ok(LLVMValue::BasicValueEnum(self.llvm_builder.value_float(*f)))
+            }
+            ast::Value::True => Ok(LLVMValue::BasicValueEnum(self.llvm_builder.value_int(1))),
+            ast::Value::False => Ok(LLVMValue::BasicValueEnum(self.llvm_builder.value_int(0))),
+            ast::Value::None => Ok(LLVMValue::BasicValueEnum(self.llvm_builder.value_int(0))),
             ast::Value::Variable(s) => self
                 .get_variable(&s, store)
                 .or_else(|_| self.get_function(&s, store)),
-            _ => unreachable!(), // ast::Value::String(s) => self.emit_global(Global::String(Box::new(s.clone()))),
-                                 // ast::Value::Float(f) => self.emit_global(Global::Float(*f)),
-                                 // ast::Value::True => self.emit_op_code(OpCode::True(reference)),
-                                 // ast::Value::False => self.emit_op_code(OpCode::False(reference)),
-                                 // ast::Value::None => self.emit_op_code(OpCode::None(reference)),
+            ast::Value::String(s) => Ok(LLVMValue::BasicValueEnum(
+                self.llvm_builder
+                    .global_string("", s)?
+                    .as_basic_value_enum(),
+            )), // ast::Value::Float(f) => self.emit_global(Global::Float(*f)),
+                // ast::Value::True => self.emit_op_code(OpCode::True(reference)),
+                // ast::Value::False => self.emit_op_code(OpCode::False(reference)),
+                // ast::Value::None => self.emit_op_code(OpCode::None(reference)),
         }
     }
 

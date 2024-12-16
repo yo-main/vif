@@ -79,9 +79,9 @@ pub struct Variable {
 impl Variable {
     pub fn new(name: String, value: Box<Expr>, mutable: bool) -> Self {
         Variable {
+            typing: Typing::new(mutable, value.typing.r#type.clone()),
             name,
             value,
-            typing: Typing::new(mutable),
         }
     }
 }
@@ -174,10 +174,141 @@ impl std::fmt::Display for Callable {
     }
 }
 
+#[derive(Debug)]
+pub enum TypeError {
+    IncompatibleTypes(String),
+}
+
+#[derive(Debug, Clone)]
+pub enum Type {
+    Int,
+    Float,
+    Bool,
+    String,
+    None,
+    Unknown,
+    KeyWord,
+}
+
+impl std::fmt::Display for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Int => write!(f, "Int"),
+            Self::Float => write!(f, "Float"),
+            Self::Bool => write!(f, "Bool"),
+            Self::String => write!(f, "String"),
+            Self::None => write!(f, "None"),
+            Self::Unknown => write!(f, "Unknown"),
+            Self::KeyWord => write!(f, "KeyWord"),
+        }
+    }
+}
+
+impl Type {
+    pub fn as_str(&self) -> String {
+        format!("{self}")
+    }
+
+    pub fn soft_merge(&self, other: &Type) -> Result<Type, TypeError> {
+        match self {
+            Self::Int => match other {
+                Self::Int => Ok(Self::Int),
+                Self::Float => Ok(Self::Float),
+                Self::Bool => Ok(Self::Int),
+                _ => Ok(Self::Unknown),
+            },
+            Self::Float => match other {
+                Self::Int => Ok(Self::Float),
+                Self::Float => Ok(Self::Float),
+                Self::Bool => Ok(Self::Float),
+                _ => Ok(Self::Unknown),
+            },
+            Self::Bool => match other {
+                Self::Bool => Ok(Self::Bool),
+                Self::Int => Ok(Self::Int),
+                Self::Float => Ok(Self::Float),
+                _ => Ok(Self::Unknown),
+            },
+            Self::String => match other {
+                Self::String => Ok(Self::String),
+                _ => Ok(Self::Unknown),
+            },
+            Self::None => match other {
+                Self::None => Ok(Self::None),
+                _ => Ok(Self::Unknown),
+            },
+            Self::Unknown => match other {
+                Self::None => Ok(Self::Unknown),
+                _ => Ok(Self::Unknown),
+            },
+            Self::KeyWord => match other {
+                _ => unreachable!(),
+            },
+        }
+    }
+
+    pub fn hard_merge(&self, other: &Type) -> Result<Type, TypeError> {
+        match self {
+            Self::Int => match other {
+                Self::Int => Ok(Self::Int),
+                Self::Float => Ok(Self::Float),
+                Self::Bool => Ok(Self::Int),
+                t => Err(TypeError::IncompatibleTypes(format!(
+                    "{} vs {}",
+                    self, other
+                ))),
+            },
+            Self::Float => match other {
+                Self::Int => Ok(Self::Float),
+                Self::Float => Ok(Self::Float),
+                Self::Bool => Ok(Self::Float),
+                _ => Err(TypeError::IncompatibleTypes(format!(
+                    "{} vs {}",
+                    self, other
+                ))),
+            },
+            Self::Bool => match other {
+                Self::Bool => Ok(Self::Bool),
+                Self::Int => Ok(Self::Int),
+                Self::Float => Ok(Self::Float),
+                t => Err(TypeError::IncompatibleTypes(format!(
+                    "{} vs {}",
+                    self, other
+                ))),
+            },
+            Self::String => match other {
+                Self::String => Ok(Self::String),
+                t => Err(TypeError::IncompatibleTypes(format!(
+                    "{} vs {}",
+                    self, other
+                ))),
+            },
+            Self::None => match other {
+                Self::None => Ok(Self::None),
+                t => Err(TypeError::IncompatibleTypes(format!(
+                    "{} vs {}",
+                    self, other
+                ))),
+            },
+            Self::Unknown => match other {
+                Self::None => Ok(Self::Unknown),
+                t => Err(TypeError::IncompatibleTypes(format!(
+                    "{} vs {}",
+                    self, other
+                ))),
+            },
+            Self::KeyWord => match other {
+                _ => unreachable!(),
+            },
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Typing {
     pub mutable: bool,
     pub callable: Option<Box<Callable>>,
+    pub r#type: Type,
 }
 
 impl PartialEq for Typing {
@@ -193,10 +324,11 @@ impl std::fmt::Display for Typing {
 }
 
 impl Typing {
-    pub fn new(mutable: bool) -> Self {
+    pub fn new(mutable: bool, r#type: Type) -> Self {
         Self {
             mutable,
             callable: None,
+            r#type,
         }
     }
 
@@ -237,10 +369,10 @@ pub struct Function {
 impl Function {
     pub fn new(name: String, params: Vec<FunctionParameter>, body: Vec<Stmt>) -> Self {
         Function {
-            typing: Typing::new(false),
             name,
             params,
             body,
+            typing: Typing::new(false, Type::Unknown),
         }
     }
 }

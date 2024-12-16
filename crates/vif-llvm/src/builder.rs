@@ -36,6 +36,18 @@ impl<'ctx> Builder<'ctx> {
             .map_err(|e| CompilerError::LLVM(format!("{}", e)))
     }
 
+    // pub fn in_memory_string(
+    //     &self,
+    //     value: &str,
+    // ) -> Result<inkwell::values::BasicValueEnum<'ctx>, CompilerError> {
+    //     let array_type = self.context.i8_type().array_type(value.len() as u32);
+    //     let array_alloca = self.builder.build_alloca(array_type, "");
+
+    //     self.builder
+    //         .build_global_string_ptr(value, name)
+    //         .map_err(|e| CompilerError::LLVM(format!("{}", e)))
+    // }
+
     pub fn declare_variable(
         &self,
         token: &ast::Variable,
@@ -47,7 +59,7 @@ impl<'ctx> Builder<'ctx> {
                     .builder
                     .build_alloca(v.get_type(), token.name.as_str())
                     .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
-                self.store_value(ptr, v);
+                self.store_value(ptr, v)?;
                 Ok(BasicValueEnum::PointerValue(ptr))
             }
             LLVMValue::FunctionValue(f) => unimplemented!(),
@@ -118,6 +130,15 @@ impl<'ctx> Builder<'ctx> {
             BasicValueEnum::IntValue(value_type.const_int(i as u64, false))
         } else {
             BasicValueEnum::IntValue(value_type.const_int(i as u64, true))
+        }
+    }
+
+    pub fn value_float(&self, i: f64) -> BasicValueEnum<'ctx> {
+        let value_type = self.context.f64_type();
+        if i >= 0.0 {
+            BasicValueEnum::FloatValue(value_type.const_float(i as f64))
+        } else {
+            BasicValueEnum::FloatValue(value_type.const_float(i as f64))
         }
     }
 

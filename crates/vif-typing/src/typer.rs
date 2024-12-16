@@ -1,4 +1,6 @@
 use crate::error::DifferentSignatureBetweenReturns;
+use crate::error::FunctionReturnsDifferentTypes;
+use crate::error::IncompatibleTypes;
 use crate::error::TypingError;
 use crate::references::FunctionReference;
 use crate::references::Reference;
@@ -13,6 +15,7 @@ use vif_objects::ast::LogicalOperator;
 use vif_objects::ast::Return;
 use vif_objects::ast::Signature;
 use vif_objects::ast::Stmt;
+use vif_objects::ast::Type;
 use vif_objects::ast::Typing;
 use vif_objects::ast::Value;
 
@@ -61,9 +64,20 @@ fn update_function_typing(function: &mut Function) -> Result<(), TypingError> {
         .collect::<Vec<&Return>>();
 
     let signature = Signature::new(function.params.iter().map(|p| p.typing.mutable).collect());
+    let function_type = returns
+        .iter()
+        .map(|r| r.value.typing.r#type.clone())
+        .collect::<Vec<Type>>();
+
+    if function_type.iter().len() > 1 {
+        return Err(FunctionReturnsDifferentTypes::new(function.name.to_owned()));
+    }
 
     let callable = if returns.is_empty() {
-        Some(Box::new(Callable::new(signature, Typing::new(false))))
+        Some(Box::new(Callable::new(
+            signature,
+            Typing::new(false, Type::None),
+        )))
     } else {
         Some(Box::new(Callable::new(
             signature,
@@ -124,6 +138,8 @@ fn visit_statement<'a>(
                 v.typing.callable = callable.output.callable.clone();
             }
 
+            v.typing.r#type = v.value.typing.r#type.clone();
+
             let names = get_callable_names(&v.value);
 
             if v.typing.callable.is_none() {
@@ -160,20 +176,35 @@ fn visit_expression<'a>(
             visit_expression(params, &mut binary.left, references)?;
             visit_expression(params, &mut binary.right, references)?;
 
+            expr.typing.r#type = binary
+                .left
+                .typing
+                .r#type
+                .hard_merge(&binary.right.typing.r#type)
+                .map_err(|_| {
+                    IncompatibleTypes::new(
+                        binary.left.typing.r#type.as_str(),
+                        binary.right.typing.r#type.as_str(),
+                        expr.span.clone(),
+                    )
+                })?;
             expr.typing.mutable = true;
         }
         ExprBody::Unary(unary) => {
             visit_expression(params, &mut unary.right, references)?;
+            expr.typing.r#type = unary.right.typing.r#type.clone();
             expr.typing = unary.right.typing.clone();
         }
         ExprBody::Grouping(grouping) => {
             visit_expression(params, &mut grouping.expr, references)?;
+            expr.typing.r#type = grouping.expr.typing.r#type.clone();
             expr.typing = grouping.expr.typing.clone();
         }
         ExprBody::Assign(assign) => {
             visit_expression(params, &mut assign.value, references)?;
 
             if let Some(t) = references.get_typing(&assign.name) {
+                expr.typing.r#type = t.r#type.clone();
                 expr.typing.mutable = t.mutable;
             }
             // TODO: should probably override the variable we have in references here
@@ -184,9 +215,22 @@ fn visit_expression<'a>(
 
             match logical.operator {
                 LogicalOperator::And => {
+                    expr.typing.r#type = Type::Bool;
                     expr.typing.mutable = true;
                 }
                 LogicalOperator::Or => {
+                    expr.typing.r#type = logical
+                        .left
+                        .typing
+                        .r#type
+                        .hard_merge(&logical.right.typing.r#type)
+                        .map_err(|_| {
+                            IncompatibleTypes::new(
+                                logical.left.typing.r#type.as_str(),
+                                logical.right.typing.r#type.as_str(),
+                                expr.span.clone(),
+                            )
+                        })?;
                     expr.typing.mutable =
                         logical.left.typing.mutable && logical.right.typing.mutable;
                 }
@@ -198,6 +242,7 @@ fn visit_expression<'a>(
                 visit_expression(params, arg, references)?;
             }
 
+            expr.typing.r#type = call.callee.typing.r#type.clone();
             expr.typing.mutable = call.callee.typing.mutable;
             let callable_names = get_callable_names(&call.callee);
 
