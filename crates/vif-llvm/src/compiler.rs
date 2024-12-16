@@ -28,6 +28,7 @@ use vif_objects::variable::InheritedVariable;
 use vif_objects::variable::Variable;
 use vif_objects::variable::VariableType;
 
+#[derive(Clone, Copy)]
 pub enum LLVMValue<'ctx> {
     BasicValueEnum(BasicValueEnum<'ctx>),
     FunctionValue(FunctionValue<'ctx>),
@@ -45,6 +46,13 @@ impl<'ctx> LLVMValue<'ctx> {
         match self {
             Self::FunctionValue(f) => f,
             _ => unreachable!(),
+        }
+    }
+
+    pub fn get_name(&self) -> String {
+        match self {
+            Self::BasicValueEnum(v) => v.get_name().to_str().unwrap().to_owned(),
+            Self::FunctionValue(v) => v.get_name().to_str().unwrap().to_owned(),
         }
     }
 }
@@ -646,10 +654,55 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             // ast::Operator::Modulo => OpCode::Modulo(reference),
 
             // might have to transform them earlier because we don't know the ptr to update here
-            // ast::Operator::PlusEqual => OpCode::NotImplemented,
-            // ast::Operator::MinusEqual => OpCode::NotImplemented,
-            // ast::Operator::DevideEqual => OpCode::NotImplemented,
-            // ast::Operator::MultiplyEqual => OpCode::NotImplemented,
+            ast::Operator::PlusEqual => {
+                let var_name = value_left.get_name();
+                let ptr = store.variables.get(var_name).ok_or_else(|| {
+                    CompilerError::Unknown(format!("Variable unknown: {}", value_left.get_name()))
+                })?;
+                let new_value = self.llvm_builder.add(value_left, value_right).unwrap();
+                self.llvm_builder.store_value(
+                    ptr.ptr.into_pointer_value(),
+                    new_value.get_basic_value_enum(),
+                )?;
+                Ok(new_value)
+            }
+            ast::Operator::MinusEqual => {
+                let var_name = value_left.get_name();
+                let ptr = store.variables.get(var_name).ok_or_else(|| {
+                    CompilerError::Unknown(format!("Variable unknown: {}", value_left.get_name()))
+                })?;
+                let new_value = self.llvm_builder.sub(value_left, value_right).unwrap();
+                self.llvm_builder.store_value(
+                    ptr.ptr.into_pointer_value(),
+                    new_value.get_basic_value_enum(),
+                )?;
+                Ok(new_value)
+            }
+
+            ast::Operator::DevideEqual => {
+                let var_name = value_left.get_name();
+                let ptr = store.variables.get(var_name).ok_or_else(|| {
+                    CompilerError::Unknown(format!("Variable unknown: {}", value_left.get_name()))
+                })?;
+                let new_value = self.llvm_builder.divide(value_left, value_right).unwrap();
+                self.llvm_builder.store_value(
+                    ptr.ptr.into_pointer_value(),
+                    new_value.get_basic_value_enum(),
+                )?;
+                Ok(new_value)
+            }
+            ast::Operator::MultiplyEqual => {
+                let var_name = value_left.get_name();
+                let ptr = store.variables.get(var_name).ok_or_else(|| {
+                    CompilerError::Unknown(format!("Variable unknown: {}", value_left.get_name()))
+                })?;
+                let new_value = self.llvm_builder.multiply(value_left, value_right).unwrap();
+                self.llvm_builder.store_value(
+                    ptr.ptr.into_pointer_value(),
+                    new_value.get_basic_value_enum(),
+                )?;
+                Ok(new_value)
+            }
         }
     }
 

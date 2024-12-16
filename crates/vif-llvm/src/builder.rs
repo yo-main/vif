@@ -3,7 +3,7 @@ use crate::error::CompilerError;
 use inkwell::llvm_sys::LLVMCallConv;
 use inkwell::module::Module;
 use inkwell::types::BasicMetadataTypeEnum;
-use inkwell::values::{BasicMetadataValueEnum, BasicValueEnum, FunctionValue};
+use inkwell::values::{BasicMetadataValueEnum, BasicValueEnum, FunctionValue, PointerValue};
 use vif_objects::ast;
 
 pub struct Builder<'ctx> {
@@ -42,29 +42,29 @@ impl<'ctx> Builder<'ctx> {
         value: LLVMValue<'ctx>,
     ) -> Result<BasicValueEnum<'ctx>, CompilerError> {
         match value {
-            LLVMValue::BasicValueEnum(BasicValueEnum::IntValue(i)) => {
+            LLVMValue::BasicValueEnum(v) => {
                 let ptr = self
                     .builder
-                    .build_alloca(i.get_type(), token.name.as_str())
+                    .build_alloca(v.get_type(), token.name.as_str())
                     .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
-                self.builder
-                    .build_store(ptr, i)
-                    .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
-                Ok(BasicValueEnum::PointerValue(ptr))
-            }
-            LLVMValue::BasicValueEnum(BasicValueEnum::FloatValue(f)) => {
-                let ptr = self
-                    .builder
-                    .build_alloca(f.get_type(), token.name.as_str())
-                    .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
-                self.builder
-                    .build_store(ptr, f)
-                    .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
+                self.store_value(ptr, v);
                 Ok(BasicValueEnum::PointerValue(ptr))
             }
             LLVMValue::FunctionValue(f) => unimplemented!(),
             _ => unreachable!(),
         }
+    }
+
+    pub fn store_value(
+        &self,
+        ptr: PointerValue<'ctx>,
+        value: BasicValueEnum<'ctx>,
+    ) -> Result<(), CompilerError> {
+        self.builder
+            .build_store(ptr, value)
+            .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
+
+        Ok(())
     }
 
     fn declare_function(
