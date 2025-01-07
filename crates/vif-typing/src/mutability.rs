@@ -113,58 +113,41 @@ fn check_expression(expr: &Expr) -> Result<(), TypingError> {
                 check_expression(arg)?;
             }
 
-            if c.callee.typing.callable.is_none() {
-                // probably builtin, TO FIX
-                return Ok(());
-            }
+            let callable = match &c.callee.typing.r#type {
+                vif_objects::ast::Type::Callable(c) => c,
+                _ => panic!("{} is not callable: {}", c.callee, c.callee.typing),
+            };
 
-            let nb_parameters = c
-                .callee
-                .typing
-                .callable
-                .as_ref()
-                .unwrap()
-                .signature
-                .parameters
-                .len();
-
-            if c.arguments.len() != nb_parameters {
-                return Err(WrongArgumentNumberFunction::new(
-                    format!("{}", c.callee),
-                    nb_parameters,
-                    c.arguments.len(),
-                    c.callee.span.clone(),
-                ));
-            }
-
-            for (arg, param_mutable) in c.arguments.iter().zip(
-                c.callee
-                    .typing
-                    .callable
-                    .as_ref()
-                    .unwrap()
-                    .signature
-                    .parameters
-                    .iter(),
-            ) {
-                if *param_mutable && !arg.typing.mutable {
-                    return Err(NonMutableArgumentToMutableParameter::new(
+            if let Some(signature_params) = callable.signature.get_params() {
+                if signature_params.len() != c.arguments.len() {
+                    return Err(WrongArgumentNumberFunction::new(
                         format!("{}", c.callee),
-                        format!("{}", arg.body),
+                        signature_params.len(),
+                        c.arguments.len(),
                         c.callee.span.clone(),
                     ));
+                }
+
+                for (arg, param_mutable) in c.arguments.iter().zip(signature_params.iter()) {
+                    if *param_mutable && !arg.typing.mutable {
+                        return Err(NonMutableArgumentToMutableParameter::new(
+                            format!("{}", c.callee),
+                            format!("{}", arg.body),
+                            c.callee.span.clone(),
+                        ));
+                    }
                 }
             }
         }
         ExprBody::Binary(b) => {
             check_expression(&b.left)?;
             check_expression(&b.right)?;
-            if b.left.typing.callable != b.right.typing.callable {
+            if b.left.typing != b.right.typing {
                 return Err(DifferentSignatureBetweenFunction::new(
                     format!("{}", b.left),
                     format!("{}", b.right),
-                    b.left.typing.callable.clone(),
-                    b.right.typing.callable.clone(),
+                    b.left.typing.clone(),
+                    b.right.typing.clone(),
                     b.right.span.clone(),
                 ));
             }
@@ -190,12 +173,12 @@ fn check_expression(expr: &Expr) -> Result<(), TypingError> {
             check_expression(&l.left)?;
             check_expression(&l.right)?;
 
-            if l.left.typing.callable != l.right.typing.callable {
+            if l.left.typing != l.right.typing {
                 return Err(DifferentSignatureBetweenFunction::new(
                     format!("{}", l.left),
                     format!("{}", l.right),
-                    l.left.typing.callable.clone(),
-                    l.right.typing.callable.clone(),
+                    l.left.typing.clone(),
+                    l.right.typing.clone(),
                     l.right.span.clone(),
                 ));
             }

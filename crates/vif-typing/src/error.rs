@@ -1,5 +1,5 @@
 use vif_objects::{
-    ast::{Callable, Type},
+    ast::{Callable, Type, Typing},
     span::Span,
 };
 
@@ -156,8 +156,8 @@ impl NonMutableArgumentToMutableVariable {
 pub struct DifferentSignatureBetweenFunction {
     function_a: String,
     function_b: String,
-    signature_a: Option<Box<Callable>>,
-    signature_b: Option<Box<Callable>>,
+    signature_a: Typing,
+    signature_b: Typing,
     span: Span,
 }
 
@@ -165,8 +165,8 @@ impl DifferentSignatureBetweenFunction {
     pub fn new(
         function_a: String,
         function_b: String,
-        signature_a: Option<Box<Callable>>,
-        signature_b: Option<Box<Callable>>,
+        signature_a: Typing,
+        signature_b: Typing,
         span: Span,
     ) -> TypingError {
         TypingError::DifferentSignatureBetweenFunction(Self {
@@ -185,14 +185,8 @@ impl DifferentSignatureBetweenFunction {
             self.span.get_line(),
             self.function_a,
             self.function_b,
-            match &self.signature_a {
-                None => "None".to_owned(),
-                Some(c) => format!("{c}"),
-            },
-            match &self.signature_b {
-                None => "None".to_owned(),
-                Some(c) => format!("{c}"),
-            }
+            format!("{}", self.signature_a),
+            format!("{}", self.signature_b),
         )
     }
 }
@@ -200,18 +194,13 @@ impl DifferentSignatureBetweenFunction {
 #[derive(Debug)]
 pub struct DifferentSignatureBetweenReturns {
     function: String,
-    return_a: Option<Box<Callable>>,
-    return_b: Option<Box<Callable>>,
+    return_a: Typing,
+    return_b: Typing,
     span: Span,
 }
 
 impl DifferentSignatureBetweenReturns {
-    pub fn new(
-        function: String,
-        return_a: Option<Box<Callable>>,
-        return_b: Option<Box<Callable>>,
-        span: Span,
-    ) -> TypingError {
+    pub fn new(function: String, return_a: Typing, return_b: Typing, span: Span) -> TypingError {
         TypingError::DifferentSignatureBetweenReturns(Self {
             function,
             return_a,
@@ -226,14 +215,8 @@ impl DifferentSignatureBetweenReturns {
             "Line {} - {row}\nThe function {} got several return signature: {} and {}",
             self.span.get_line(),
             self.function,
-            match &self.return_a {
-                None => "None".to_owned(),
-                Some(c) => format!("{c}"),
-            },
-            match &self.return_b {
-                None => "None".to_owned(),
-                Some(c) => format!("{c}"),
-            }
+            format!("{}", self.return_a),
+            format!("{}", self.return_b),
         )
     }
 }

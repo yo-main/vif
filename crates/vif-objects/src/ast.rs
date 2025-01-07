@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use crate::span::Span;
 
 #[derive(Debug, PartialEq)]
@@ -108,28 +110,47 @@ pub struct Assert {
     pub value: Box<Expr>,
 }
 
-#[derive(Debug, Clone)]
-pub struct Signature {
-    pub parameters: Vec<bool>,
+#[derive(Debug, Clone, Eq)]
+pub enum Signature {
+    Parameters(Vec<bool>),
+    Infinite,
 }
 
 impl Signature {
-    pub fn new(parameters: Vec<bool>) -> Self {
-        Signature { parameters }
+    pub fn new_with_params(parameters: Vec<bool>) -> Self {
+        Signature::Parameters(parameters)
+    }
+
+    pub fn new_with_infinite() -> Self {
+        Signature::Infinite
+    }
+
+    pub fn get_params(&self) -> Option<&Vec<bool>> {
+        match self {
+            Self::Parameters(p) => Some(p),
+            _ => None,
+        }
     }
 }
 
 impl std::default::Default for Signature {
     fn default() -> Self {
-        Signature {
-            parameters: Vec::new(),
-        }
+        Signature::Parameters(Vec::new())
     }
 }
 
 impl PartialEq for Signature {
     fn eq(&self, other: &Self) -> bool {
-        self.parameters == other.parameters
+        match self {
+            Self::Parameters(p1) => match other {
+                Self::Parameters(p2) => p1 == p2,
+                _ => false,
+            },
+            Self::Infinite => match other {
+                Self::Infinite => true,
+                _ => false,
+            },
+        }
     }
 }
 
@@ -138,19 +159,22 @@ impl std::fmt::Display for Signature {
         write!(
             f,
             "[{}]",
-            self.parameters
-                .iter()
-                .map(|b| match b {
-                    true => "true",
-                    false => "false",
-                })
-                .collect::<Vec<&str>>()
-                .join(", ")
+            match self {
+                Signature::Parameters(p) => p
+                    .iter()
+                    .map(|b| match b {
+                        true => "true",
+                        false => "false",
+                    })
+                    .collect::<Vec<&str>>()
+                    .join(", "),
+                Signature::Infinite => "Infinite".to_owned(),
+            }
         )
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq)]
 pub struct Callable {
     pub signature: Signature,
     pub output: Typing,
@@ -179,7 +203,7 @@ pub enum TypeError {
     IncompatibleTypes(String),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
     Int,
     Float,
@@ -188,6 +212,7 @@ pub enum Type {
     None,
     Unknown,
     KeyWord,
+    Callable(Box<Callable>),
 }
 
 impl std::fmt::Display for Type {
@@ -200,12 +225,13 @@ impl std::fmt::Display for Type {
             Self::None => write!(f, "None"),
             Self::Unknown => write!(f, "Unknown"),
             Self::KeyWord => write!(f, "KeyWord"),
+            Self::Callable(c) => write!(f, "Callable[{}]", c),
         }
     }
 }
 
 impl Type {
-    pub fn as_str(&self) -> String {
+    pub fn as_string(&self) -> String {
         format!("{self}")
     }
 
@@ -215,32 +241,35 @@ impl Type {
                 Self::Int => Ok(Self::Int),
                 Self::Float => Ok(Self::Float),
                 Self::Bool => Ok(Self::Int),
+                Self::Callable(c) => c.output.r#type.soft_merge(self),
                 _ => Ok(Self::Unknown),
             },
             Self::Float => match other {
                 Self::Int => Ok(Self::Float),
                 Self::Float => Ok(Self::Float),
                 Self::Bool => Ok(Self::Float),
+                Self::Callable(c) => c.output.r#type.soft_merge(self),
                 _ => Ok(Self::Unknown),
             },
             Self::Bool => match other {
                 Self::Bool => Ok(Self::Bool),
                 Self::Int => Ok(Self::Int),
                 Self::Float => Ok(Self::Float),
+                Self::Callable(c) => c.output.r#type.soft_merge(self),
                 _ => Ok(Self::Unknown),
             },
             Self::String => match other {
                 Self::String => Ok(Self::String),
+                Self::Callable(c) => c.output.r#type.soft_merge(self),
                 _ => Ok(Self::Unknown),
             },
             Self::None => match other {
                 Self::None => Ok(Self::None),
+                Self::Callable(c) => c.output.r#type.soft_merge(self),
                 _ => Ok(Self::Unknown),
             },
-            Self::Unknown => match other {
-                Self::None => Ok(Self::Unknown),
-                _ => Ok(Self::Unknown),
-            },
+            Self::Callable(c) => c.output.r#type.soft_merge(other),
+            Self::Unknown => Ok(Self::Unknown),
             Self::KeyWord => match other {
                 _ => unreachable!(),
             },
@@ -253,7 +282,8 @@ impl Type {
                 Self::Int => Ok(Self::Int),
                 Self::Float => Ok(Self::Float),
                 Self::Bool => Ok(Self::Int),
-                t => Err(TypeError::IncompatibleTypes(format!(
+                Self::Callable(c) => c.output.r#type.hard_merge(self),
+                _ => Err(TypeError::IncompatibleTypes(format!(
                     "{} vs {}",
                     self, other
                 ))),
@@ -262,6 +292,7 @@ impl Type {
                 Self::Int => Ok(Self::Float),
                 Self::Float => Ok(Self::Float),
                 Self::Bool => Ok(Self::Float),
+                Self::Callable(c) => c.output.r#type.hard_merge(self),
                 _ => Err(TypeError::IncompatibleTypes(format!(
                     "{} vs {}",
                     self, other
@@ -271,32 +302,33 @@ impl Type {
                 Self::Bool => Ok(Self::Bool),
                 Self::Int => Ok(Self::Int),
                 Self::Float => Ok(Self::Float),
-                t => Err(TypeError::IncompatibleTypes(format!(
+                Self::Callable(c) => c.output.r#type.hard_merge(self),
+                _ => Err(TypeError::IncompatibleTypes(format!(
                     "{} vs {}",
                     self, other
                 ))),
             },
             Self::String => match other {
                 Self::String => Ok(Self::String),
-                t => Err(TypeError::IncompatibleTypes(format!(
+                Self::Callable(c) => c.output.r#type.hard_merge(self),
+                _ => Err(TypeError::IncompatibleTypes(format!(
                     "{} vs {}",
                     self, other
                 ))),
             },
             Self::None => match other {
                 Self::None => Ok(Self::None),
-                t => Err(TypeError::IncompatibleTypes(format!(
+                Self::Callable(c) => c.output.r#type.hard_merge(self),
+                _ => Err(TypeError::IncompatibleTypes(format!(
                     "{} vs {}",
                     self, other
                 ))),
             },
-            Self::Unknown => match other {
-                Self::None => Ok(Self::Unknown),
-                t => Err(TypeError::IncompatibleTypes(format!(
-                    "{} vs {}",
-                    self, other
-                ))),
-            },
+            Self::Callable(c) => c.output.r#type.hard_merge(other),
+            Self::Unknown => Err(TypeError::IncompatibleTypes(format!(
+                "{} vs {}",
+                self, other
+            ))),
             Self::KeyWord => match other {
                 _ => unreachable!(),
             },
@@ -304,45 +336,27 @@ impl Type {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq)]
 pub struct Typing {
     pub mutable: bool,
-    pub callable: Option<Box<Callable>>,
     pub r#type: Type,
 }
 
 impl PartialEq for Typing {
     fn eq(&self, other: &Self) -> bool {
-        self.mutable == other.mutable && self.callable == other.callable
+        self.mutable == other.mutable && self.r#type == other.r#type
     }
 }
 
 impl std::fmt::Display for Typing {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "mut[{}] callable[{:?}]", self.mutable, self.callable)
+        write!(f, "mut[{}] type[{:?}]", self.mutable, self.r#type)
     }
 }
 
 impl Typing {
     pub fn new(mutable: bool, r#type: Type) -> Self {
-        Self {
-            mutable,
-            callable: None,
-            r#type,
-        }
-    }
-
-    pub fn callable_eq(&self, other: &Option<Box<Callable>>) -> bool {
-        match &self.callable {
-            None => match other {
-                None => true,
-                _ => false,
-            },
-            Some(callable1) => match other {
-                None => false,
-                Some(callable2) => callable1.signature == callable2.signature,
-            },
-        }
+        Self { mutable, r#type }
     }
 }
 

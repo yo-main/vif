@@ -24,7 +24,7 @@ impl<'ctx> Builder<'ctx> {
     }
 
     fn get_pointer(&self, typing: &ast::Typing) -> inkwell::types::BasicTypeEnum<'ctx> {
-        match typing.r#type {
+        match &typing.r#type {
             ast::Type::Int => self.context.i64_type().as_basic_type_enum(),
             ast::Type::Float => self.context.f64_type().as_basic_type_enum(),
             ast::Type::String => self
@@ -33,6 +33,7 @@ impl<'ctx> Builder<'ctx> {
                 .as_basic_type_enum(),
             ast::Type::Bool => self.context.i64_type().as_basic_type_enum(),
             ast::Type::None => self.context.i64_type().as_basic_type_enum(),
+            ast::Type::Callable(c) => self.get_pointer(&c.output),
             ast::Type::Unknown => panic!("cannot convert unknown to llvm type"),
             ast::Type::KeyWord => panic!("cannot convert keyword to llvm type"),
         }
@@ -96,8 +97,7 @@ impl<'ctx> Builder<'ctx> {
         function: &ast::Function,
         module: &Module<'ctx>,
     ) -> FunctionValue<'ctx> {
-        let function_ptr_type =
-            self.get_pointer(&(function.typing.callable.as_ref().unwrap().output));
+        let function_ptr_type = self.get_pointer(&function.typing);
 
         let args = function
             .params

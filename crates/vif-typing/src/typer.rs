@@ -63,45 +63,34 @@ fn update_function_typing(function: &mut Function) -> Result<(), TypingError> {
         })
         .collect::<Vec<&Return>>();
 
-    let signature = Signature::new(function.params.iter().map(|p| p.typing.mutable).collect());
-    let function_type = returns
+    let signature =
+        Signature::new_with_params(function.params.iter().map(|p| p.typing.mutable).collect());
+    let returns_type = returns
         .iter()
         .map(|r| r.value.typing.r#type.clone())
         .collect::<Vec<Type>>();
 
-    if function_type.iter().len() > 1 {
-        return Err(FunctionReturnsDifferentTypes::new(function.name.to_owned()));
-    }
-
     let callable = if returns.is_empty() {
-        Some(Box::new(Callable::new(
-            signature,
-            Typing::new(false, Type::None),
-        )))
+        Box::new(Callable::new(signature, Typing::new(false, Type::None)))
     } else {
-        Some(Box::new(Callable::new(
-            signature,
-            returns[0].value.typing.clone(),
-        )))
+        Box::new(Callable::new(signature, returns[0].value.typing.clone()))
     };
 
-    function.typing.mutable = returns.iter().all(|r| r.value.typing.mutable);
-    function.typing.callable = callable;
-
-    for return_stmt in returns {
-        if !return_stmt
-            .value
-            .typing
-            .callable_eq(&function.typing.callable.as_ref().unwrap().output.callable)
-        {
+    for return_stmt in returns.iter() {
+        if return_stmt.value.typing.r#type != callable.output.r#type {
             return Err(DifferentSignatureBetweenReturns::new(
                 function.name.clone(),
-                return_stmt.value.typing.callable.clone(),
-                function.typing.callable.clone(),
+                return_stmt.value.typing.clone(),
+                function.typing.clone(),
                 return_stmt.value.span.clone(),
             ));
         }
     }
+
+    function.typing = Typing::new(
+        returns.iter().all(|r| r.value.typing.mutable),
+        Type::Callable(callable),
+    );
 
     Ok(())
 }
@@ -133,28 +122,25 @@ fn visit_statement<'a>(
         }
         Stmt::Var(v) => {
             visit_expression(params, &mut v.value, references)?;
-
-            if let Some(callable) = &v.value.typing.callable {
-                v.typing.callable = callable.output.callable.clone();
-            }
-
             v.typing.r#type = v.value.typing.r#type.clone();
 
-            let names = get_callable_names(&v.value);
+            // should not be needed as we get identifier typing from the call above
 
-            if v.typing.callable.is_none() {
-                for name in names.iter() {
-                    if let Some(t) = references.get_typing(name) {
-                        if let Some(callable) = t.callable {
-                            match v.value.body {
-                                ExprBody::Call(_) => v.typing.callable = callable.output.callable,
-                                _ => v.typing.callable = Some(callable),
-                            };
-                        }
-                        break;
-                    }
-                }
-            }
+            // // we might assign a variable to another variable
+            // // var a = b or c
+            // let names = get_identifier_names(&v.value);
+
+            // for name in names.iter() {
+            //     if let Some(t) = references.get_typing(name) {
+            //         if let Some(callable) = t.callable {
+            //             match v.value.body {
+            //                 ExprBody::Call(_) => v.typing.callable = callable.output.callable,
+            //                 _ => v.typing.callable = Some(callable),
+            //             };
+            //         }
+            //         break;
+            //     }
+            // }
 
             references.push(Reference::new_variable(v.name.clone(), v.typing.clone()))
         }
@@ -183,8 +169,8 @@ fn visit_expression<'a>(
                 .hard_merge(&binary.right.typing.r#type)
                 .map_err(|_| {
                     IncompatibleTypes::new(
-                        binary.left.typing.r#type.as_str(),
-                        binary.right.typing.r#type.as_str(),
+                        binary.left.typing.r#type.as_string(),
+                        binary.right.typing.r#type.as_string(),
                         expr.span.clone(),
                     )
                 })?;
@@ -226,8 +212,8 @@ fn visit_expression<'a>(
                         .hard_merge(&logical.right.typing.r#type)
                         .map_err(|_| {
                             IncompatibleTypes::new(
-                                logical.left.typing.r#type.as_str(),
-                                logical.right.typing.r#type.as_str(),
+                                logical.left.typing.r#type.as_string(),
+                                logical.right.typing.r#type.as_string(),
                                 expr.span.clone(),
                             )
                         })?;
@@ -244,31 +230,27 @@ fn visit_expression<'a>(
 
             expr.typing.r#type = call.callee.typing.r#type.clone();
             expr.typing.mutable = call.callee.typing.mutable;
-            let callable_names = get_callable_names(&call.callee);
+            let callable_names = get_identifier_names(&call.callee);
 
-            // add callee typing
-            for name in callable_names.iter() {
-                if let Some(typing) = references.get_typing(name) {
-                    call.callee.typing.callable = typing.callable;
-                    break;
-                }
-            }
+            // // add callee typing
+            // for name in callable_names.iter() {
+            //     if let Some(typing) = references.get_typing(name) {
+            //         call.callee.typing.callable = typing.callable;
+            //         break;
+            //     }
+            // }
 
-            if call.callee.typing.callable.is_none() {
-                // panic!(
-                //     "Oh bah non alors: {} {:?} and {}",
-                //     call.callee, callable_names, references
-                // );
-            }
+            // if call.callee.typing.callable.is_none() {
+            // panic!(
+            //     "Oh bah non alors: {} {:?} and {}",
+            //     call.callee, callable_names, references
+            // );
+            // }
 
             // update function parameters typing if it's them being called
             for param in params.iter_mut() {
                 if callable_names.contains(&param.name) {
-                    if param.typing.callable.is_none() {
-                        param.typing.callable = call.callee.typing.callable.clone();
-                    } else {
-                        panic!("this should not happens");
-                    }
+                    param.typing = call.callee.typing.clone();
                 }
             }
         }
@@ -276,8 +258,19 @@ fn visit_expression<'a>(
             if let Some(typing) = references.get_typing(v.as_str()) {
                 expr.typing = typing;
             } else {
-                if !["print", "get_time", "sleep"].contains(&v.as_str()) {
-                    panic!("Unknown variable ? {}", v);
+                match v.as_str() {
+                    "print" => {
+                        expr.typing = Typing::new(
+                            false,
+                            Type::Callable(Box::new(Callable::new(
+                                Signature::new_with_infinite(),
+                                Typing::new(true, Type::None),
+                            ))),
+                        )
+                    }
+                    // "get_time" =>
+                    // "sleep" =>
+                    _ => panic!("Unknown variable ? {}", v),
                 }
             }
         }
@@ -287,24 +280,24 @@ fn visit_expression<'a>(
     Ok(())
 }
 
-fn get_callable_names(expr: &Expr) -> Vec<String> {
+fn get_identifier_names(expr: &Expr) -> Vec<String> {
     match &expr.body {
         ExprBody::Binary(binary) => {
-            let mut res = get_callable_names(&binary.left);
-            res.extend(get_callable_names(&binary.right));
+            let mut res = get_identifier_names(&binary.left);
+            res.extend(get_identifier_names(&binary.right));
             res
         }
-        ExprBody::Unary(unary) => get_callable_names(&unary.right),
-        ExprBody::Grouping(grouping) => get_callable_names(&grouping.expr),
+        ExprBody::Unary(unary) => get_identifier_names(&unary.right),
+        ExprBody::Grouping(grouping) => get_identifier_names(&grouping.expr),
         ExprBody::Logical(logical) => {
-            let mut res = get_callable_names(&logical.left);
-            res.extend(get_callable_names(&logical.right));
+            let mut res = get_identifier_names(&logical.left);
+            res.extend(get_identifier_names(&logical.right));
             res
         }
         ExprBody::Value(Value::Variable(v)) => {
             vec![v.to_owned()]
         }
-        ExprBody::Call(c) => get_callable_names(&c.callee),
+        ExprBody::Call(c) => get_identifier_names(&c.callee),
         _ => Vec::new(),
     }
 }
