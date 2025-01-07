@@ -1,3 +1,5 @@
-var v = "coucou"
+def coucou():
+	var v = "coucou"
+	return "coucou"
 
-print(v)
+print(coucou())

@@ -2,8 +2,9 @@ use crate::compiler::LLVMValue;
 use crate::error::CompilerError;
 use inkwell::llvm_sys::LLVMCallConv;
 use inkwell::module::Module;
-use inkwell::types::BasicMetadataTypeEnum;
+use inkwell::types::{AnyType, BasicMetadataTypeEnum, BasicType};
 use inkwell::values::{BasicMetadataValueEnum, BasicValueEnum, FunctionValue, PointerValue};
+use inkwell::AddressSpace;
 use vif_objects::ast;
 
 pub struct Builder<'ctx> {
@@ -22,8 +23,19 @@ impl<'ctx> Builder<'ctx> {
         self.context.create_module(module_name)
     }
 
-    fn get_pointer(&self, typing: &ast::Typing) -> inkwell::types::IntType<'ctx> {
-        self.context.i64_type() // make this smarter lol
+    fn get_pointer(&self, typing: &ast::Typing) -> inkwell::types::BasicTypeEnum<'ctx> {
+        match typing.r#type {
+            ast::Type::Int => self.context.i64_type().as_basic_type_enum(),
+            ast::Type::Float => self.context.f64_type().as_basic_type_enum(),
+            ast::Type::String => self
+                .context
+                .ptr_type(AddressSpace::default())
+                .as_basic_type_enum(),
+            ast::Type::Bool => self.context.i64_type().as_basic_type_enum(),
+            ast::Type::None => self.context.i64_type().as_basic_type_enum(),
+            ast::Type::Unknown => panic!("cannot convert unknown to llvm type"),
+            ast::Type::KeyWord => panic!("cannot convert keyword to llvm type"),
+        }
     }
 
     pub fn global_string(
@@ -84,7 +96,8 @@ impl<'ctx> Builder<'ctx> {
         function: &ast::Function,
         module: &Module<'ctx>,
     ) -> FunctionValue<'ctx> {
-        let function_ptr_type = self.get_pointer(&function.typing);
+        let function_ptr_type =
+            self.get_pointer(&(function.typing.callable.as_ref().unwrap().output));
 
         let args = function
             .params
