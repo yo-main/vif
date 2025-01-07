@@ -8,6 +8,7 @@ use crate::OpCode;
 use inkwell;
 use inkwell::types::BasicMetadataTypeEnum;
 use inkwell::types::BasicTypeEnum;
+use inkwell::values::AsValueRef;
 use inkwell::values::BasicMetadataValueEnum;
 use inkwell::values::BasicValue;
 use inkwell::values::BasicValueEnum;
@@ -316,14 +317,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             .arguments
             .iter()
             .map(|e| self.expression(e, store).unwrap())
-            .map(|e| match e.get_basic_value_enum() {
-                BasicValueEnum::ArrayValue(a) => BasicMetadataValueEnum::ArrayValue(a),
-                BasicValueEnum::FloatValue(f) => BasicMetadataValueEnum::FloatValue(f),
-                BasicValueEnum::IntValue(i) => BasicMetadataValueEnum::IntValue(i),
-                BasicValueEnum::PointerValue(p) => BasicMetadataValueEnum::PointerValue(p),
-                BasicValueEnum::StructValue(s) => BasicMetadataValueEnum::StructValue(s),
-                BasicValueEnum::VectorValue(v) => BasicMetadataValueEnum::VectorValue(v),
-            })
+            .map(|e| BasicMetadataValueEnum::from(e.get_basic_value_enum()))
             .collect::<Vec<BasicMetadataValueEnum>>();
 
         if function_value.get_name().to_str().unwrap() == "printf" {
