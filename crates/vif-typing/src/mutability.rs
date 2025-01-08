@@ -128,8 +128,8 @@ fn check_expression(expr: &Expr) -> Result<(), TypingError> {
                     ));
                 }
 
-                for (arg, param_mutable) in c.arguments.iter().zip(signature_params.iter()) {
-                    if *param_mutable && !arg.typing.mutable {
+                for (arg, param_typing) in c.arguments.iter().zip(signature_params.iter()) {
+                    if param_typing.mutable && !arg.typing.mutable {
                         return Err(NonMutableArgumentToMutableParameter::new(
                             format!("{}", c.callee),
                             format!("{}", arg.body),

@@ -112,12 +112,12 @@ pub struct Assert {
 
 #[derive(Debug, Clone, Eq)]
 pub enum Signature {
-    Parameters(Vec<bool>),
+    Parameters(Vec<Typing>),
     Infinite,
 }
 
 impl Signature {
-    pub fn new_with_params(parameters: Vec<bool>) -> Self {
+    pub fn new_with_params(parameters: Vec<Typing>) -> Self {
         Signature::Parameters(parameters)
     }
 
@@ -125,7 +125,7 @@ impl Signature {
         Signature::Infinite
     }
 
-    pub fn get_params(&self) -> Option<&Vec<bool>> {
+    pub fn get_params(&self) -> Option<&Vec<Typing>> {
         match self {
             Self::Parameters(p) => Some(p),
             _ => None,
@@ -162,11 +162,8 @@ impl std::fmt::Display for Signature {
             match self {
                 Signature::Parameters(p) => p
                     .iter()
-                    .map(|b| match b {
-                        true => "true",
-                        false => "false",
-                    })
-                    .collect::<Vec<&str>>()
+                    .map(|b| format!("{b}"))
+                    .collect::<Vec<String>>()
                     .join(", "),
                 Signature::Infinite => "Infinite".to_owned(),
             }

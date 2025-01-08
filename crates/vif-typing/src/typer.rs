@@ -64,11 +64,7 @@ fn update_function_typing(function: &mut Function) -> Result<(), TypingError> {
         .collect::<Vec<&Return>>();
 
     let signature =
-        Signature::new_with_params(function.params.iter().map(|p| p.typing.mutable).collect());
-    let returns_type = returns
-        .iter()
-        .map(|r| r.value.typing.r#type.clone())
-        .collect::<Vec<Type>>();
+        Signature::new_with_params(function.params.iter().map(|p| p.typing.clone()).collect());
 
     let callable = if returns.is_empty() {
         Box::new(Callable::new(signature, Typing::new(false, Type::None)))

@@ -1,5 +1,5 @@
-def coucou():
-	var v = "coucou"
-	return "coucou"
+def coucou(a):
+	return a
 
-print(coucou())
+
+print(coucou("coucou"))
