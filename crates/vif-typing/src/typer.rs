@@ -1,5 +1,4 @@
 use crate::error::DifferentSignatureBetweenReturns;
-use crate::error::FunctionReturnsDifferentTypes;
 use crate::error::IncompatibleTypes;
 use crate::error::TypingError;
 use crate::references::FunctionReference;
@@ -228,20 +227,23 @@ fn visit_expression<'a>(
             expr.typing.mutable = call.callee.typing.mutable;
             let callable_names = get_identifier_names(&call.callee);
 
-            // // add callee typing
-            // for name in callable_names.iter() {
-            //     if let Some(typing) = references.get_typing(name) {
-            //         call.callee.typing.callable = typing.callable;
-            //         break;
-            //     }
-            // }
-
-            // if call.callee.typing.callable.is_none() {
-            // panic!(
-            //     "Oh bah non alors: {} {:?} and {}",
-            //     call.callee, callable_names, references
-            // );
-            // }
+            // update the parameters of the called function with the correct typing
+            for callable_name in callable_names.iter() {
+                if let Some(function_reference) = references.get_function_typing_ref(callable_name)
+                {
+                    match &mut function_reference.r#type {
+                        Type::Callable(callable) => match &mut callable.signature {
+                            Signature::Parameters(params) => {
+                                for (param, arg) in params.iter_mut().zip(call.arguments.iter()) {
+                                    param.if_unknown_set_to(arg.typing.r#type.clone())
+                                }
+                            }
+                            _ => (),
+                        },
+                        _ => unreachable!(),
+                    }
+                }
+            }
 
             // update function parameters typing if it's them being called
             for param in params.iter_mut() {

@@ -104,4 +104,14 @@ impl References {
         }
         None
     }
+
+    pub fn get_function_typing_ref(&mut self, name: &str) -> Option<&mut Typing> {
+        for reference in self.references.iter_mut() {
+            match reference {
+                Reference::Function(f) if f.name == name => return Some(&mut f.typing),
+                _ => (),
+            };
+        }
+        None
+    }
 }

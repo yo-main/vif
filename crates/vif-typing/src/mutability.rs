@@ -41,8 +41,6 @@ use crate::error::NonMutableArgumentToMutableParameter;
 use crate::error::NonMutableArgumentToMutableVariable;
 use crate::error::TypingError;
 use crate::error::WrongArgumentNumberFunction;
-use crate::references::References;
-use crate::typer;
 use vif_objects::ast::Expr;
 use vif_objects::ast::ExprBody;
 use vif_objects::ast::Function;
@@ -50,11 +48,7 @@ use vif_objects::ast::Stmt;
 use vif_objects::ast::Value;
 
 pub fn check_mutability(function: &mut Function) -> Result<(), TypingError> {
-    let mut references = References::new();
-    typer::add_missing_typing(function, &mut references)?;
-
-    check_function(function)?;
-    Ok(())
+    check_function(function)
 }
 
 fn check_function(function: &Function) -> Result<(), TypingError> {

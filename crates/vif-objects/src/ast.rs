@@ -1,4 +1,4 @@
-use std::any::Any;
+use std::{any::Any, ops::DerefMut};
 
 use crate::span::Span;
 
@@ -354,6 +354,20 @@ impl std::fmt::Display for Typing {
 impl Typing {
     pub fn new(mutable: bool, r#type: Type) -> Self {
         Self { mutable, r#type }
+    }
+
+    pub fn if_unknown_set_to(&mut self, new_type: Type) {
+        match self.r#type {
+            Type::Unknown => self.r#type = new_type,
+            _ => (),
+        }
+    }
+
+    pub fn is_unknown(&self) -> bool {
+        match self.r#type {
+            Type::Unknown => true,
+            _ => false,
+        }
     }
 }
 

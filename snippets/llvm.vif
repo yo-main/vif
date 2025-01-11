@@ -1,5 +1,6 @@
 def coucou(a):
-	return a
+	var b = a + 3
+	return b
 
 
-print(coucou("coucou"))
+print(coucou(1))
