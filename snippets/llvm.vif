@@ -2,5 +2,9 @@ def coucou(a: int):
 	var b = a + 3
 	return b
 
+def add(a: int, b: int):
+	return b + a
+
 
 print(coucou(1))
+print(add(1, 2))

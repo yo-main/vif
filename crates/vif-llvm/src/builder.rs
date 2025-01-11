@@ -2,7 +2,7 @@ use crate::compiler::LLVMValue;
 use crate::error::CompilerError;
 use inkwell::llvm_sys::LLVMCallConv;
 use inkwell::module::Module;
-use inkwell::types::{AnyType, BasicMetadataTypeEnum, BasicType};
+use inkwell::types::{AnyType, BasicMetadataTypeEnum, BasicType, BasicTypeEnum};
 use inkwell::values::{BasicMetadataValueEnum, BasicValueEnum, FunctionValue, PointerValue};
 use inkwell::AddressSpace;
 use vif_objects::ast;
@@ -169,7 +169,7 @@ impl<'ctx> Builder<'ctx> {
                 .builder
                 .build_load(t, *ptr, name)
                 .map_err(|e| CompilerError::LLVM(format!("{e}"))),
-            _ => unreachable!(),
+            v => Ok(v.clone()),
         }
     }
 

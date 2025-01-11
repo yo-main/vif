@@ -60,14 +60,14 @@ impl<'ctx> LLVMValue<'ctx> {
 }
 
 #[derive(Debug, Clone)]
-struct StoredVariable<'ctx, 'function> {
+struct StoredVariable<'ctx> {
     ptr: BasicValueEnum<'ctx>,
-    v: &'function ast::Variable,
+    // v: &'function ast::Variable,
 }
 
-impl<'ctx, 'function> StoredVariable<'ctx, 'function> {
-    fn new(ptr: BasicValueEnum<'ctx>, v: &'function ast::Variable) -> Self {
-        Self { ptr, v }
+impl<'ctx> StoredVariable<'ctx> {
+    fn new(ptr: BasicValueEnum<'ctx>) -> Self {
+        Self { ptr }
     }
 }
 
@@ -84,22 +84,22 @@ impl<'ctx, 'function> StoredFunction<'ctx> {
 }
 
 #[derive(Debug, Clone)]
-struct Variables<'ctx, 'function> {
-    data: HashMap<String, StoredVariable<'ctx, 'function>>,
+struct Variables<'ctx> {
+    data: HashMap<String, StoredVariable<'ctx>>,
 }
 
-impl<'ctx, 'function> Variables<'ctx, 'function> {
+impl<'ctx> Variables<'ctx> {
     fn new() -> Self {
         Self {
             data: HashMap::new(),
         }
     }
 
-    fn add(&mut self, var_name: String, value: BasicValueEnum<'ctx>, v: &'function ast::Variable) {
-        self.data.insert(var_name, StoredVariable::new(value, v));
+    fn add(&mut self, var_name: String, value: BasicValueEnum<'ctx>) {
+        self.data.insert(var_name, StoredVariable::new(value));
     }
 
-    fn get(&self, var_name: String) -> Option<&StoredVariable<'ctx, 'function>> {
+    fn get(&self, var_name: String) -> Option<&StoredVariable<'ctx>> {
         self.data.get(&var_name)
     }
 }
@@ -126,12 +126,12 @@ impl<'ctx, 'function> Functions<'ctx> {
 }
 
 #[derive(Debug, Clone)]
-pub struct Store<'ctx, 'function> {
-    variables: Variables<'ctx, 'function>,
+pub struct Store<'ctx> {
+    variables: Variables<'ctx>,
     functions: Functions<'ctx>,
 }
 
-impl<'ctx, 'function> Store<'ctx, 'function> {
+impl<'ctx> Store<'ctx> {
     pub fn new() -> Self {
         Self {
             variables: Variables::new(),
@@ -179,7 +179,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         compiler
     }
 
-    pub fn add_builtin_functions(&self, store: &mut Store<'ctx, 'function>) {
+    pub fn add_builtin_functions(&self, store: &mut Store<'ctx>) {
         let printf_type = self.context.i64_type().fn_type(
             &[self
                 .context
@@ -195,7 +195,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     pub fn compile(
         &self,
         function: &'function ast::Function,
-        store: &mut Store<'ctx, 'function>,
+        store: &mut Store<'ctx>,
     ) -> Result<inkwell::basic_block::BasicBlock<'ctx>, CompilerError> {
         let function_value = self
             .llvm_builder
@@ -204,6 +204,14 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         store
             .functions
             .add(function.name.to_owned(), function_value);
+
+        for (value, param) in function_value
+            .get_params()
+            .iter()
+            .zip(function.params.iter())
+        {
+            store.variables.add(param.name.to_owned(), value.clone());
+        }
 
         let block = self
             .llvm_builder
@@ -279,7 +287,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     pub fn statement(
         &self,
         token: &'function ast::Stmt,
-        store: &mut Store<'ctx, 'function>,
+        store: &mut Store<'ctx>,
     ) -> Result<(), CompilerError> {
         log::debug!("Starting statement");
         match token {
@@ -300,7 +308,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     fn return_statement(
         &self,
         token: &'function ast::Return,
-        store: &mut Store<'ctx, 'function>,
+        store: &mut Store<'ctx>,
     ) -> Result<(), CompilerError> {
         let value = self.expression(&token.value, store)?;
         self.llvm_builder
@@ -310,7 +318,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     pub fn call(
         &self,
         token: &'function ast::Call,
-        store: &mut Store<'ctx, 'function>,
+        store: &mut Store<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         let function_value = self.expression(&token.callee, store)?.get_function_value();
         let mut args = token
@@ -433,7 +441,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     fn function_declaration(
         &self,
         token: &'function ast::Function,
-        store: &mut Store<'ctx, 'function>,
+        store: &mut Store<'ctx>,
     ) -> Result<(), CompilerError> {
         log::debug!("Starting function declaration");
 
@@ -479,13 +487,11 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     fn var_declaration(
         &self,
         token: &'function ast::Variable,
-        store: &mut Store<'ctx, 'function>,
+        store: &mut Store<'ctx>,
     ) -> Result<(), CompilerError> {
         let value = self.expression(&token.value, store)?;
         let var_ptr = self.llvm_builder.declare_variable(token, value)?;
-        store
-            .variables
-            .add(token.name.to_owned(), var_ptr.clone(), token);
+        store.variables.add(token.name.to_owned(), var_ptr.clone());
         Ok(())
     }
 
@@ -528,7 +534,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     fn expression_statement(
         &self,
         token: &'function Box<ast::Expr>,
-        store: &mut Store<'ctx, 'function>,
+        store: &mut Store<'ctx>,
     ) -> Result<(), CompilerError> {
         log::debug!("Starting expression statement");
         self.expression(token, store)?;
@@ -538,7 +544,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     fn expression(
         &self,
         token: &'function Box<ast::Expr>,
-        store: &mut Store<'ctx, 'function>,
+        store: &mut Store<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         match &token.body {
             ast::ExprBody::Value(t) => {
@@ -588,7 +594,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         &self,
         token: &'function ast::Value,
         reference: ItemReference,
-        store: &mut Store<'ctx, 'function>,
+        store: &mut Store<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         match token {
             ast::Value::Integer(i) => {
@@ -626,7 +632,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     fn binary(
         &self,
         token: &'function ast::Binary,
-        store: &mut Store<'ctx, 'function>,
+        store: &mut Store<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         let reference = ItemReference::new(Some(token.right.span.clone()));
         let value_left = self.expression(&token.left, store)?;
@@ -640,7 +646,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         value_left: LLVMValue<'ctx>,
         value_right: LLVMValue<'ctx>,
         reference: ItemReference,
-        store: &mut Store<'ctx, 'function>,
+        store: &mut Store<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         match token {
             ast::Operator::Plus => self.llvm_builder.add(value_left, value_right),
@@ -750,7 +756,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     pub fn get_variable(
         &self,
         var_name: &str,
-        store: &mut Store<'ctx, 'function>,
+        store: &mut Store<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         log::debug!("Starting variable");
 
@@ -777,7 +783,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     pub fn get_function(
         &self,
         function_name: &str,
-        store: &mut Store<'ctx, 'function>,
+        store: &mut Store<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         if let Some(ptr) = store.functions.get(function_name.to_owned()) {
             Ok(LLVMValue::FunctionValue(ptr.ptr))
