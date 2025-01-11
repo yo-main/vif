@@ -1,6 +1,3 @@
-use std::any::Any;
-use std::borrow::BorrowMut;
-
 use crate::error::AstError;
 use crate::error::SyntaxError;
 use vif_objects::ast;
@@ -13,11 +10,14 @@ use vif_objects::ast::Variable;
 use vif_scanner::Scanner;
 use vif_scanner::Token;
 use vif_scanner::TokenType;
+use vif_typing::type_merger::SoftTypeMerger;
+use vif_typing::type_merger::TypeMerger;
 
 pub struct Parser<'a> {
     scanner: Scanner<'a>,
     errors: Vec<AstError>,
     ast: Vec<ast::Stmt>,
+    type_merge: SoftTypeMerger,
 }
 
 impl<'a> Parser<'a> {
@@ -26,6 +26,7 @@ impl<'a> Parser<'a> {
             scanner,
             ast: Vec::new(),
             errors: Vec::new(),
+            type_merge: SoftTypeMerger {},
         }
     }
 
@@ -362,12 +363,9 @@ impl<'a> Parser<'a> {
             let right = self.or()?;
             let typing = Typing::new(
                 left.typing.mutable & right.typing.mutable,
-                left.typing
-                    .r#type
-                    .soft_merge(&right.typing.r#type)
-                    .map_err(|e| {
-                        SyntaxError::new(format!("{:?}", e), self.scanner.get_span().clone())
-                    })?,
+                self.type_merge
+                    .merge(&left.typing.r#type, &right.typing.r#type)
+                    .unwrap(),
             );
             return Ok(Box::new(Expr::new(
                 ExprBody::Logical(ast::Logical {
@@ -476,12 +474,9 @@ impl<'a> Parser<'a> {
                 let right = self.addition()?;
                 let typing = Typing::new(
                     true,
-                    left.typing
-                        .r#type
-                        .soft_merge(&right.typing.r#type)
-                        .map_err(|e| {
-                            SyntaxError::new(format!("{:?}", e), self.scanner.get_span().clone())
-                        })?,
+                    self.type_merge
+                        .merge(&left.typing.r#type, &right.typing.r#type)
+                        .unwrap(),
                 );
                 return Ok(Box::new(Expr::new(
                     ExprBody::Binary(ast::Binary {
@@ -507,12 +502,9 @@ impl<'a> Parser<'a> {
                 let right = self.minus()?;
                 let typing = Typing::new(
                     true,
-                    left.typing
-                        .r#type
-                        .soft_merge(&right.typing.r#type)
-                        .map_err(|e| {
-                            SyntaxError::new(format!("{:?}", e), self.scanner.get_span().clone())
-                        })?,
+                    self.type_merge
+                        .merge(&left.typing.r#type, &right.typing.r#type)
+                        .unwrap(),
                 );
                 return Ok(Box::new(Expr::new(
                     ExprBody::Binary(ast::Binary {
@@ -546,12 +538,9 @@ impl<'a> Parser<'a> {
 
                 let typing = Typing::new(
                     true,
-                    left.typing
-                        .r#type
-                        .soft_merge(&right.typing.r#type)
-                        .map_err(|e| {
-                            SyntaxError::new(format!("{:?}", e), self.scanner.get_span().clone())
-                        })?,
+                    self.type_merge
+                        .merge(&left.typing.r#type, &right.typing.r#type)
+                        .unwrap(),
                 );
                 return Ok(Box::new(Expr::new(
                     ExprBody::Binary(ast::Binary {

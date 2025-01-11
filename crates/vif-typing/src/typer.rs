@@ -5,6 +5,7 @@ use crate::references::FunctionReference;
 use crate::references::Reference;
 use crate::references::References;
 use crate::references::VariableReference;
+use crate::type_merger::TypeMerger;
 use vif_objects::ast::Callable;
 use vif_objects::ast::Expr;
 use vif_objects::ast::ExprBody;
@@ -18,11 +19,19 @@ use vif_objects::ast::Type;
 use vif_objects::ast::Typing;
 use vif_objects::ast::Value;
 
-pub struct BottomUpTyper {}
+pub struct BottomUpTyper<M>
+where
+    M: TypeMerger,
+{
+    type_merger: M,
+}
 
-impl BottomUpTyper {
-    pub fn new() -> Self {
-        BottomUpTyper {}
+impl<M> BottomUpTyper<M>
+where
+    M: TypeMerger,
+{
+    pub fn new(type_merger: M) -> Self {
+        BottomUpTyper { type_merger }
     }
 
     pub fn run<'a>(
@@ -167,18 +176,17 @@ impl BottomUpTyper {
                 self.visit_expression(params, &mut binary.left, references)?;
                 self.visit_expression(params, &mut binary.right, references)?;
 
-                expr.typing.r#type = binary
-                    .left
-                    .typing
-                    .r#type
-                    .hard_merge(&binary.right.typing.r#type)
-                    .map_err(|_| {
+                expr.typing.r#type = self
+                    .type_merger
+                    .merge(&binary.left.typing.r#type, &binary.right.typing.r#type)
+                    .ok_or_else(|| {
                         IncompatibleTypes::new(
                             binary.left.typing.r#type.as_string(),
                             binary.right.typing.r#type.as_string(),
                             expr.span.clone(),
                         )
                     })?;
+
                 expr.typing.mutable = true;
             }
             ExprBody::Unary(unary) => {
@@ -210,12 +218,10 @@ impl BottomUpTyper {
                         expr.typing.mutable = true;
                     }
                     LogicalOperator::Or => {
-                        expr.typing.r#type = logical
-                            .left
-                            .typing
-                            .r#type
-                            .hard_merge(&logical.right.typing.r#type)
-                            .map_err(|_| {
+                        expr.typing.r#type = self
+                            .type_merger
+                            .merge(&logical.left.typing.r#type, &logical.right.typing.r#type)
+                            .ok_or_else(|| {
                                 IncompatibleTypes::new(
                                     logical.left.typing.r#type.as_string(),
                                     logical.right.typing.r#type.as_string(),

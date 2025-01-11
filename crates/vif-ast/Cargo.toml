@@ -9,4 +9,5 @@ edition = "2021"
 vif-objects = { version = "0.1.0", path = "../vif-objects" }
 vif-loader = { version = "0.1.0", path = "../vif-loader" }
 vif-scanner = { version = "0.1.0", path = "../vif-scanner" }
+vif-typing = {version = "0.1.0", path = "../vif-typing"}
 treeline = "0.1.0"

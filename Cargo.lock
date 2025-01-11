@@ -407,6 +407,7 @@ dependencies = [
  "vif-loader",
  "vif-objects",
  "vif-scanner",
+ "vif-typing",
 ]
 
 [[package]]
