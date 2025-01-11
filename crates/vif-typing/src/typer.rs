@@ -34,7 +34,7 @@ where
         BottomUpTyper { type_merger }
     }
 
-    pub fn run<'a>(
+    pub fn run(
         &self,
         function: &mut Function,
         references: &mut References,

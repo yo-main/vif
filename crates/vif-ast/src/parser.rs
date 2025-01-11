@@ -75,7 +75,7 @@ impl<'a> Parser<'a> {
 
         let name = match self.scanner.scan() {
             Ok(t) => match t.r#type {
-                TokenType::Identifier(s) => s,
+                TokenType::ValueIdentifier(s) => s,
                 _ => {
                     return Err(SyntaxError::new(
                         format!("Expected an identifier after def"),
@@ -108,12 +108,39 @@ impl<'a> Parser<'a> {
                         self.scanner.scan().unwrap();
                         continue;
                     }
-                    TokenType::Identifier(s) => {
-                        parameters.push(ast::FunctionParameter {
-                            name: s.clone(),
-                            typing: Typing::new(mutable, ast::Type::Unknown),
-                        });
+                    TokenType::ValueIdentifier(s) => {
+                        let func_name = s.clone();
+
                         self.scanner.scan().unwrap();
+
+                        self.consume(TokenType::DoubleDot, "Expected : after parameter")?;
+
+                        let t = match self.scanner.peek() {
+                            Ok(t) => match &t.r#type {
+                                TokenType::Int => ast::Type::Int,
+                                TokenType::Bool => ast::Type::Bool,
+                                TokenType::Str => ast::Type::String,
+                                TokenType::Float => ast::Type::Float,
+                                t => {
+                                    return Err(SyntaxError::new(
+                                        format!("Not a type: {t}"),
+                                        self.scanner.get_span().clone(),
+                                    ))
+                                }
+                            },
+                            _ => {
+                                return Err(SyntaxError::new(
+                                    "Expected parameter type".to_owned(),
+                                    self.scanner.get_span().clone(),
+                                ))
+                            }
+                        };
+                        self.scanner.scan().unwrap();
+
+                        parameters.push(ast::FunctionParameter {
+                            name: func_name,
+                            typing: Typing::new(mutable, t),
+                        });
                     }
                     _ => {
                         return Err(SyntaxError::new(
@@ -192,7 +219,7 @@ impl<'a> Parser<'a> {
 
         let name = match self.scanner.scan() {
             Ok(t) => match t.r#type {
-                TokenType::Identifier(s) => s,
+                TokenType::ValueIdentifier(s) => s,
                 t => {
                     return Err(SyntaxError::new(
                         format!("Expected an variable name, got {}", t),
@@ -614,22 +641,22 @@ impl<'a> Parser<'a> {
                 Typing::new(true, ast::Type::None),
                 self.scanner.get_span().clone(),
             )),
-            TokenType::Integer(i) => Box::new(Expr::new(
+            TokenType::ValueInteger(i) => Box::new(Expr::new(
                 ExprBody::Value(Value::Integer(i)),
                 Typing::new(true, ast::Type::Int),
                 self.scanner.get_span().clone(),
             )),
-            TokenType::Float(f) => Box::new(Expr::new(
+            TokenType::ValueFloat(f) => Box::new(Expr::new(
                 ExprBody::Value(Value::Float(f)),
                 Typing::new(true, ast::Type::Float),
                 self.scanner.get_span().clone(),
             )),
-            TokenType::String(s) => Box::new(Expr::new(
+            TokenType::ValueString(s) => Box::new(Expr::new(
                 ExprBody::Value(Value::String(s)),
                 Typing::new(true, ast::Type::String),
                 self.scanner.get_span().clone(),
             )),
-            TokenType::Identifier(s) => Box::new(Expr::new(
+            TokenType::ValueIdentifier(s) => Box::new(Expr::new(
                 ExprBody::Value(Value::Variable(s.to_owned())),
                 Typing::new(false, ast::Type::Unknown),
                 self.scanner.get_span().clone(),

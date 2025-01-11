@@ -1,4 +1,4 @@
-def coucou(a):
+def coucou(a: int):
 	var b = a + 3
 	return b
 

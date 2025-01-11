@@ -276,9 +276,9 @@ impl<'a> Tokenizer<'a> {
         }
 
         if str.contains('.') {
-            TokenType::Float(str.parse::<f64>().unwrap())
+            TokenType::ValueFloat(str.parse::<f64>().unwrap())
         } else {
-            TokenType::Integer(str.parse::<i64>().unwrap())
+            TokenType::ValueInteger(str.parse::<i64>().unwrap())
         }
     }
 
@@ -311,11 +311,15 @@ impl<'a> Tokenizer<'a> {
             "True" => TokenType::True,
             "False" => TokenType::False,
             "None" => TokenType::None,
+            "int" => TokenType::Int,
+            "str" => TokenType::Str,
+            "float" => TokenType::Float,
+            "bool" => TokenType::Bool,
             "@" => TokenType::At,
             "break" => TokenType::Break,
             "continue" => TokenType::Continue,
             "assert" => TokenType::Assert,
-            _ => TokenType::Identifier(str),
+            _ => TokenType::ValueIdentifier(str),
         }
     }
 
@@ -336,7 +340,7 @@ impl<'a> Tokenizer<'a> {
                 _ => str.push(self.advance().unwrap()),
             };
         }
-        Ok(TokenType::String(str))
+        Ok(TokenType::ValueString(str))
     }
 }
 
@@ -352,7 +356,7 @@ mod tests {
 
         assert_eq!(
             scanner.tokenizer.scan_token().unwrap().r#type,
-            TokenType::String("This is a simple string".to_owned())
+            TokenType::ValueString("This is a simple string".to_owned())
         );
         assert_eq!(
             scanner.tokenizer.scan_token().unwrap().r#type,
@@ -367,7 +371,7 @@ mod tests {
 
         assert_eq!(
             scanner.tokenizer.scan_token().unwrap().r#type,
-            TokenType::Integer(1)
+            TokenType::ValueInteger(1)
         );
         assert_eq!(
             scanner.tokenizer.scan_token().unwrap().r#type,
@@ -386,7 +390,7 @@ mod tests {
         );
         assert_eq!(
             scanner.tokenizer.scan_token().unwrap().r#type,
-            TokenType::Integer(1)
+            TokenType::ValueInteger(1)
         );
         assert_eq!(
             scanner.tokenizer.scan_token().unwrap().r#type,
@@ -401,7 +405,7 @@ mod tests {
 
         assert_eq!(
             scanner.tokenizer.scan_token().unwrap().r#type,
-            TokenType::Float(1.1)
+            TokenType::ValueFloat(1.1)
         );
         assert_eq!(
             scanner.tokenizer.scan_token().unwrap().r#type,
@@ -416,7 +420,7 @@ mod tests {
 
         assert_eq!(
             scanner.tokenizer.scan_token().unwrap().r#type,
-            TokenType::Float(0.)
+            TokenType::ValueFloat(0.)
         );
         assert_eq!(
             scanner.tokenizer.scan_token().unwrap().r#type,
@@ -431,7 +435,7 @@ mod tests {
 
         assert_eq!(
             scanner.tokenizer.scan_token().unwrap().r#type,
-            TokenType::Identifier("cou".to_owned())
+            TokenType::ValueIdentifier("cou".to_owned())
         );
         assert_eq!(
             scanner.tokenizer.scan_token().unwrap().r#type,
@@ -560,7 +564,7 @@ mod tests {
         );
         assert_eq!(
             scanner.tokenizer.scan_token().unwrap().r#type,
-            TokenType::Identifier("cou".to_owned())
+            TokenType::ValueIdentifier("cou".to_owned())
         );
         assert_eq!(
             scanner.tokenizer.scan_token().unwrap().r#type,
@@ -568,7 +572,7 @@ mod tests {
         );
         assert_eq!(
             scanner.tokenizer.scan_token().unwrap().r#type,
-            TokenType::String("coucou".to_owned())
+            TokenType::ValueString("coucou".to_owned())
         );
         assert_eq!(
             scanner.tokenizer.scan_token().unwrap().r#type,

@@ -239,7 +239,7 @@ pub struct Typing {
 
 impl PartialEq for Typing {
     fn eq(&self, other: &Self) -> bool {
-        self.mutable == other.mutable && self.r#type == other.r#type
+        self.r#type == other.r#type
     }
 }
 
