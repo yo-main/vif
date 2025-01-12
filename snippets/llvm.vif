@@ -1,10 +1,7 @@
-def coucou(a: int):
-	var b = a + 3
-	return b
+def say_hi(v: int):
+	print(v)
+	return None
 
-def add(a: int, b: int):
-	return b + a
+var g = 1
+say_hi(g)
 
-
-print(coucou(1))
-print(add(1, 2))

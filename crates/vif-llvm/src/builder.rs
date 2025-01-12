@@ -2,8 +2,10 @@ use crate::compiler::LLVMValue;
 use crate::error::CompilerError;
 use inkwell::llvm_sys::LLVMCallConv;
 use inkwell::module::Module;
-use inkwell::types::{AnyType, BasicMetadataTypeEnum, BasicType, BasicTypeEnum};
-use inkwell::values::{BasicMetadataValueEnum, BasicValueEnum, FunctionValue, PointerValue};
+use inkwell::types::{AnyType, BasicMetadataTypeEnum, BasicType, BasicTypeEnum, PointerType};
+use inkwell::values::{
+    AsValueRef, BasicMetadataValueEnum, BasicValueEnum, FunctionValue, PointerValue,
+};
 use inkwell::AddressSpace;
 use vif_objects::ast;
 
@@ -65,19 +67,24 @@ impl<'ctx> Builder<'ctx> {
         &self,
         token: &ast::Variable,
         value: LLVMValue<'ctx>,
-    ) -> Result<BasicValueEnum<'ctx>, CompilerError> {
+    ) -> Result<PointerValue<'ctx>, CompilerError> {
         match value {
-            LLVMValue::BasicValueEnum(v) => {
-                let ptr = self
-                    .builder
-                    .build_alloca(v.get_type(), token.name.as_str())
-                    .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
-                self.store_value(ptr, v)?;
-                Ok(BasicValueEnum::PointerValue(ptr))
-            }
-            LLVMValue::FunctionValue(f) => unimplemented!(),
-            _ => unreachable!(),
+            LLVMValue::BasicValueEnum(v) => self.allocate_and_store_value(v, token.name.as_str()),
+            LLVMValue::FunctionValue(_) => unimplemented!(),
         }
+    }
+
+    pub fn allocate_and_store_value(
+        &self,
+        value: BasicValueEnum<'ctx>,
+        name: &str,
+    ) -> Result<PointerValue<'ctx>, CompilerError> {
+        let ptr = self
+            .builder
+            .build_alloca(value.get_type(), name)
+            .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
+        self.store_value(ptr, value)?;
+        Ok(ptr)
     }
 
     pub fn store_value(
@@ -92,17 +99,21 @@ impl<'ctx> Builder<'ctx> {
         Ok(())
     }
 
+    pub fn get_new_ptr(&self) -> PointerType<'ctx> {
+        self.context.ptr_type(AddressSpace::default())
+    }
+
     fn declare_function(
         &self,
         function: &ast::Function,
         module: &Module<'ctx>,
     ) -> FunctionValue<'ctx> {
-        let function_ptr_type = self.get_pointer(&function.typing);
+        let function_ptr_type = self.get_new_ptr();
 
         let args = function
             .params
             .iter()
-            .map(|t| self.get_pointer(&t.typing).into())
+            .map(|t| self.context.ptr_type(AddressSpace::default()).into())
             .collect::<Vec<BasicMetadataTypeEnum>>();
 
         let llvm_function = function_ptr_type.fn_type(&args, false);
@@ -173,7 +184,7 @@ impl<'ctx> Builder<'ctx> {
         }
     }
 
-    pub fn return_statement(&self, value: &BasicValueEnum<'ctx>) -> Result<(), CompilerError> {
+    pub fn return_statement(&self, value: &PointerValue<'ctx>) -> Result<(), CompilerError> {
         self.builder
             .build_return(Some(value))
             .map_err(|e| CompilerError::LLVM(format!("{}", e)))?;

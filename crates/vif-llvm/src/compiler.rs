@@ -14,8 +14,11 @@ use inkwell::values::BasicValue;
 use inkwell::values::BasicValueEnum;
 use inkwell::values::FunctionValue;
 use inkwell::values::IntMathValue;
+use inkwell::values::PointerValue;
+use inkwell::AddressSpace;
 use std::any::Any;
 use std::collections::HashMap;
+use std::net::AddrParseError;
 use std::path::Path;
 
 use vif_loader::log;
@@ -61,12 +64,12 @@ impl<'ctx> LLVMValue<'ctx> {
 
 #[derive(Debug, Clone)]
 struct StoredVariable<'ctx> {
-    ptr: BasicValueEnum<'ctx>,
+    ptr: PointerValue<'ctx>,
     // v: &'function ast::Variable,
 }
 
 impl<'ctx> StoredVariable<'ctx> {
-    fn new(ptr: BasicValueEnum<'ctx>) -> Self {
+    fn new(ptr: PointerValue<'ctx>) -> Self {
         Self { ptr }
     }
 }
@@ -95,7 +98,7 @@ impl<'ctx> Variables<'ctx> {
         }
     }
 
-    fn add(&mut self, var_name: String, value: BasicValueEnum<'ctx>) {
+    fn add(&mut self, var_name: String, value: PointerValue<'ctx>) {
         self.data.insert(var_name, StoredVariable::new(value));
     }
 
@@ -210,7 +213,9 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             .iter()
             .zip(function.params.iter())
         {
-            store.variables.add(param.name.to_owned(), value.clone());
+            store
+                .variables
+                .add(param.name.to_owned(), value.into_pointer_value().clone());
         }
 
         let block = self
@@ -251,8 +256,11 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     }
 
     pub fn add_return(&self) -> Result<(), CompilerError> {
-        self.llvm_builder
-            .return_statement(&self.llvm_builder.value_int(1))
+        self.llvm_builder.return_statement(
+            &self
+                .llvm_builder
+                .allocate_and_store_value(self.llvm_builder.value_int(1), "")?,
+        )
     }
 
     pub fn print_module_to_file(&self, path: &str) -> Result<(), CompilerError> {
@@ -311,8 +319,11 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         store: &mut Store<'ctx>,
     ) -> Result<(), CompilerError> {
         let value = self.expression(&token.value, store)?;
-        self.llvm_builder
-            .return_statement(&value.get_basic_value_enum())
+        self.llvm_builder.return_statement(
+            &self
+                .llvm_builder
+                .allocate_and_store_value(value.get_basic_value_enum(), "")?,
+        )
     }
 
     pub fn call(
@@ -325,15 +336,27 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             .arguments
             .iter()
             .map(|e| self.expression(e, store).unwrap())
-            .map(|e| BasicMetadataValueEnum::from(e.get_basic_value_enum()))
+            .map(|e| {
+                BasicMetadataValueEnum::from(
+                    self.llvm_builder
+                        .allocate_and_store_value(e.get_basic_value_enum(), "")
+                        .unwrap(),
+                )
+            })
             .collect::<Vec<BasicMetadataValueEnum>>();
 
         if function_value.get_name().to_str().unwrap() == "printf" {
             let s_fmt = self
                 .llvm_builder
                 .builder
-                .build_global_string_ptr("%s\n", "format_str")
+                .build_global_string_ptr("%d\n", "format_str")
                 .unwrap();
+            args = token
+                .arguments
+                .iter()
+                .map(|e| self.expression(e, store).unwrap())
+                .map(|e| BasicMetadataValueEnum::from(e.get_basic_value_enum()))
+                .collect::<Vec<BasicMetadataValueEnum>>();
             args.insert(
                 0,
                 BasicMetadataValueEnum::PointerValue(s_fmt.as_pointer_value()),
@@ -670,10 +693,8 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
                     CompilerError::Unknown(format!("Variable unknown: {}", value_left.get_name()))
                 })?;
                 let new_value = self.llvm_builder.add(value_left, value_right).unwrap();
-                self.llvm_builder.store_value(
-                    ptr.ptr.into_pointer_value(),
-                    new_value.get_basic_value_enum(),
-                )?;
+                self.llvm_builder
+                    .store_value(ptr.ptr, new_value.get_basic_value_enum())?;
                 Ok(new_value)
             }
             ast::Operator::MinusEqual => {
@@ -682,10 +703,8 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
                     CompilerError::Unknown(format!("Variable unknown: {}", value_left.get_name()))
                 })?;
                 let new_value = self.llvm_builder.sub(value_left, value_right).unwrap();
-                self.llvm_builder.store_value(
-                    ptr.ptr.into_pointer_value(),
-                    new_value.get_basic_value_enum(),
-                )?;
+                self.llvm_builder
+                    .store_value(ptr.ptr, new_value.get_basic_value_enum())?;
                 Ok(new_value)
             }
 
@@ -695,10 +714,8 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
                     CompilerError::Unknown(format!("Variable unknown: {}", value_left.get_name()))
                 })?;
                 let new_value = self.llvm_builder.divide(value_left, value_right).unwrap();
-                self.llvm_builder.store_value(
-                    ptr.ptr.into_pointer_value(),
-                    new_value.get_basic_value_enum(),
-                )?;
+                self.llvm_builder
+                    .store_value(ptr.ptr, new_value.get_basic_value_enum())?;
                 Ok(new_value)
             }
             ast::Operator::MultiplyEqual => {
@@ -707,10 +724,8 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
                     CompilerError::Unknown(format!("Variable unknown: {}", value_left.get_name()))
                 })?;
                 let new_value = self.llvm_builder.multiply(value_left, value_right).unwrap();
-                self.llvm_builder.store_value(
-                    ptr.ptr.into_pointer_value(),
-                    new_value.get_basic_value_enum(),
-                )?;
+                self.llvm_builder
+                    .store_value(ptr.ptr, new_value.get_basic_value_enum())?;
                 Ok(new_value)
             }
         }
@@ -762,7 +777,11 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
 
         if let Some(ptr) = store.variables.get(var_name.to_owned()) {
             self.llvm_builder
-                .load_variable(var_name, &ptr.ptr, self.context.i64_type())
+                .load_variable(
+                    var_name,
+                    &ptr.ptr.as_basic_value_enum(),
+                    self.context.i64_type(),
+                )
                 .and_then(|v| Ok(LLVMValue::BasicValueEnum(v)))
         } else {
             Err(CompilerError::Unknown(format!(
