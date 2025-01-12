@@ -79,11 +79,16 @@ impl<'ctx> Builder<'ctx> {
         value: BasicValueEnum<'ctx>,
         name: &str,
     ) -> Result<PointerValue<'ctx>, CompilerError> {
+        if let BasicValueEnum::PointerValue(ptr) = value {
+            return Ok(ptr);
+        };
+
         let ptr = self
             .builder
             .build_alloca(value.get_type(), name)
             .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
         self.store_value(ptr, value)?;
+
         Ok(ptr)
     }
 

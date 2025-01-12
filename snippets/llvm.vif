@@ -1,7 +1,6 @@
 def say_hi(v: int):
-	print(v)
 	return None
 
 var g = 1
-say_hi(g)
+print(say_hi(g))
 

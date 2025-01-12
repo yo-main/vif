@@ -318,6 +318,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         token: &'function ast::Return,
         store: &mut Store<'ctx>,
     ) -> Result<(), CompilerError> {
+        println!("return statement");
         let value = self.expression(&token.value, store)?;
         self.llvm_builder.return_statement(
             &self
@@ -332,18 +333,14 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         store: &mut Store<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         let function_value = self.expression(&token.callee, store)?.get_function_value();
-        let mut args = token
+        println!("Call me: {}", function_value.get_name().to_string_lossy());
+        let args_value = token
             .arguments
             .iter()
             .map(|e| self.expression(e, store).unwrap())
-            .map(|e| {
-                BasicMetadataValueEnum::from(
-                    self.llvm_builder
-                        .allocate_and_store_value(e.get_basic_value_enum(), "")
-                        .unwrap(),
-                )
-            })
-            .collect::<Vec<BasicMetadataValueEnum>>();
+            .collect::<Vec<LLVMValue>>();
+
+        let mut args;
 
         if function_value.get_name().to_str().unwrap() == "printf" {
             let s_fmt = self
@@ -351,16 +348,25 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
                 .builder
                 .build_global_string_ptr("%d\n", "format_str")
                 .unwrap();
-            args = token
-                .arguments
+            args = args_value
                 .iter()
-                .map(|e| self.expression(e, store).unwrap())
                 .map(|e| BasicMetadataValueEnum::from(e.get_basic_value_enum()))
                 .collect::<Vec<BasicMetadataValueEnum>>();
             args.insert(
                 0,
                 BasicMetadataValueEnum::PointerValue(s_fmt.as_pointer_value()),
             )
+        } else {
+            args = args_value
+                .iter()
+                .map(|e| {
+                    BasicMetadataValueEnum::from(
+                        self.llvm_builder
+                            .allocate_and_store_value(e.get_basic_value_enum(), "")
+                            .unwrap(),
+                    )
+                })
+                .collect::<Vec<BasicMetadataValueEnum>>();
         }
 
         let value = self.llvm_builder.call(
