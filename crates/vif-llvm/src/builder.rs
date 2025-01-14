@@ -1,14 +1,138 @@
-use crate::compiler::LLVMValue;
+use std::any::Any;
+
 use crate::error::CompilerError;
-use inkwell::llvm_sys::LLVMCallConv;
+use inkwell::llvm_sys::{LLVMCallConv, LLVMValueKind};
 use inkwell::module::Module;
 use inkwell::types::{AnyType, BasicMetadataTypeEnum, BasicType, BasicTypeEnum, PointerType};
 use inkwell::values::{
-    AsValueRef, BasicMetadataValueEnum, BasicValueEnum, FunctionValue, PointerValue,
+    AnyValue, AsValueRef, BasicMetadataValueEnum, BasicValue, BasicValueEnum, FunctionValue,
+    PointerValue,
 };
 use inkwell::AddressSpace;
-use vif_objects::ast;
+use vif_objects::ast::{self, Typing};
 
+#[derive(Clone, Debug)]
+pub struct VariablePointer<'ctx> {
+    ptr: PointerValue<'ctx>,
+    typing: Typing,
+}
+
+impl<'ctx> VariablePointer<'ctx> {
+    pub fn get_basic_value_enum(&self) -> BasicMetadataValueEnum<'ctx> {
+        BasicMetadataValueEnum::PointerValue(self.ptr)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct FunctionPointer<'ctx> {
+    ptr: FunctionValue<'ctx>,
+    typing: Typing,
+}
+
+impl<'ctx> FunctionPointer<'ctx> {
+    pub fn get_function_parameters(&self) -> Vec<PointerValue<'ctx>> {
+        self.ptr
+            .get_params()
+            .iter()
+            .map(|p| p.into_pointer_value())
+            .collect()
+    }
+}
+
+#[derive(Clone, Debug)]
+struct RawValue<'ctx> {
+    value: BasicValueEnum<'ctx>,
+    typing: Typing,
+}
+
+impl<'ctx> RawValue<'ctx> {
+    fn new(value: BasicValueEnum<'ctx>, typing: Typing) -> Self {
+        RawValue { value, typing }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum LLVMValue<'ctx> {
+    RawValue(RawValue<'ctx>),
+    Variable(VariablePointer<'ctx>),
+    Function(FunctionPointer<'ctx>),
+}
+
+impl<'ctx> std::fmt::Display for LLVMValue<'ctx> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::RawValue(r) => write!(f, "RawValue {}", r.value),
+            Self::Variable(v) => write!(f, "Variable {}", v.ptr),
+            Self::Function(func) => write!(f, "Function {}", func.ptr),
+        }
+    }
+}
+
+impl<'ctx> LLVMValue<'ctx> {
+    pub fn new_value(value: BasicValueEnum<'ctx>, typing: Typing) -> Self {
+        LLVMValue::RawValue(RawValue::new(value, typing))
+    }
+
+    pub fn new_function(function: FunctionValue<'ctx>, typing: Typing) -> Self {
+        LLVMValue::Function(FunctionPointer {
+            ptr: function,
+            typing,
+        })
+    }
+
+    pub fn new_variable(variable: PointerValue<'ctx>, typing: Typing) -> Self {
+        LLVMValue::Variable(VariablePointer {
+            ptr: variable,
+            typing,
+        })
+    }
+
+    pub fn get_variable(self) -> VariablePointer<'ctx> {
+        match self {
+            Self::Variable(v) => v,
+            t => unreachable!("Not a variable: {}", t),
+        }
+    }
+
+    pub fn get_function_value(&self) -> &FunctionPointer<'ctx> {
+        match self {
+            Self::Function(f) => f,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn as_pointer(&self) -> PointerValue {
+        match self {
+            Self::RawValue(_) => unreachable!(),
+            Self::Variable(v) => v.ptr,
+            Self::Function(f) => f.ptr.as_global_value().as_pointer_value(),
+        }
+    }
+
+    pub fn as_value(&self) -> BasicValueEnum<'ctx> {
+        match self {
+            Self::RawValue(v) => v.value,
+            Self::Variable(v) => unreachable!(),
+            Self::Function(f) => unreachable!(),
+        }
+    }
+
+    pub fn get_name(&self) -> String {
+        match self {
+            Self::RawValue(_) => "raw value".to_owned(), // or unreacheable?
+            Self::Variable(v) => v.ptr.get_name().to_str().unwrap().to_owned(),
+            Self::Function(f) => f.ptr.get_name().to_str().unwrap().to_owned(),
+        }
+    }
+
+    pub fn get_typing(&self) -> Typing {
+        match self {
+            Self::RawValue(v) => v.typing.clone(),
+            Self::Variable(v) => v.typing.clone(),
+            Self::Function(f) => f.typing.clone(),
+        }
+    }
+}
 pub struct Builder<'ctx> {
     pub context: &'ctx inkwell::context::Context,
     pub builder: inkwell::builder::Builder<'ctx>,
@@ -23,6 +147,22 @@ impl<'ctx> Builder<'ctx> {
     }
     pub fn create_module(&self, module_name: &str) -> inkwell::module::Module {
         self.context.create_module(module_name)
+    }
+
+    fn get_llvm_type(&self, typing: &ast::Typing) -> inkwell::types::BasicTypeEnum<'ctx> {
+        match &typing.r#type {
+            ast::Type::Int => self.context.i64_type().as_basic_type_enum(),
+            ast::Type::Float => self.context.f64_type().as_basic_type_enum(),
+            ast::Type::String => self
+                .context
+                .ptr_type(AddressSpace::default())
+                .as_basic_type_enum(),
+            ast::Type::Bool => self.context.i64_type().as_basic_type_enum(),
+            ast::Type::None => self.context.i64_type().as_basic_type_enum(),
+            ast::Type::Callable(c) => self.get_pointer(&c.output),
+            ast::Type::Unknown => panic!("cannot convert unknown to llvm type"),
+            ast::Type::KeyWord => panic!("cannot convert keyword to llvm type"),
+        }
     }
 
     fn get_pointer(&self, typing: &ast::Typing) -> inkwell::types::BasicTypeEnum<'ctx> {
@@ -67,29 +207,37 @@ impl<'ctx> Builder<'ctx> {
         &self,
         token: &ast::Variable,
         value: LLVMValue<'ctx>,
-    ) -> Result<PointerValue<'ctx>, CompilerError> {
-        match value {
-            LLVMValue::BasicValueEnum(v) => self.allocate_and_store_value(v, token.name.as_str()),
-            LLVMValue::FunctionValue(_) => unimplemented!(),
-        }
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        let v = match value {
+            LLVMValue::RawValue(v) => v.value,
+            LLVMValue::Variable(v) => v.ptr.as_basic_value_enum(),
+            LLVMValue::Function(f) => f
+                .ptr
+                .as_global_value()
+                .as_pointer_value()
+                .as_basic_value_enum(),
+        };
+        self.allocate_and_store_value(v, token.name.as_str(), token.typing.clone())
     }
 
     pub fn allocate_and_store_value(
         &self,
         value: BasicValueEnum<'ctx>,
         name: &str,
-    ) -> Result<PointerValue<'ctx>, CompilerError> {
-        if let BasicValueEnum::PointerValue(ptr) = value {
-            return Ok(ptr);
+        typing: Typing,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        let ptr = if let BasicValueEnum::PointerValue(p) = value {
+            p
+        } else {
+            let ptr = self
+                .builder
+                .build_alloca(value.get_type(), name)
+                .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
+            self.store_value(ptr, value)?;
+            ptr
         };
 
-        let ptr = self
-            .builder
-            .build_alloca(value.get_type(), name)
-            .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
-        self.store_value(ptr, value)?;
-
-        Ok(ptr)
+        Ok(LLVMValue::new_variable(ptr, typing))
     }
 
     pub fn store_value(
@@ -108,37 +256,39 @@ impl<'ctx> Builder<'ctx> {
         self.context.ptr_type(AddressSpace::default())
     }
 
-    fn declare_function(
-        &self,
-        function: &ast::Function,
-        module: &Module<'ctx>,
-    ) -> FunctionValue<'ctx> {
+    fn declare_function(&self, function: &ast::Function, module: &Module<'ctx>) -> LLVMValue<'ctx> {
         let function_ptr_type = self.get_new_ptr();
 
         let args = function
             .params
             .iter()
-            .map(|t| self.context.ptr_type(AddressSpace::default()).into())
+            .map(|_| self.context.ptr_type(AddressSpace::default()).into())
             .collect::<Vec<BasicMetadataTypeEnum>>();
 
         let llvm_function = function_ptr_type.fn_type(&args, false);
-        module.add_function(function.name.as_str(), llvm_function, None)
+
+        LLVMValue::new_function(
+            module.add_function(function.name.as_str(), llvm_function, None),
+            function.typing.clone(),
+        )
     }
 
     pub fn declare_user_function(
         &self,
         function: &ast::Function,
         module: &Module<'ctx>,
-    ) -> FunctionValue<'ctx> {
+    ) -> LLVMValue<'ctx> {
         self.declare_function(function, module)
     }
 
     pub fn create_function_block(
         &self,
-        function: FunctionValue<'ctx>,
+        function: &LLVMValue<'ctx>,
         block_name: &str,
     ) -> inkwell::basic_block::BasicBlock<'ctx> {
-        let block = self.context.append_basic_block(function, block_name);
+        let block = self
+            .context
+            .append_basic_block(function.get_function_value().ptr.clone(), block_name);
 
         self.set_position_at(block);
 
@@ -171,45 +321,62 @@ impl<'ctx> Builder<'ctx> {
         }
     }
 
-    pub fn load_variable<T>(
+    pub fn load_variable(
         &self,
         name: &str,
-        value: &BasicValueEnum<'ctx>,
-        t: T,
-    ) -> Result<BasicValueEnum<'ctx>, CompilerError>
-    where
-        T: inkwell::types::BasicType<'ctx>,
-    {
+        value: &LLVMValue<'ctx>,
+    ) -> Result<BasicValueEnum<'ctx>, CompilerError> {
         match value {
-            BasicValueEnum::PointerValue(ptr) => self
+            LLVMValue::Variable(var) => self
                 .builder
-                .build_load(t, *ptr, name)
+                .build_load(self.get_llvm_type(&var.typing), var.ptr, name)
                 .map_err(|e| CompilerError::LLVM(format!("{e}"))),
-            v => Ok(v.clone()),
+            v => unreachable!(),
         }
     }
 
-    pub fn return_statement(&self, value: &PointerValue<'ctx>) -> Result<(), CompilerError> {
-        self.builder
-            .build_return(Some(value))
-            .map_err(|e| CompilerError::LLVM(format!("{}", e)))?;
+    pub fn return_statement(&self, value: &LLVMValue<'ctx>) -> Result<(), CompilerError> {
+        match value {
+            LLVMValue::RawValue(v) => {
+                let var = self.allocate_and_store_value(v.value, "", v.typing.clone())?;
+
+                self.builder
+                    .build_return(Some(&var.get_variable().ptr))
+                    .map_err(|e| CompilerError::LLVM(format!("{e}")))
+            }
+            LLVMValue::Variable(v) => self
+                .builder
+                .build_return(Some(&v.ptr))
+                .map_err(|e| CompilerError::LLVM(format!("{e}"))),
+            LLVMValue::Function(f) => self
+                .builder
+                .build_return(Some(&f.ptr.as_global_value().as_pointer_value()))
+                .map_err(|e| CompilerError::LLVM(format!("{e}"))),
+        }?;
 
         Ok(())
     }
 
     pub fn call(
         &self,
-        function: FunctionValue<'ctx>,
+        function: &FunctionPointer<'ctx>,
         args: &[BasicMetadataValueEnum<'ctx>],
         name: &str,
-    ) -> Result<Option<BasicValueEnum<'ctx>>, CompilerError> {
-        let call_value = self
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        let call_result = self
             .builder
-            .build_direct_call(function, args, name)
-            .map_err(|e| CompilerError::LLVM(format!("{e}")))?
-            .try_as_basic_value();
+            .build_direct_call(function.ptr.clone(), args, name)
+            .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
 
-        Ok(call_value.left())
+        if let Some(v) = call_result.try_as_basic_value().left() {
+            Ok(self.allocate_and_store_value(v, "", function.typing.clone())?)
+        } else {
+            self.allocate_and_store_value(
+                BasicValueEnum::IntValue(self.context.i64_type().const_int(0, false)),
+                "",
+                Typing::new(true, ast::Type::None),
+            )
+        }
     }
 
     pub fn add(
@@ -217,26 +384,18 @@ impl<'ctx> Builder<'ctx> {
         value_left: LLVMValue<'ctx>,
         value_right: LLVMValue<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
-        let l = match value_left.get_basic_value_enum() {
-            BasicValueEnum::IntValue(i) => i,
-            v => return Err(CompilerError::Unknown(format!("Cannot add {:?}", v))),
-        };
+        let l = self.load_variable("", &value_left)?;
+        let r = self.load_variable("", &value_right)?;
 
-        let r = match value_right.get_basic_value_enum() {
-            BasicValueEnum::IntValue(i) => i,
-            v => {
-                return Err(CompilerError::Unknown(format!(
-                    "Cannot add {:?} with {:?}",
-                    v, l
-                )))
-            }
-        };
+        let result = self
+            .builder
+            .build_int_add(l.into_int_value(), r.into_int_value(), "coucou")
+            .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
 
-        Ok(LLVMValue::BasicValueEnum(BasicValueEnum::IntValue(
-            self.builder
-                .build_int_add(l, r, "coucou")
-                .map_err(|e| CompilerError::LLVM(format!("{e}")))?,
-        )))
+        Ok(LLVMValue::new_value(
+            result.as_basic_value_enum(),
+            value_left.get_typing(),
+        ))
     }
 
     pub fn sub(
@@ -244,26 +403,18 @@ impl<'ctx> Builder<'ctx> {
         value_left: LLVMValue<'ctx>,
         value_right: LLVMValue<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
-        let l = match value_left.get_basic_value_enum() {
-            BasicValueEnum::IntValue(i) => i,
-            v => return Err(CompilerError::Unknown(format!("Cannot add {:?}", v))),
-        };
+        let l = self.load_variable("", &value_left)?;
+        let r = self.load_variable("", &value_right)?;
 
-        let r = match value_right.get_basic_value_enum() {
-            BasicValueEnum::IntValue(i) => i,
-            v => {
-                return Err(CompilerError::Unknown(format!(
-                    "Cannot add {:?} with {:?}",
-                    v, l
-                )))
-            }
-        };
+        let result = self
+            .builder
+            .build_int_sub(l.into_int_value(), r.into_int_value(), "coucou")
+            .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
 
-        Ok(LLVMValue::BasicValueEnum(BasicValueEnum::IntValue(
-            self.builder
-                .build_int_sub(l, r, "coucou")
-                .map_err(|e| CompilerError::LLVM(format!("{e}")))?,
-        )))
+        Ok(LLVMValue::new_value(
+            result.as_basic_value_enum(),
+            value_left.get_typing(),
+        ))
     }
 
     pub fn divide(
@@ -271,26 +422,18 @@ impl<'ctx> Builder<'ctx> {
         value_left: LLVMValue<'ctx>,
         value_right: LLVMValue<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
-        let l = match value_left.get_basic_value_enum() {
-            BasicValueEnum::IntValue(i) => i,
-            v => return Err(CompilerError::Unknown(format!("Cannot add {:?}", v))),
-        };
+        let l = self.load_variable("", &value_left)?;
+        let r = self.load_variable("", &value_right)?;
 
-        let r = match value_right.get_basic_value_enum() {
-            BasicValueEnum::IntValue(i) => i,
-            v => {
-                return Err(CompilerError::Unknown(format!(
-                    "Cannot add {:?} with {:?}",
-                    v, l
-                )))
-            }
-        };
+        let result = self
+            .builder
+            .build_int_signed_div(l.into_int_value(), r.into_int_value(), "coucou")
+            .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
 
-        Ok(LLVMValue::BasicValueEnum(BasicValueEnum::IntValue(
-            self.builder
-                .build_int_signed_div(l, r, "coucou")
-                .map_err(|e| CompilerError::LLVM(format!("{e}")))?,
-        )))
+        Ok(LLVMValue::new_value(
+            result.as_basic_value_enum(),
+            value_left.get_typing(),
+        ))
     }
 
     pub fn multiply(
@@ -298,25 +441,17 @@ impl<'ctx> Builder<'ctx> {
         value_left: LLVMValue<'ctx>,
         value_right: LLVMValue<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
-        let l = match value_left.get_basic_value_enum() {
-            BasicValueEnum::IntValue(i) => i,
-            v => return Err(CompilerError::Unknown(format!("Cannot add {:?}", v))),
-        };
+        let l = self.load_variable("", &value_left)?;
+        let r = self.load_variable("", &value_right)?;
 
-        let r = match value_right.get_basic_value_enum() {
-            BasicValueEnum::IntValue(i) => i,
-            v => {
-                return Err(CompilerError::Unknown(format!(
-                    "Cannot add {:?} with {:?}",
-                    v, l
-                )))
-            }
-        };
+        let result = self
+            .builder
+            .build_int_mul(l.into_int_value(), r.into_int_value(), "coucou")
+            .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
 
-        Ok(LLVMValue::BasicValueEnum(BasicValueEnum::IntValue(
-            self.builder
-                .build_int_mul(l, r, "coucou")
-                .map_err(|e| CompilerError::LLVM(format!("{e}")))?,
-        )))
+        Ok(LLVMValue::new_value(
+            result.as_basic_value_enum(),
+            value_left.get_typing(),
+        ))
     }
 }

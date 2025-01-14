@@ -1,6 +1,6 @@
 def say_hi(v: int):
 	return None
 
-var g = 1
+var g = 5
 print(say_hi(g))
 

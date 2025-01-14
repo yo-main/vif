@@ -128,7 +128,7 @@ impl NativeFunction {
             },
             NativeFunctionCallee::Print => Self {
                 arity: Arity::Infinite,
-                name: "print",
+                name: "printf",
                 function: callee,
             },
             NativeFunctionCallee::Sleep => Self {
