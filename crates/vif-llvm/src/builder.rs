@@ -327,11 +327,12 @@ impl<'ctx> Builder<'ctx> {
         value: &LLVMValue<'ctx>,
     ) -> Result<BasicValueEnum<'ctx>, CompilerError> {
         match value {
+            LLVMValue::RawValue(r) => Ok(r.value.clone()),
             LLVMValue::Variable(var) => self
                 .builder
                 .build_load(self.get_llvm_type(&var.typing), var.ptr, name)
                 .map_err(|e| CompilerError::LLVM(format!("{e}"))),
-            v => unreachable!(),
+            v => unreachable!("Not a variable: {v}"),
         }
     }
 
