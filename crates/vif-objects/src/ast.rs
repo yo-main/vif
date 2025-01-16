@@ -229,6 +229,18 @@ impl Type {
     pub fn as_string(&self) -> String {
         format!("{self}")
     }
+
+    pub fn printf_formatter(&self) -> &str {
+        match self {
+            Self::Int => "%d ",
+            Self::Float => "%f ",
+            Self::None => "None ",
+            Self::Bool => "%b ",
+            Self::String => "%s ",
+            Self::Callable(f) => f.output.r#type.printf_formatter(),
+            _ => " %s",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Eq)]

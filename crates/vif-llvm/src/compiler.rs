@@ -329,14 +329,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
                 .iter()
                 .map(|e| {
                     let value = self.expression(e, store).unwrap();
-                    match value.get_typing().r#type {
-                        ast::Type::Int => str_fmt.push_str("%d "),
-                        ast::Type::Float => str_fmt.push_str("%f "),
-                        ast::Type::None => str_fmt.push_str("None "),
-                        ast::Type::Bool => str_fmt.push_str("%b "),
-                        ast::Type::String => str_fmt.push_str("%s "),
-                        _ => str_fmt.push_str(" %s"),
-                    };
+                    str_fmt.push_str(value.get_typing().r#type.printf_formatter());
                     value
                 })
                 .map(|e| {
@@ -360,6 +353,13 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
                 .arguments
                 .iter()
                 .map(|e| self.expression(e, store).unwrap())
+                .map(|e| match e {
+                    LLVMValue::RawValue(_) => self
+                        .llvm_builder
+                        .allocate_and_store_value(e.as_value(), "", e.get_typing())
+                        .unwrap(),
+                    o => o,
+                })
                 .map(|e| BasicMetadataValueEnum::from(e.get_variable().get_basic_value_enum()))
                 .collect::<Vec<BasicMetadataValueEnum>>();
         }

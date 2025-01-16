@@ -1,7 +1,7 @@
-# def say_hi(v: int):
-# 	var v = 1
-# 	return v 
+def say_hi(v: int):
+	var v = 1
+	return v 
 
-# var g = 5
-print(7)
+var g = 5
+print(say_hi(3))
 

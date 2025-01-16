@@ -41,7 +41,7 @@ impl<'ctx> FunctionPointer<'ctx> {
 }
 
 #[derive(Clone, Debug)]
-struct RawValue<'ctx> {
+pub struct RawValue<'ctx> {
     value: BasicValueEnum<'ctx>,
     typing: Typing,
 }
@@ -88,9 +88,9 @@ impl<'ctx> LLVMValue<'ctx> {
         })
     }
 
-    pub fn get_variable(self) -> VariablePointer<'ctx> {
+    pub fn get_variable(&self) -> VariablePointer<'ctx> {
         match self {
-            Self::Variable(v) => v,
+            Self::Variable(v) => v.clone(),
             t => unreachable!("Not a variable: {}", t),
         }
     }
