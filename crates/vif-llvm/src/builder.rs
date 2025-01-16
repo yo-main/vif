@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::borrow::Borrow;
 
 use crate::error::CompilerError;
 use inkwell::llvm_sys::{LLVMCallConv, LLVMValueKind};
@@ -328,10 +329,13 @@ impl<'ctx> Builder<'ctx> {
     ) -> Result<BasicValueEnum<'ctx>, CompilerError> {
         match value {
             LLVMValue::RawValue(r) => Ok(r.value.clone()),
-            LLVMValue::Variable(var) => self
-                .builder
-                .build_load(self.get_llvm_type(&var.typing), var.ptr, name)
-                .map_err(|e| CompilerError::LLVM(format!("{e}"))),
+            LLVMValue::Variable(var) => match value.get_typing().r#type {
+                ast::Type::String => Ok(var.ptr.as_basic_value_enum()),
+                _ => self
+                    .builder
+                    .build_load(self.get_llvm_type(&var.typing), var.ptr, name)
+                    .map_err(|e| CompilerError::LLVM(format!("{e}"))),
+            },
             v => unreachable!("Not a variable: {v}"),
         }
     }

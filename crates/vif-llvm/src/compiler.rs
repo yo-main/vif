@@ -323,21 +323,34 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         let mut args;
 
         if function_value.get_name() == "printf" {
-            let s_fmt = self
-                .llvm_builder
-                .builder
-                .build_global_string_ptr("%d\n", "format_str")
-                .unwrap();
+            let mut str_fmt = String::new();
             args = token
                 .arguments
                 .iter()
-                .map(|e| self.expression(e, store).unwrap())
+                .map(|e| {
+                    let value = self.expression(e, store).unwrap();
+                    match value.get_typing().r#type {
+                        ast::Type::Int => str_fmt.push_str("%d "),
+                        ast::Type::Float => str_fmt.push_str("%f "),
+                        ast::Type::None => str_fmt.push_str("None "),
+                        ast::Type::Bool => str_fmt.push_str("%b "),
+                        ast::Type::String => str_fmt.push_str("%s "),
+                        _ => str_fmt.push_str(" %s"),
+                    };
+                    value
+                })
                 .map(|e| {
                     BasicMetadataValueEnum::from(
                         self.llvm_builder.load_variable("", &e.clone()).unwrap(),
                     )
                 })
                 .collect::<Vec<BasicMetadataValueEnum>>();
+            str_fmt.push_str("\n");
+            let s_fmt = self
+                .llvm_builder
+                .builder
+                .build_global_string_ptr(str_fmt.as_str(), "format_str")
+                .unwrap();
             args.insert(
                 0,
                 BasicMetadataValueEnum::PointerValue(s_fmt.as_pointer_value()),
