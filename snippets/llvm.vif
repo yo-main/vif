@@ -1,7 +1,6 @@
 def say_hi(v: int):
-	var v = 1
 	return v 
 
 var g = 5
-print(say_hi(3))
+print(say_hi("coucou"))
 

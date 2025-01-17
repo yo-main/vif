@@ -253,7 +253,13 @@ where
                                 Signature::Parameters(params) => {
                                     for (param, arg) in params.iter_mut().zip(call.arguments.iter())
                                     {
-                                        param.if_unknown_set_to(arg.typing.r#type.clone())
+                                        if param.r#type != arg.typing.r#type {
+                                            return Err(IncompatibleTypes::new(
+                                                param.r#type.as_string(),
+                                                arg.typing.r#type.as_string(),
+                                                expr.span.clone(),
+                                            ));
+                                        }
                                     }
                                 }
                                 _ => (),

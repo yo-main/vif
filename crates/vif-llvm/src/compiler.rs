@@ -307,7 +307,6 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         token: &'function ast::Return,
         store: &mut Store<'ctx>,
     ) -> Result<(), CompilerError> {
-        println!("return statement");
         let value = self.expression(&token.value, store)?;
         self.llvm_builder.return_statement(&value)
     }
@@ -318,7 +317,6 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         store: &mut Store<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         let function_value = self.expression(&token.callee, store)?;
-        println!("Call me: {}", function_value.get_name());
 
         let mut args;
 
