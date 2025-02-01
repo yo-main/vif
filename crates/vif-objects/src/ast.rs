@@ -241,6 +241,13 @@ impl Type {
             _ => " %s",
         }
     }
+
+    pub fn get_concrete_type(&self) -> Self {
+        match self {
+            Self::Callable(c) => c.output.r#type.get_concrete_type().clone(),
+            v => v.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Eq)]

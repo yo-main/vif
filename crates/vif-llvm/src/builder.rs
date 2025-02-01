@@ -329,7 +329,7 @@ impl<'ctx> Builder<'ctx> {
     ) -> Result<BasicValueEnum<'ctx>, CompilerError> {
         match value {
             LLVMValue::RawValue(r) => Ok(r.value.clone()),
-            LLVMValue::Variable(var) => match value.get_typing().r#type {
+            LLVMValue::Variable(var) => match value.get_typing().r#type.get_concrete_type() {
                 ast::Type::String => Ok(var.ptr.as_basic_value_enum()),
                 _ => self
                     .builder
