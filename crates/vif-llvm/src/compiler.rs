@@ -729,14 +729,16 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             ast::Operator::Divide => self.llvm_builder.divide(value_left, value_right),
             ast::Operator::Multiply => self.llvm_builder.multiply(value_left, value_right),
             ast::Operator::Equal => self.llvm_builder.equal(value_left, value_right),
+            ast::Operator::Greater => self.llvm_builder.greater(value_left, value_right),
+            ast::Operator::GreaterEqual => {
+                self.llvm_builder.greater_or_equal(value_left, value_right)
+            }
+            ast::Operator::BangEqual => self.llvm_builder.not_equal(value_left, value_right),
+            ast::Operator::Less => self.llvm_builder.less(value_left, value_right),
+            ast::Operator::LessEqual => self.llvm_builder.less_or_equal(value_left, value_right),
+            ast::Operator::Comma => unimplemented!(),
+            ast::Operator::Modulo => self.llvm_builder.modulo(value_left, value_right),
             _ => unreachable!(),
-            // ast::Operator::BangEqual => OpCode::NotEqual(reference),
-            // ast::Operator::Less => OpCode::Less(reference),
-            // ast::Operator::LessEqual => OpCode::LessOrEqual(reference),
-            // ast::Operator::Greater => OpCode::Greater(reference),
-            // ast::Operator::GreaterEqual => OpCode::GreaterOrEqual(reference),
-            // ast::Operator::Comma => OpCode::NotImplemented,
-            // ast::Operator::Modulo => OpCode::Modulo(reference),
 
             // might have to transform them earlier because we don't know the ptr to update here
             ast::Operator::PlusEqual => {

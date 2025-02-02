@@ -2,11 +2,18 @@ def coucou(v: int):
 	if v == 1:
 		print(1)
 		print("YAY YAY")
+	elif v > 4:
+		print("more than 4")
+	elif v >= 4:
+		print("equal to 4")
+	elif v <= 3:
+		print("less or equal than 3")
+		# coucou(v + 1)
 	else:
 		print(0)
 		print("YAY")
 
-coucou(1)
+coucou(2)
 
 print("ALLEZ")
 

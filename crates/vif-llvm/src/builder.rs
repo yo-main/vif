@@ -549,4 +549,153 @@ impl<'ctx> Builder<'ctx> {
             value_left.get_typing(),
         ))
     }
+
+    pub fn greater(
+        &self,
+        value_left: LLVMValue<'ctx>,
+        value_right: LLVMValue<'ctx>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        let l = self.load_llvm_value("", &value_left)?;
+        let r = self.load_llvm_value("", &value_right)?;
+
+        let result = match (l, r) {
+            (BasicValueEnum::IntValue(i), BasicValueEnum::IntValue(j)) => self
+                .builder
+                .build_int_compare(inkwell::IntPredicate::SGT, i, j, ""),
+            (BasicValueEnum::FloatValue(i), BasicValueEnum::FloatValue(j)) => self
+                .builder
+                .build_float_compare(inkwell::FloatPredicate::OGT, i, j, ""),
+            _ => unimplemented!(),
+        }
+        .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
+
+        Ok(LLVMValue::new_value(
+            result.as_basic_value_enum(),
+            value_left.get_typing(),
+        ))
+    }
+
+    pub fn greater_or_equal(
+        &self,
+        value_left: LLVMValue<'ctx>,
+        value_right: LLVMValue<'ctx>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        let l = self.load_llvm_value("", &value_left)?;
+        let r = self.load_llvm_value("", &value_right)?;
+
+        let result = match (l, r) {
+            (BasicValueEnum::IntValue(i), BasicValueEnum::IntValue(j)) => self
+                .builder
+                .build_int_compare(inkwell::IntPredicate::SGE, i, j, ""),
+            (BasicValueEnum::FloatValue(i), BasicValueEnum::FloatValue(j)) => self
+                .builder
+                .build_float_compare(inkwell::FloatPredicate::OGE, i, j, ""),
+            _ => unimplemented!(),
+        }
+        .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
+
+        Ok(LLVMValue::new_value(
+            result.as_basic_value_enum(),
+            value_left.get_typing(),
+        ))
+    }
+
+    pub fn not_equal(
+        &self,
+        value_left: LLVMValue<'ctx>,
+        value_right: LLVMValue<'ctx>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        let l = self.load_llvm_value("", &value_left)?;
+        let r = self.load_llvm_value("", &value_right)?;
+
+        let result = match (l, r) {
+            (BasicValueEnum::IntValue(i), BasicValueEnum::IntValue(j)) => self
+                .builder
+                .build_int_compare(inkwell::IntPredicate::NE, i, j, ""),
+            (BasicValueEnum::FloatValue(i), BasicValueEnum::FloatValue(j)) => self
+                .builder
+                .build_float_compare(inkwell::FloatPredicate::ONE, i, j, ""),
+            _ => unimplemented!(),
+        }
+        .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
+
+        Ok(LLVMValue::new_value(
+            result.as_basic_value_enum(),
+            value_left.get_typing(),
+        ))
+    }
+
+    pub fn less(
+        &self,
+        value_left: LLVMValue<'ctx>,
+        value_right: LLVMValue<'ctx>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        let l = self.load_llvm_value("", &value_left)?;
+        let r = self.load_llvm_value("", &value_right)?;
+
+        let result = match (l, r) {
+            (BasicValueEnum::IntValue(i), BasicValueEnum::IntValue(j)) => self
+                .builder
+                .build_int_compare(inkwell::IntPredicate::SLT, i, j, ""),
+            (BasicValueEnum::FloatValue(i), BasicValueEnum::FloatValue(j)) => self
+                .builder
+                .build_float_compare(inkwell::FloatPredicate::OLT, i, j, ""),
+            _ => unimplemented!(),
+        }
+        .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
+
+        Ok(LLVMValue::new_value(
+            result.as_basic_value_enum(),
+            value_left.get_typing(),
+        ))
+    }
+
+    pub fn less_or_equal(
+        &self,
+        value_left: LLVMValue<'ctx>,
+        value_right: LLVMValue<'ctx>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        let l = self.load_llvm_value("", &value_left)?;
+        let r = self.load_llvm_value("", &value_right)?;
+
+        let result = match (l, r) {
+            (BasicValueEnum::IntValue(i), BasicValueEnum::IntValue(j)) => self
+                .builder
+                .build_int_compare(inkwell::IntPredicate::SLE, i, j, ""),
+            (BasicValueEnum::FloatValue(i), BasicValueEnum::FloatValue(j)) => self
+                .builder
+                .build_float_compare(inkwell::FloatPredicate::OLE, i, j, ""),
+            _ => unimplemented!(),
+        }
+        .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
+
+        Ok(LLVMValue::new_value(
+            result.as_basic_value_enum(),
+            value_left.get_typing(),
+        ))
+    }
+
+    pub fn modulo(
+        &self,
+        value_left: LLVMValue<'ctx>,
+        value_right: LLVMValue<'ctx>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        let l = self.load_llvm_value("", &value_left)?;
+        let r = self.load_llvm_value("", &value_right)?;
+
+        let result = match (l, r) {
+            (BasicValueEnum::IntValue(i), BasicValueEnum::IntValue(j)) => self
+                .builder
+                .build_int_signed_rem(i, j, "")
+                .and_then(|v| Ok(v.as_basic_value_enum())),
+            (BasicValueEnum::FloatValue(i), BasicValueEnum::FloatValue(j)) => self
+                .builder
+                .build_float_rem(i, j, "")
+                .and_then(|v| Ok(v.as_basic_value_enum())),
+            _ => unimplemented!(),
+        }
+        .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
+
+        Ok(LLVMValue::new_value(result, value_left.get_typing()))
+    }
 }
