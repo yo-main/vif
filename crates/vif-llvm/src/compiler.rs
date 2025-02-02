@@ -210,7 +210,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             );
         }
 
-        let block = self
+        let entry_block = self
             .llvm_builder
             .create_function_block(&function_value, "entry");
 
@@ -244,14 +244,23 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             self.statement(token, store)?;
         }
 
-        Ok(block)
+        Ok(entry_block)
     }
 
-    pub fn add_return(&self) -> Result<(), CompilerError> {
+    pub fn add_return_main_function(&self) -> Result<(), CompilerError> {
         self.llvm_builder
             .return_statement(&self.llvm_builder.allocate_and_store_value(
                 self.llvm_builder.value_int(1),
                 "",
+                ast::Typing::new(true, ast::Type::Int),
+            )?)
+    }
+
+    pub fn add_return_none(&self) -> Result<(), CompilerError> {
+        self.llvm_builder
+            .return_statement(&self.llvm_builder.allocate_and_store_value(
+                self.llvm_builder.value_bool(false),
+                "return_none",
                 ast::Typing::new(true, ast::Type::Int),
             )?)
     }
@@ -499,11 +508,17 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         log::debug!("Starting function declaration");
 
         let previous_block = self.llvm_builder.get_current_block().unwrap();
+
         if self.function.name != "main" {
             let mut new_store = store.clone();
             self.compile(token, &mut new_store)?;
         } else {
             self.compile(token, store)?;
+        }
+
+        let last_block = self.llvm_builder.get_current_block().unwrap();
+        if let None = last_block.get_terminator() {
+            self.add_return_none()?;
         }
 
         self.llvm_builder.set_position_at(previous_block);

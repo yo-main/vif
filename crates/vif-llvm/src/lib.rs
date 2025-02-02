@@ -25,7 +25,7 @@ fn compile<'func, 'ctx>(
     let mut store = Store::new();
     compiler.add_builtin_functions(&mut store);
     compiler.compile(&ast_function, &mut store)?;
-    compiler.add_return()?;
+    compiler.add_return_main_function()?;
 
     Ok(compiler)
 }
