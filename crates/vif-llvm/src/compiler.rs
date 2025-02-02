@@ -7,6 +7,7 @@ use crate::NativeFunctionCallee;
 use crate::OpCode;
 
 use inkwell;
+use inkwell::execution_engine::JitFunction;
 use inkwell::types::BasicMetadataTypeEnum;
 use inkwell::types::BasicTypeEnum;
 use inkwell::values::AsValueRef;
@@ -35,6 +36,8 @@ use vif_objects::variable::InheritedLocalPos;
 use vif_objects::variable::InheritedVariable;
 use vif_objects::variable::Variable;
 use vif_objects::variable::VariableType;
+
+type FuncType = unsafe extern "C" fn() -> i32;
 
 #[derive(Debug, Clone)]
 struct StoredVariable<'ctx> {
@@ -256,6 +259,24 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         self.module
             .print_to_file(Path::new(path))
             .map_err(|e| CompilerError::LLVM(format!("{e}")))
+    }
+
+    pub fn as_string(&self) -> String {
+        self.module.print_to_string().to_string()
+    }
+
+    pub fn execute(&self, function: &ast::Function) -> Result<(), CompilerError> {
+        let engine = self
+            .module
+            .create_jit_execution_engine(inkwell::OptimizationLevel::None)
+            .map_err(|_| CompilerError::LLVM("Could not start JIT engine".to_owned()))?;
+
+        let jit_function: JitFunction<FuncType> =
+            unsafe { engine.get_function(function.name.as_str()).unwrap() };
+
+        unsafe { jit_function.call() };
+
+        Ok(())
     }
 
     // fn emit_op_code(&mut self, op_code: OpCode) {

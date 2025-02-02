@@ -1,5 +1,7 @@
-def say_hi(v: str):
+def say_hi(v: int):
+	if v > 1:
+		return 0
 	return v 
 
-print(say_hi("coucou"))
+print(say_hi(1))
 

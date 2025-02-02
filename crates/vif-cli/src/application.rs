@@ -4,13 +4,12 @@ use std::io::Write;
 use std::path::PathBuf;
 use vif_ast::build_ast;
 use vif_ast::print_ast_tree;
-use vif_compiler::disassemble_application;
-use vif_llvm::compile;
+use vif_llvm::compile_and_execute;
+use vif_llvm::get_llvm_ir;
 use vif_loader::log;
 use vif_loader::CONFIG;
 use vif_objects::ast::Function;
 use vif_typing::run_typing_checks;
-// use vif_vm::interpret;
 
 pub struct Vif {}
 
@@ -63,23 +62,14 @@ impl Vif {
             return;
         }
 
-        compile(&ast).unwrap();
-        // let (function, globals) = match compile(&ast) {
-        //     Err(e) => {
-        //         println!("Compiler error! {e}");
-        //         return;
-        //     }
-        //     Ok(r) => r,
-        // };
+        let compiled_code = get_llvm_ir(&ast).unwrap();
 
-        // if CONFIG.assembly {
-        //     disassemble_application(&function, &globals);
-        // } else {
-        // match interpret(function, globals, content) {
-        //     Ok(_) => log::info!("Interpreter says Bye"),
-        //     Err(e) => println!("{e}"),
-        // };
-        // }
+        if CONFIG.assembly {
+            println!("{}", compiled_code);
+            return;
+        }
+
+        compile_and_execute(&ast).unwrap();
     }
 
     fn build_ast(&self, content: &str) -> Result<Function, String> {
