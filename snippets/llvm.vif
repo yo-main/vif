@@ -1,9 +1,13 @@
-if False:
-	print(1)
-	print("YAY YAY")
-else:
-	print(0)
-	print("YAY")
+def coucou(v: bool):
+	if v:
+		print(1)
+		print("YAY YAY")
+	else:
+		print(0)
+		print("YAY")
+	return None
+
+coucou(True)
 
 print("ALLEZ")
 

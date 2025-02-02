@@ -354,7 +354,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
                 })
                 .map(|e| {
                     BasicMetadataValueEnum::from(
-                        self.llvm_builder.load_variable("", &e.clone()).unwrap(),
+                        self.llvm_builder.load_llvm_value("", &e.clone()).unwrap(),
                     )
                 })
                 .collect::<Vec<BasicMetadataValueEnum>>();
@@ -404,34 +404,31 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         token: &ast::Condition,
         store: &mut Store<'ctx>,
     ) -> Result<(), CompilerError> {
-        let current_block = self.llvm_builder.get_current_block().unwrap();
-
         let expression = self.expression(&token.expr, store)?;
 
-        let end_block = self.llvm_builder.create_block("");
+        let current_block = self.llvm_builder.get_current_block().unwrap();
+        let end_block = self.llvm_builder.create_block("end");
+        let then_block = self.llvm_builder.create_block("then");
+        let mut else_block = None;
 
-        let then_block = self.llvm_builder.create_block("");
+        self.llvm_builder.set_position_at(then_block);
         self.statement(&token.then, store)?;
         self.llvm_builder.goto_block(end_block)?;
 
-        // let else_jump = self.emit_jump(OpCode::Jump(self.function.chunk.code.len()));
-
-        // self.patch_jump(then_jump);
-
-        // self.emit_op_code(OpCode::Pop);
-
-        let mut else_block = current_block;
-
         if token.r#else.is_some() {
-            else_block = self.llvm_builder.create_block("");
+            else_block = Some(self.llvm_builder.create_block("else"));
+            self.llvm_builder.set_position_at(else_block.unwrap());
             self.statement(token.r#else.as_ref().unwrap(), store)?;
             self.llvm_builder.goto_block(end_block)?;
         }
 
         self.llvm_builder.set_position_at(current_block);
 
-        self.llvm_builder
-            .create_branche(expression, then_block, else_block)?;
+        self.llvm_builder.create_branche(
+            expression,
+            then_block,
+            else_block.unwrap_or(end_block),
+        )?;
 
         self.llvm_builder.set_position_at(end_block);
 

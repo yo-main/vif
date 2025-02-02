@@ -24,6 +24,10 @@ impl<'ctx> VariablePointer<'ctx> {
     pub fn get_basic_value_enum(&self) -> BasicMetadataValueEnum<'ctx> {
         BasicMetadataValueEnum::PointerValue(self.ptr)
     }
+
+    pub fn get_typing(&self) -> &Typing {
+        &self.typing
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -306,11 +310,7 @@ impl<'ctx> Builder<'ctx> {
             .get_parent()
             .unwrap();
 
-        let block = self.context.append_basic_block(function, block_name);
-
-        self.set_position_at(block);
-
-        block
+        self.context.append_basic_block(function, block_name)
     }
 
     pub fn goto_block(&self, block: BasicBlock) -> Result<(), CompilerError> {
@@ -327,9 +327,15 @@ impl<'ctx> Builder<'ctx> {
         then_block: BasicBlock<'ctx>,
         else_block: BasicBlock<'ctx>,
     ) -> Result<(), CompilerError> {
+        let value = match &expression {
+            LLVMValue::Variable(v) => self.load_variable("", v)?,
+            LLVMValue::RawValue(_) => expression.as_value(),
+            LLVMValue::Function(_) => unreachable!(),
+        };
+
         self.builder
             .build_conditional_branch(
-                expression.as_value().as_basic_value_enum().into_int_value(),
+                value.as_basic_value_enum().into_int_value(),
                 then_block,
                 else_block,
             )
@@ -373,21 +379,29 @@ impl<'ctx> Builder<'ctx> {
         }
     }
 
-    pub fn load_variable(
+    pub fn load_llvm_value(
         &self,
         name: &str,
         value: &LLVMValue<'ctx>,
     ) -> Result<BasicValueEnum<'ctx>, CompilerError> {
         match value {
             LLVMValue::RawValue(r) => Ok(r.value.clone()),
-            LLVMValue::Variable(var) => match value.get_typing().r#type.get_concrete_type() {
-                ast::Type::String => Ok(var.ptr.as_basic_value_enum()),
-                _ => self
-                    .builder
-                    .build_load(self.get_llvm_type(&var.typing), var.ptr, name)
-                    .map_err(|e| CompilerError::LLVM(format!("{e}"))),
-            },
+            LLVMValue::Variable(var) => self.load_variable(name, var),
             v => unreachable!("Not a variable: {v}"),
+        }
+    }
+
+    fn load_variable(
+        &self,
+        name: &str,
+        var: &VariablePointer<'ctx>,
+    ) -> Result<BasicValueEnum<'ctx>, CompilerError> {
+        match var.get_typing().r#type.get_concrete_type() {
+            ast::Type::String => Ok(var.ptr.as_basic_value_enum()),
+            _ => self
+                .builder
+                .build_load(self.get_llvm_type(&var.typing), var.ptr, name)
+                .map_err(|e| CompilerError::LLVM(format!("{e}"))),
         }
     }
 
@@ -440,8 +454,8 @@ impl<'ctx> Builder<'ctx> {
         value_left: LLVMValue<'ctx>,
         value_right: LLVMValue<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
-        let l = self.load_variable("", &value_left)?;
-        let r = self.load_variable("", &value_right)?;
+        let l = self.load_llvm_value("", &value_left)?;
+        let r = self.load_llvm_value("", &value_right)?;
 
         let result = self
             .builder
@@ -459,8 +473,8 @@ impl<'ctx> Builder<'ctx> {
         value_left: LLVMValue<'ctx>,
         value_right: LLVMValue<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
-        let l = self.load_variable("", &value_left)?;
-        let r = self.load_variable("", &value_right)?;
+        let l = self.load_llvm_value("", &value_left)?;
+        let r = self.load_llvm_value("", &value_right)?;
 
         let result = self
             .builder
@@ -478,8 +492,8 @@ impl<'ctx> Builder<'ctx> {
         value_left: LLVMValue<'ctx>,
         value_right: LLVMValue<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
-        let l = self.load_variable("", &value_left)?;
-        let r = self.load_variable("", &value_right)?;
+        let l = self.load_llvm_value("", &value_left)?;
+        let r = self.load_llvm_value("", &value_right)?;
 
         let result = self
             .builder
@@ -497,8 +511,8 @@ impl<'ctx> Builder<'ctx> {
         value_left: LLVMValue<'ctx>,
         value_right: LLVMValue<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
-        let l = self.load_variable("", &value_left)?;
-        let r = self.load_variable("", &value_right)?;
+        let l = self.load_llvm_value("", &value_left)?;
+        let r = self.load_llvm_value("", &value_right)?;
 
         let result = self
             .builder
