@@ -1,12 +1,12 @@
-def coucou(v: bool):
-	if v:
+def coucou(v: int):
+	if v == 1:
 		print(1)
 		print("YAY YAY")
 	else:
 		print(0)
 		print("YAY")
 
-coucou(True)
+coucou(1)
 
 print("ALLEZ")
 

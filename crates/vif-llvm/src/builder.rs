@@ -524,4 +524,29 @@ impl<'ctx> Builder<'ctx> {
             value_left.get_typing(),
         ))
     }
+
+    pub fn equal(
+        &self,
+        value_left: LLVMValue<'ctx>,
+        value_right: LLVMValue<'ctx>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        let l = self.load_llvm_value("", &value_left)?;
+        let r = self.load_llvm_value("", &value_right)?;
+
+        let result = match (l, r) {
+            (BasicValueEnum::IntValue(i), BasicValueEnum::IntValue(j)) => self
+                .builder
+                .build_int_compare(inkwell::IntPredicate::EQ, i, j, ""),
+            (BasicValueEnum::FloatValue(i), BasicValueEnum::FloatValue(j)) => self
+                .builder
+                .build_float_compare(inkwell::FloatPredicate::OEQ, i, j, ""),
+            _ => unimplemented!(),
+        }
+        .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
+
+        Ok(LLVMValue::new_value(
+            result.as_basic_value_enum(),
+            value_left.get_typing(),
+        ))
+    }
 }
