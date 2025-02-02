@@ -1,7 +1,9 @@
 use std::any::Any;
 use std::borrow::Borrow;
+use std::os::unix::process::CommandExt;
 
 use crate::error::CompilerError;
+use inkwell::basic_block::BasicBlock;
 use inkwell::llvm_sys::{LLVMCallConv, LLVMValueKind};
 use inkwell::module::Module;
 use inkwell::types::{AnyType, BasicMetadataTypeEnum, BasicType, BasicTypeEnum, PointerType};
@@ -158,8 +160,8 @@ impl<'ctx> Builder<'ctx> {
                 .context
                 .ptr_type(AddressSpace::default())
                 .as_basic_type_enum(),
-            ast::Type::Bool => self.context.i64_type().as_basic_type_enum(),
-            ast::Type::None => self.context.i64_type().as_basic_type_enum(),
+            ast::Type::Bool => self.context.bool_type().as_basic_type_enum(),
+            ast::Type::None => self.context.bool_type().as_basic_type_enum(),
             ast::Type::Callable(c) => self.get_pointer(&c.output),
             ast::Type::Unknown => panic!("cannot convert unknown to llvm type"),
             ast::Type::KeyWord => panic!("cannot convert keyword to llvm type"),
@@ -174,8 +176,8 @@ impl<'ctx> Builder<'ctx> {
                 .context
                 .ptr_type(AddressSpace::default())
                 .as_basic_type_enum(),
-            ast::Type::Bool => self.context.i64_type().as_basic_type_enum(),
-            ast::Type::None => self.context.i64_type().as_basic_type_enum(),
+            ast::Type::Bool => self.context.bool_type().as_basic_type_enum(),
+            ast::Type::None => self.context.bool_type().as_basic_type_enum(),
             ast::Type::Callable(c) => self.get_pointer(&c.output),
             ast::Type::Unknown => panic!("cannot convert unknown to llvm type"),
             ast::Type::KeyWord => panic!("cannot convert keyword to llvm type"),
@@ -296,6 +298,46 @@ impl<'ctx> Builder<'ctx> {
         block
     }
 
+    pub fn create_block(&self, block_name: &str) -> inkwell::basic_block::BasicBlock<'ctx> {
+        let function = self
+            .builder
+            .get_insert_block()
+            .unwrap()
+            .get_parent()
+            .unwrap();
+
+        let block = self.context.append_basic_block(function, block_name);
+
+        self.set_position_at(block);
+
+        block
+    }
+
+    pub fn goto_block(&self, block: BasicBlock) -> Result<(), CompilerError> {
+        self.builder
+            .build_unconditional_branch(block)
+            .map_err(|_| CompilerError::LLVM("Cannot go to block".to_owned()))?;
+
+        Ok(())
+    }
+
+    pub fn create_branche(
+        &self,
+        expression: LLVMValue<'ctx>,
+        then_block: BasicBlock<'ctx>,
+        else_block: BasicBlock<'ctx>,
+    ) -> Result<(), CompilerError> {
+        self.builder
+            .build_conditional_branch(
+                expression.as_value().as_basic_value_enum().into_int_value(),
+                then_block,
+                else_block,
+            )
+            .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
+
+        Ok(())
+    }
+
     pub fn get_current_block(&self) -> Option<inkwell::basic_block::BasicBlock<'ctx>> {
         self.builder.get_insert_block()
     }
@@ -307,6 +349,15 @@ impl<'ctx> Builder<'ctx> {
     pub fn value_int(&self, i: i64) -> BasicValueEnum<'ctx> {
         let value_type = self.context.i64_type();
         if i >= 0 {
+            BasicValueEnum::IntValue(value_type.const_int(i as u64, false))
+        } else {
+            BasicValueEnum::IntValue(value_type.const_int(i as u64, true))
+        }
+    }
+
+    pub fn value_bool(&self, i: bool) -> BasicValueEnum<'ctx> {
+        let value_type = self.context.bool_type();
+        if i {
             BasicValueEnum::IntValue(value_type.const_int(i as u64, false))
         } else {
             BasicValueEnum::IntValue(value_type.const_int(i as u64, true))

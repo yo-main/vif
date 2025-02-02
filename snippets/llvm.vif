@@ -1,7 +1,9 @@
-def say_hi(v: int):
-	if v > 1:
-		return 0
-	return v 
+if False:
+	print(1)
+	print("YAY YAY")
+else:
+	print(0)
+	print("YAY")
 
-print(say_hi(1))
+print("ALLEZ")
 

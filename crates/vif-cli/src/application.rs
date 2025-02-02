@@ -66,6 +66,7 @@ impl Vif {
 
         if CONFIG.assembly {
             println!("{}", compiled_code);
+            fs::write("here.ll", compiled_code).unwrap();
             return;
         }
 

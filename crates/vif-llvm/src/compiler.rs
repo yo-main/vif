@@ -7,6 +7,7 @@ use crate::NativeFunctionCallee;
 use crate::OpCode;
 
 use inkwell;
+use inkwell::basic_block::BasicBlock;
 use inkwell::execution_engine::JitFunction;
 use inkwell::types::BasicMetadataTypeEnum;
 use inkwell::types::BasicTypeEnum;
@@ -188,7 +189,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         &self,
         function: &'function ast::Function,
         store: &mut Store<'ctx>,
-    ) -> Result<inkwell::basic_block::BasicBlock<'ctx>, CompilerError> {
+    ) -> Result<BasicBlock<'ctx>, CompilerError> {
         let function_value = self
             .llvm_builder
             .declare_user_function(function, &self.module);
@@ -313,9 +314,9 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             ast::Stmt::Return(ret) => self.return_statement(ret, store)?,
             ast::Stmt::Function(func) => self.function_declaration(func, store)?,
             ast::Stmt::Var(var) => self.var_declaration(var, store)?,
+            ast::Stmt::Condition(cond) => self.if_statement(cond, store)?,
+            ast::Stmt::Block(blocks) => self.block(blocks, store)?,
             _ => unreachable!(),
-            // ast::Stmt::Block(blocks) => self.block(blocks),
-            // ast::Stmt::Condition(cond) => self.if_statement(cond),
             // ast::Stmt::While(whi) => self.while_statement(whi),
             // ast::Stmt::Assert(ass) => self.assert_statement(ass),
         };
@@ -398,24 +399,45 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         // )));
     }
 
-    // fn if_statement(&mut self, token: &ast::Condition) -> Result<(), CompilerError> {
-    //     log::debug!("Starting if statement");
+    fn if_statement(
+        &self,
+        token: &ast::Condition,
+        store: &mut Store<'ctx>,
+    ) -> Result<(), CompilerError> {
+        let current_block = self.llvm_builder.get_current_block().unwrap();
 
-    //     self.expression(&token.expr)?;
-    //     let then_jump = self.emit_jump(OpCode::JumpIfFalse(self.function.chunk.code.len()));
-    //     self.emit_op_code(OpCode::Pop);
-    //     self.statement(&token.then)?;
+        let expression = self.expression(&token.expr, store)?;
 
-    //     let else_jump = self.emit_jump(OpCode::Jump(self.function.chunk.code.len()));
-    //     self.patch_jump(then_jump);
-    //     self.emit_op_code(OpCode::Pop);
+        let end_block = self.llvm_builder.create_block("");
 
-    //     if token.r#else.is_some() {
-    //         self.statement(token.r#else.as_ref().unwrap())?;
-    //     }
-    //     self.patch_jump(else_jump);
-    //     Ok(())
-    // }
+        let then_block = self.llvm_builder.create_block("");
+        self.statement(&token.then, store)?;
+        self.llvm_builder.goto_block(end_block)?;
+
+        // let else_jump = self.emit_jump(OpCode::Jump(self.function.chunk.code.len()));
+
+        // self.patch_jump(then_jump);
+
+        // self.emit_op_code(OpCode::Pop);
+
+        let mut else_block = current_block;
+
+        if token.r#else.is_some() {
+            else_block = self.llvm_builder.create_block("");
+            self.statement(token.r#else.as_ref().unwrap(), store)?;
+            self.llvm_builder.goto_block(end_block)?;
+        }
+
+        self.llvm_builder.set_position_at(current_block);
+
+        self.llvm_builder
+            .create_branche(expression, then_block, else_block)?;
+
+        self.llvm_builder.set_position_at(end_block);
+
+        // self.patch_jump(else_jump);
+        Ok(())
+    }
 
     // fn assert_statement(&mut self, token: &ast::Assert) -> Result<(), CompilerError> {
     //     log::debug!("Starting assert statement");
@@ -510,13 +532,13 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     // Ok(())
     // }
 
-    // fn block(&mut self, token: &Vec<ast::Stmt>) -> Result<(), CompilerError> {
-    //     log::debug!("Block starting");
-    //     for block in token.iter() {
-    //         self.statement(block)?;
-    //     }
-    //     Ok(())
-    // }
+    fn block(&self, token: &Vec<ast::Stmt>, store: &mut Store<'ctx>) -> Result<(), CompilerError> {
+        for stmt in token.iter() {
+            self.statement(stmt, store)?;
+        }
+
+        Ok(())
+    }
 
     fn var_declaration(
         &self,
@@ -640,15 +662,15 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
                 Typing::new(false, ast::Type::Float),
             )),
             ast::Value::True => Ok(LLVMValue::new_value(
-                self.llvm_builder.value_int(1),
+                self.llvm_builder.value_bool(true),
                 Typing::new(false, ast::Type::Bool),
             )),
             ast::Value::False => Ok(LLVMValue::new_value(
-                self.llvm_builder.value_int(0),
+                self.llvm_builder.value_bool(false),
                 Typing::new(false, ast::Type::Bool),
             )),
             ast::Value::None => Ok(LLVMValue::new_value(
-                self.llvm_builder.value_int(0),
+                self.llvm_builder.value_bool(false),
                 Typing::new(false, ast::Type::None),
             )),
             ast::Value::Variable(s) => self
