@@ -278,7 +278,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     pub fn execute(&self, function: &ast::Function) -> Result<(), CompilerError> {
         let engine = self
             .module
-            .create_jit_execution_engine(inkwell::OptimizationLevel::None)
+            .create_jit_execution_engine(inkwell::OptimizationLevel::Default)
             .map_err(|_| CompilerError::LLVM("Could not start JIT engine".to_owned()))?;
 
         let jit_function: JitFunction<FuncType> =

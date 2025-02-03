@@ -459,7 +459,7 @@ impl<'ctx> Builder<'ctx> {
 
         let result = self
             .builder
-            .build_int_add(l.into_int_value(), r.into_int_value(), "coucou")
+            .build_int_add(l.into_int_value(), r.into_int_value(), "")
             .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
 
         Ok(LLVMValue::new_value(
@@ -478,7 +478,7 @@ impl<'ctx> Builder<'ctx> {
 
         let result = self
             .builder
-            .build_int_sub(l.into_int_value(), r.into_int_value(), "coucou")
+            .build_int_sub(l.into_int_value(), r.into_int_value(), "")
             .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
 
         Ok(LLVMValue::new_value(
@@ -497,7 +497,7 @@ impl<'ctx> Builder<'ctx> {
 
         let result = self
             .builder
-            .build_int_signed_div(l.into_int_value(), r.into_int_value(), "coucou")
+            .build_int_signed_div(l.into_int_value(), r.into_int_value(), "")
             .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
 
         Ok(LLVMValue::new_value(
@@ -516,7 +516,7 @@ impl<'ctx> Builder<'ctx> {
 
         let result = self
             .builder
-            .build_int_mul(l.into_int_value(), r.into_int_value(), "coucou")
+            .build_int_mul(l.into_int_value(), r.into_int_value(), "")
             .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
 
         Ok(LLVMValue::new_value(
