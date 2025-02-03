@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use vif_objects::ast::Type;
 
 pub trait TypeMerger {
@@ -41,7 +43,13 @@ impl TypeMerger for HardTypeMerger {
                 Type::Callable(_) => self.merge(right, left),
                 _ => None,
             },
-            Type::Callable(_) => self.merge(right, left),
+            Type::Callable(c1) => match right {
+                Type::Callable(c2) => self.merge(
+                    &c1.output.r#type.get_concrete_type(),
+                    &c2.output.r#type.get_concrete_type(),
+                ),
+                _ => self.merge(&c1.output.r#type.get_concrete_type(), right),
+            },
             Type::Unknown => None,
             Type::KeyWord => match right {
                 _ => unreachable!(),
@@ -84,7 +92,13 @@ impl TypeMerger for SoftTypeMerger {
                 Type::Callable(_) => self.merge(right, left),
                 _ => Some(Type::Unknown),
             },
-            Type::Callable(_) => self.merge(right, right),
+            Type::Callable(c1) => match right {
+                Type::Callable(c2) => self.merge(
+                    &c1.output.r#type.get_concrete_type(),
+                    &c2.output.r#type.get_concrete_type(),
+                ),
+                _ => self.merge(&c1.output.r#type.get_concrete_type(), right),
+            },
             Type::Unknown => Some(Type::Unknown),
             Type::KeyWord => match right {
                 _ => unreachable!(),

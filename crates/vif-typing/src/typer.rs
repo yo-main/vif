@@ -243,7 +243,7 @@ where
                 expr.typing.mutable = call.callee.typing.mutable;
                 let callable_names = get_identifier_names(&call.callee);
 
-                // update the parameters of the called function with the correct typing
+                // check function parameters typing
                 for callable_name in callable_names.iter() {
                     if let Some(function_reference) =
                         references.get_function_typing_ref(callable_name)
@@ -264,7 +264,7 @@ where
                                 }
                                 _ => (),
                             },
-                            _ => unreachable!(),
+                            _ => continue,
                         }
                     }
                 }

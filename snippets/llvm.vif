@@ -8,7 +8,7 @@ def coucou(v: int):
 		print("equal to 4")
 	elif v <= 3:
 		print("less or equal than 3")
-		# coucou(v + 1)
+		coucou(v + 1)
 	else:
 		print(0)
 		print("YAY")
