@@ -73,10 +73,9 @@ where
         let returns = function
             .body
             .iter()
-            .filter_map(|s| match s {
-                Stmt::Return(r) => Some(r),
-                _ => None,
-            })
+            .map(|b| b.get_all_returns())
+            .flatten()
+            .filter(|r| r.value.typing.r#type != Type::Unknown)
             .collect::<Vec<&Return>>();
 
         let signature =

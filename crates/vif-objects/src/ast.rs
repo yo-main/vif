@@ -189,7 +189,7 @@ impl Callable {
 
 impl std::fmt::Display for Callable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.signature)
+        write!(f, "{} -> {}", self.signature, self.output)
     }
 }
 
@@ -377,6 +377,12 @@ pub enum ExprBody {
     Call(Call),
 }
 
+impl Expr {
+    pub fn new(body: ExprBody, typing: Typing, span: Span) -> Self {
+        Expr { body, typing, span }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum Stmt {
     Expression(Box<Expr>),
@@ -389,9 +395,23 @@ pub enum Stmt {
     Assert(Assert),
 }
 
-impl Expr {
-    pub fn new(body: ExprBody, typing: Typing, span: Span) -> Self {
-        Expr { body, typing, span }
+impl Stmt {
+    pub fn get_all_returns(&self) -> Vec<&Return> {
+        match self {
+            Self::Function(f) => f
+                .body
+                .iter()
+                .map(|b| b.get_all_returns())
+                .flatten()
+                .collect(),
+            Self::Block(b) => b.iter().map(|b| b.get_all_returns()).flatten().collect(),
+            Self::Condition(c) => c.then.get_all_returns(),
+            Self::While(w) => w.body.get_all_returns(),
+            Self::Return(r) => vec![r],
+            Self::Assert(_) => Vec::new(),
+            Self::Expression(_) => Vec::new(),
+            Self::Var(_) => Vec::new(),
+        }
     }
 }
 
