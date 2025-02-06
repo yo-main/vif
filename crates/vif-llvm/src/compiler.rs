@@ -281,10 +281,9 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             .create_jit_execution_engine(inkwell::OptimizationLevel::Default)
             .map_err(|_| CompilerError::LLVM("Could not start JIT engine".to_owned()))?;
 
-        let jit_function: JitFunction<FuncType> =
-            unsafe { engine.get_function(function.name.as_str()).unwrap() };
+        let function = self.module.get_function(&function.name).unwrap();
 
-        unsafe { jit_function.call() };
+        unsafe { engine.run_function(function, &[]) };
 
         Ok(())
     }

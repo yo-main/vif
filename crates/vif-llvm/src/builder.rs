@@ -247,6 +247,26 @@ impl<'ctx> Builder<'ctx> {
         Ok(LLVMValue::new_variable(ptr, typing))
     }
 
+    pub fn mallocate_and_store_value(
+        &self,
+        value: BasicValueEnum<'ctx>,
+        name: &str,
+        typing: Typing,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        let ptr = if let BasicValueEnum::PointerValue(p) = value {
+            p
+        } else {
+            let ptr = self
+                .builder
+                .build_malloc(value.get_type(), name)
+                .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
+            self.store_value(ptr, value)?;
+            ptr
+        };
+
+        Ok(LLVMValue::new_variable(ptr, typing))
+    }
+
     pub fn store_value(
         &self,
         ptr: PointerValue<'ctx>,

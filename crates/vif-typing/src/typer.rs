@@ -88,11 +88,13 @@ where
         };
 
         for return_stmt in returns.iter() {
-            if return_stmt.value.typing.r#type != callable.output.r#type {
+            if return_stmt.value.typing.r#type.get_concrete_type()
+                != callable.output.r#type.get_concrete_type()
+            {
                 return Err(DifferentSignatureBetweenReturns::new(
                     function.name.clone(),
                     return_stmt.value.typing.clone(),
-                    function.typing.clone(),
+                    callable.output.clone(),
                     return_stmt.value.span.clone(),
                 ));
             }
