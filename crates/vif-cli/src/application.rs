@@ -4,6 +4,7 @@ use std::io::Write;
 use std::path::PathBuf;
 use vif_ast::build_ast;
 use vif_ast::print_ast_tree;
+use vif_llvm::compile_and_build_binary;
 use vif_llvm::compile_and_execute;
 use vif_llvm::get_llvm_ir;
 use vif_loader::log;
@@ -63,6 +64,11 @@ impl Vif {
         }
 
         let compiled_code = get_llvm_ir(&ast).unwrap();
+
+        if CONFIG.binary {
+            compile_and_build_binary(&ast).unwrap();
+            return;
+        }
 
         if CONFIG.assembly {
             println!("{}", compiled_code);

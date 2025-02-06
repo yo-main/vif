@@ -9,6 +9,11 @@
 
 #/target
 
+# test files
+here
+here.o
+here.ll
+
 perf.data
 perf.data.old
 flamegraph.svg

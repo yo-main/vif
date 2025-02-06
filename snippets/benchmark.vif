@@ -1,13 +1,7 @@
-def check():
-    var i = 1
-    return i
-
 def fib(n: int):
     if n <= 2:
         return n
-    var res = check()
-    return res
+    return fib(n-1)
 
 print(fib(7))
-print(5+8)
 

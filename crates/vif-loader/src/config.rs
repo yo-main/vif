@@ -13,6 +13,7 @@ pub struct Config {
     pub entrypoint: Option<PathBuf>,
     pub assembly: bool,
     pub ast: bool,
+    pub binary: bool,
 }
 
 pub fn get_config() -> Config {
@@ -24,6 +25,7 @@ pub fn get_config() -> Config {
         .and_then(|path| Some(canonicalize(path).expect("Could not parse the provided path")));
 
     let assembly = matches.get_flag("assembly");
+    let binary = matches.get_flag("binary");
     let ast = matches.get_flag("ast");
     let debug = std::env::var("DEBUG").and(Ok(true)).unwrap_or(false);
     let log_level = std::env::var("VIF_LOG_LEVEL")
@@ -40,5 +42,6 @@ pub fn get_config() -> Config {
         log_level,
         assembly,
         ast,
+        binary,
     };
 }

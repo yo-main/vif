@@ -47,3 +47,14 @@ pub fn compile_and_execute(ast_function: &vif_objects::ast::Function) -> Result<
 
     compiler.execute(&ast_function)
 }
+
+pub fn compile_and_build_binary(
+    ast_function: &vif_objects::ast::Function,
+) -> Result<(), CompilerError> {
+    let mut function = Function::new(Arity::None, ast_function.name.clone());
+    let context = inkwell::context::Context::create();
+
+    let compiler = compile(ast_function, &mut function, &context)?;
+
+    compiler.build_binary("here.o")
+}

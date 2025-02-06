@@ -9,6 +9,10 @@ use crate::OpCode;
 use inkwell;
 use inkwell::basic_block::BasicBlock;
 use inkwell::execution_engine::JitFunction;
+use inkwell::targets::FileType;
+use inkwell::targets::InitializationConfig;
+use inkwell::targets::Target;
+use inkwell::targets::TargetMachine;
 use inkwell::types::BasicMetadataTypeEnum;
 use inkwell::types::BasicTypeEnum;
 use inkwell::values::AsValueRef;
@@ -278,12 +282,38 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     pub fn execute(&self, function: &ast::Function) -> Result<(), CompilerError> {
         let engine = self
             .module
-            .create_jit_execution_engine(inkwell::OptimizationLevel::Default)
+            .create_jit_execution_engine(inkwell::OptimizationLevel::None)
             .map_err(|_| CompilerError::LLVM("Could not start JIT engine".to_owned()))?;
 
         let function = self.module.get_function(&function.name).unwrap();
 
         unsafe { engine.run_function(function, &[]) };
+
+        Ok(())
+    }
+
+    pub fn build_binary(&self, filename: &str) -> Result<(), CompilerError> {
+        Target::initialize_all(&InitializationConfig::default());
+        let target_triple = TargetMachine::get_default_triple();
+        let target = Target::from_triple(&target_triple).expect("Failed to get target");
+        let target_machine = target
+            .create_target_machine(
+                &target_triple,
+                "generic",
+                "",
+                inkwell::OptimizationLevel::None,
+                inkwell::targets::RelocMode::PIC,
+                inkwell::targets::CodeModel::Default,
+            )
+            .expect("Failed to create target machine");
+
+        target_machine
+            .write_to_file(
+                &self.module,
+                FileType::Object,
+                std::path::Path::new(filename),
+            )
+            .expect("Failed to write object file");
 
         Ok(())
     }
