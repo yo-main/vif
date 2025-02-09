@@ -6,5 +6,8 @@ pub fn run_cli() {
     setup_logging();
 
     let mut vif = application::Vif::init();
-    vif.run();
+    match vif.run() {
+        Ok(_) => (),
+        Err(e) => println!("{e}"),
+    }
 }

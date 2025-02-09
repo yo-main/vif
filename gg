@@ -1,0 +1,41 @@
+; ModuleID = 'vif'
+source_filename = "vif"
+
+@format_str = private unnamed_addr constant [5 x i8] c"%d \0A\00", align 1
+
+declare i64 @printf(ptr, ...)
+
+declare noalias ptr @malloc(i64)
+declare void @free(ptr)
+
+define i64 @main() {
+entry:
+  %n = tail call ptr @malloc(i64 8)
+  store i64 7, ptr %n, align 8
+  %fib = call i64 @fib(i64 7)
+  %printf = call i64 (ptr, ...) @printf(ptr @format_str, i64 %fib)
+
+  call void @free(ptr %n)  ; Free allocated memory
+
+  ret i64 0
+}
+
+define i64 @fib(i64 %n) {
+entry:
+  %cmp = icmp sle i64 %n, 2
+  br i1 %cmp, label %base_case, label %recursive_case
+
+base_case:
+  ret i64 1  ; Return 1 for fib(1) and fib(2)
+
+recursive_case:
+  %n1 = sub i64 %n, 1
+  %fib1 = call i64 @fib(i64 %n1)
+
+  %n2 = sub i64 %n, 2
+  %fib2 = call i64 @fib(i64 %n2)
+
+  %result = add i64 %fib1, %fib2
+  ret i64 %result
+}
+

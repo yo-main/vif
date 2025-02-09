@@ -7,26 +7,47 @@ lazy_static! {
     pub static ref CONFIG: Config = get_config();
 }
 
+pub enum Print {
+    Assembly(PathBuf),
+    Ast(PathBuf),
+}
+
+pub enum Action {
+    Build(PathBuf),
+    Execute(PathBuf),
+    ExecuteFromStdin,
+    Print(Print),
+}
+
 pub struct Config {
     pub debug: bool,
     pub log_level: log::LevelFilter,
-    pub entrypoint: Option<PathBuf>,
-    pub assembly: bool,
-    pub ast: bool,
-    pub binary: bool,
+    pub action: Action,
 }
 
 pub fn get_config() -> Config {
     let cli = cli::get_cli();
     let matches = cli.get_matches();
 
-    let entrypoint = matches
-        .get_one::<String>("entrypoint")
-        .and_then(|path| Some(canonicalize(path).expect("Could not parse the provided path")));
+    let action = match matches.subcommand() {
+        Some(("run", subcommant_matches)) => Action::Execute(PathBuf::from(
+            subcommant_matches.get_one::<String>("entrypoint").unwrap(),
+        )),
+        Some(("build", subcommand_matches)) => Action::Build(PathBuf::from(
+            subcommand_matches.get_one::<String>("entrypoint").unwrap(),
+        )),
+        Some(("print", subcommand_matches)) => {
+            let path = PathBuf::from(subcommand_matches.get_one::<PathBuf>("entrypoint").unwrap());
+            if subcommand_matches.get_flag("assembly") {
+                Action::Print(Print::Assembly(path))
+            } else {
+                Action::Print(Print::Ast(path))
+            }
+        }
+        Some(("compile", _)) => Action::ExecuteFromStdin,
+        _ => unreachable!(),
+    };
 
-    let assembly = matches.get_flag("assembly");
-    let binary = matches.get_flag("binary");
-    let ast = matches.get_flag("ast");
     let debug = std::env::var("DEBUG").and(Ok(true)).unwrap_or(false);
     let log_level = std::env::var("VIF_LOG_LEVEL")
         .map(|lvl| lvl.parse().unwrap())
@@ -37,11 +58,8 @@ pub fn get_config() -> Config {
         });
 
     return Config {
-        entrypoint,
         debug,
         log_level,
-        assembly,
-        ast,
-        binary,
+        action,
     };
 }

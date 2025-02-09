@@ -3,16 +3,17 @@ use clap::Command;
 
 pub fn get_cli() -> Command {
     Command::new("vif")
-        .arg(
-            Arg::new("assembly")
-                .long("assembly")
-                .action(clap::ArgAction::SetTrue),
+        .subcommand(Command::new("run").arg(Arg::new("entrypoint").required(true)))
+        .subcommand(Command::new("build").arg(Arg::new("entrypoint").required(true)))
+        .subcommand(Command::new("compile"))
+        .subcommand(
+            Command::new("print")
+                .arg(
+                    Arg::new("assembly")
+                        .long("assembly")
+                        .action(clap::ArgAction::SetTrue),
+                )
+                .arg(Arg::new("ast").long("ast").action(clap::ArgAction::SetTrue))
+                .arg(Arg::new("entrypoint").required(true)),
         )
-        .arg(
-            Arg::new("binary")
-                .long("binary")
-                .action(clap::ArgAction::SetTrue),
-        )
-        .arg(Arg::new("ast").long("ast").action(clap::ArgAction::SetTrue))
-        .arg(Arg::new("entrypoint").required(false))
 }

@@ -6,8 +6,10 @@ use vif_ast::build_ast;
 use vif_ast::print_ast_tree;
 use vif_llvm::compile_and_build_binary;
 use vif_llvm::compile_and_execute;
+use vif_llvm::execute_llvm_from_stdin;
 use vif_llvm::get_llvm_ir;
-use vif_loader::log;
+use vif_loader::Action;
+use vif_loader::Print;
 use vif_loader::CONFIG;
 use vif_objects::ast::Function;
 use vif_typing::run_typing_checks;
@@ -19,21 +21,51 @@ impl Vif {
         Vif {}
     }
 
-    pub fn run(&mut self) {
-        match &CONFIG.entrypoint {
-            Some(path) => self.run_file(path),
-            _ => self.run_prompt(),
+    pub fn run(&mut self) -> Result<(), String> {
+        match &CONFIG.action {
+            Action::Execute(path) => self.execute_file(path)?,
+            Action::Build(path) => self.build_binary(path)?,
+            Action::ExecuteFromStdin => execute_llvm_from_stdin().map_err(|e| format!("{e}"))?,
+            Action::Print(print_action) => match print_action {
+                Print::Assembly(path) => {
+                    let llvm_ir = self.get_llvm_ir(path)?;
+                    println!("{}", llvm_ir);
+                    fs::write("here.ll", llvm_ir).unwrap();
+                }
+                Print::Ast(path) => self.get_ast(path).and_then(|ast| {
+                    print_ast_tree(&ast);
+                    Ok(())
+                })?,
+            },
         };
+        Ok(())
     }
 
-    fn run_file(&mut self, path: &PathBuf) {
-        match fs::read_to_string(&path) {
-            Ok(content) => self.exec(content.as_str()),
-            _ => println!(
-                "{}",
-                format!("Could not read file {}", path.to_str().unwrap())
-            ),
-        };
+    fn get_llvm_ir(&self, path: &PathBuf) -> Result<String, String> {
+        self.get_ast(&path)
+            .and_then(|ast| get_llvm_ir(&ast).map_err(|e| format!("{e}")))
+    }
+
+    fn get_ast(&self, path: &PathBuf) -> Result<Function, String> {
+        self.read_file(&path)
+            .and_then(|content| self.build_ast(content.as_str()))
+    }
+
+    fn execute_file(&self, path: &PathBuf) -> Result<(), String> {
+        self.get_ast(&path)
+            .and_then(|ast| compile_and_execute(&ast).map_err(|e| format!("{e}")))
+    }
+
+    fn build_binary(&self, path: &PathBuf) -> Result<(), String> {
+        self.get_ast(&path)
+            .and_then(|ast| compile_and_build_binary(&ast).map_err(|e| format!("{e}")))
+    }
+
+    fn read_file(&self, path: &PathBuf) -> Result<String, String> {
+        fs::read_to_string(&path).or(Err(format!(
+            "Could not read file {}",
+            path.to_string_lossy()
+        )))
     }
 
     fn run_prompt(&mut self) {
@@ -42,41 +74,11 @@ impl Vif {
             print!(">>> ");
             io::stdout().flush().unwrap();
             match io::stdin().read_line(&mut line) {
-                Ok(0) => break,
-                Ok(_) => self.exec(line.as_str()),
+                Ok(_) => break,
+                // Ok(_) => self.exec(line.as_str()),
                 Err(_) => break,
             }
         }
-    }
-
-    fn exec(&mut self, content: &str) {
-        let ast = match self.build_ast(content) {
-            Ok(ast) => ast,
-            Err(err) => {
-                println!("{}", err);
-                return;
-            }
-        };
-
-        if CONFIG.ast {
-            print_ast_tree(&ast);
-            return;
-        }
-
-        let compiled_code = get_llvm_ir(&ast).unwrap();
-
-        if CONFIG.binary {
-            compile_and_build_binary(&ast).unwrap();
-            return;
-        }
-
-        if CONFIG.assembly {
-            println!("{}", compiled_code);
-            fs::write("here.ll", compiled_code).unwrap();
-            return;
-        }
-
-        compile_and_execute(&ast).unwrap();
     }
 
     fn build_ast(&self, content: &str) -> Result<Function, String> {

@@ -1,4 +1,3 @@
-use vif_loader::CONFIG;
 use vif_objects::chunk::Chunk;
 use vif_objects::function::Function;
 use vif_objects::global::Global;
@@ -6,10 +5,6 @@ use vif_objects::global_store::GlobalStore;
 use vif_objects::op_code::OpCode;
 
 pub fn disassemble_application(function: &Function, globals: &GlobalStore) {
-    if !CONFIG.assembly {
-        return;
-    }
-
     let functions = globals
         .as_vec()
         .iter()

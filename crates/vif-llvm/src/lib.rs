@@ -2,6 +2,8 @@ mod builder;
 mod compiler;
 mod error;
 
+use std::path::Path;
+
 use crate::compiler::Store;
 use crate::error::CompilerError;
 use compiler::Compiler;
@@ -57,4 +59,22 @@ pub fn compile_and_build_binary(
     let compiler = compile(ast_function, &mut function, &context)?;
 
     compiler.build_binary("here.o")
+}
+
+pub fn execute_llvm_from_stdin() -> Result<(), CompilerError> {
+    let context = inkwell::context::Context::create();
+    let buffer = inkwell::memory_buffer::MemoryBuffer::create_from_stdin()
+        .map_err(|e| CompilerError::LLVM("Could not create memory buffer".to_owned()))?;
+
+    let module = context.create_module_from_ir(buffer).unwrap();
+
+    let engine = module
+        .create_jit_execution_engine(inkwell::OptimizationLevel::None)
+        .map_err(|_| CompilerError::LLVM("Could not start JIT engine".to_owned()))?;
+
+    let function = module.get_function("main").unwrap();
+
+    unsafe { engine.run_function(function, &[]) };
+
+    Ok(())
 }
