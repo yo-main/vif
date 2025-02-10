@@ -4,7 +4,7 @@ Let's always use the release binary to run those tests.
 
 Let's use the `snippet/fibo.vif` script for the time being.
 
-```
+```python
 def fib(n):
     if n <= 1:
         return n

@@ -289,7 +289,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         let new_module = ctx.create_module_from_ir(buffer).unwrap();
 
         let engine = new_module
-            .create_jit_execution_engine(inkwell::OptimizationLevel::None)
+            .create_jit_execution_engine(inkwell::OptimizationLevel::Aggressive)
             .map_err(|_| CompilerError::LLVM("Could not start JIT engine".to_owned()))?;
 
         let function = new_module.get_function("main").unwrap();
@@ -302,6 +302,13 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     }
 
     pub fn build_binary(&self, filename: &str) -> Result<(), CompilerError> {
+        let code = self.module.print_to_string();
+        let buffer =
+            MemoryBuffer::create_from_memory_range(code.to_str().unwrap().as_bytes(), "here");
+
+        let ctx = inkwell::context::Context::create();
+        let new_module = ctx.create_module_from_ir(buffer).unwrap();
+
         Target::initialize_all(&InitializationConfig::default());
         let target_triple = TargetMachine::get_default_triple();
         let target = Target::from_triple(&target_triple).expect("Failed to get target");
@@ -310,7 +317,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
                 &target_triple,
                 "generic",
                 "",
-                inkwell::OptimizationLevel::None,
+                inkwell::OptimizationLevel::Aggressive,
                 inkwell::targets::RelocMode::PIC,
                 inkwell::targets::CodeModel::Default,
             )
@@ -318,7 +325,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
 
         target_machine
             .write_to_file(
-                &self.module,
+                &new_module,
                 FileType::Object,
                 std::path::Path::new(filename),
             )

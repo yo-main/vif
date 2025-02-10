@@ -238,7 +238,7 @@ impl<'ctx> Builder<'ctx> {
         } else {
             let ptr = self
                 .builder
-                .build_alloca(value.get_type(), name)
+                .build_malloc(value.get_type(), name)
                 .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
             self.store_value(ptr, value)?;
             ptr
