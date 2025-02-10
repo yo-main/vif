@@ -47,7 +47,7 @@ pub fn compile_and_execute(ast_function: &vif_objects::ast::Function) -> Result<
 
     let compiler = compile(ast_function, &mut function, &context)?;
 
-    compiler.execute(&ast_function)
+    compiler.execute()
 }
 
 pub fn compile_and_build_binary(

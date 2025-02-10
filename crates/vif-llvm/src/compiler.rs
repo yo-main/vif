@@ -5,10 +5,11 @@ use crate::Global;
 use crate::NativeFunction;
 use crate::NativeFunctionCallee;
 use crate::OpCode;
+use inkwell::execution_engine::JitFunction;
 
 use inkwell;
 use inkwell::basic_block::BasicBlock;
-use inkwell::execution_engine::JitFunction;
+use inkwell::memory_buffer::MemoryBuffer;
 use inkwell::targets::FileType;
 use inkwell::targets::InitializationConfig;
 use inkwell::targets::Target;
@@ -279,15 +280,23 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         self.module.print_to_string().to_string()
     }
 
-    pub fn execute(&self, function: &ast::Function) -> Result<(), CompilerError> {
-        let engine = self
-            .module
+    pub fn execute(&self) -> Result<(), CompilerError> {
+        let code = self.module.print_to_string();
+        let buffer =
+            MemoryBuffer::create_from_memory_range(code.to_str().unwrap().as_bytes(), "here");
+
+        let ctx = inkwell::context::Context::create();
+        let new_module = ctx.create_module_from_ir(buffer).unwrap();
+
+        let engine = new_module
             .create_jit_execution_engine(inkwell::OptimizationLevel::None)
             .map_err(|_| CompilerError::LLVM("Could not start JIT engine".to_owned()))?;
 
-        let function = self.module.get_function(&function.name).unwrap();
+        let function = new_module.get_function("main").unwrap();
 
         unsafe { engine.run_function(function, &[]) };
+
+        // unsafe { engine.run_function(function, &[]) };
 
         Ok(())
     }

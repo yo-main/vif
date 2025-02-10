@@ -29,8 +29,7 @@ impl Vif {
             Action::Print(print_action) => match print_action {
                 Print::Assembly(path) => {
                     let llvm_ir = self.get_llvm_ir(path)?;
-                    println!("{}", llvm_ir);
-                    fs::write("here.ll", llvm_ir).unwrap();
+                    print!("{}", llvm_ir);
                 }
                 Print::Ast(path) => self.get_ast(path).and_then(|ast| {
                     print_ast_tree(&ast);

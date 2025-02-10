@@ -37,11 +37,13 @@ pub fn get_config() -> Config {
             subcommand_matches.get_one::<String>("entrypoint").unwrap(),
         )),
         Some(("print", subcommand_matches)) => {
-            let path = PathBuf::from(subcommand_matches.get_one::<PathBuf>("entrypoint").unwrap());
+            let path = PathBuf::from(subcommand_matches.get_one::<String>("entrypoint").unwrap());
             if subcommand_matches.get_flag("assembly") {
                 Action::Print(Print::Assembly(path))
-            } else {
+            } else if subcommand_matches.get_flag("ast") {
                 Action::Print(Print::Ast(path))
+            } else {
+                Action::Print(Print::Assembly(path))
             }
         }
         Some(("compile", _)) => Action::ExecuteFromStdin,
