@@ -42,4 +42,3 @@ print(36, fib(36)) # should be 13
 print(37, fib(37)) # should be 13
 print(38, fib(38)) # should be 13
 print(39, fib(39)) # should be 13
-

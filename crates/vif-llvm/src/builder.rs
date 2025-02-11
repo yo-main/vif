@@ -124,6 +124,16 @@ impl<'ctx> LLVMValue<'ctx> {
         }
     }
 
+    pub fn get_basic_value_enum(&self) -> BasicMetadataValueEnum<'ctx> {
+        match self {
+            Self::RawValue(r) => BasicMetadataValueEnum::from(r.value),
+            Self::Variable(v) => BasicMetadataValueEnum::PointerValue(v.ptr),
+            Self::Function(f) => {
+                BasicMetadataValueEnum::PointerValue(f.ptr.as_global_value().as_pointer_value())
+            }
+        }
+    }
+
     pub fn get_name(&self) -> String {
         match self {
             Self::RawValue(_) => "raw value".to_owned(), // or unreacheable?
@@ -284,7 +294,8 @@ impl<'ctx> Builder<'ctx> {
     }
 
     fn declare_function(&self, function: &ast::Function, module: &Module<'ctx>) -> LLVMValue<'ctx> {
-        let function_ptr_type = self.get_new_ptr();
+        // let function_ptr_type = self.get_new_ptr();
+        let function_ptr_type = self.get_llvm_type(&function.typing);
 
         let args = function
             .params
@@ -426,23 +437,33 @@ impl<'ctx> Builder<'ctx> {
     }
 
     pub fn return_statement(&self, value: &LLVMValue<'ctx>) -> Result<(), CompilerError> {
-        match value {
-            LLVMValue::RawValue(v) => {
-                let var = self.allocate_and_store_value(v.value, "", v.typing.clone())?;
+        match value.get_basic_value_enum() {
+            BasicMetadataValueEnum::ArrayValue(a) => self.builder.build_return(Some(&a)),
+            BasicMetadataValueEnum::IntValue(i) => self.builder.build_return(Some(&i)),
+            BasicMetadataValueEnum::FloatValue(f) => self.builder.build_return(Some(&f)),
+            BasicMetadataValueEnum::PointerValue(ptr) => self.builder.build_return(Some(&ptr)),
+            BasicMetadataValueEnum::VectorValue(v) => self.builder.build_return(Some(&v)),
+            BasicMetadataValueEnum::StructValue(s) => self.builder.build_return(Some(&s)),
+            BasicMetadataValueEnum::MetadataValue(_) => unreachable!(),
+        }
+        .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
+        // match value {
+        //     LLVMValue::RawValue(v) => {
+        //         let var = self.allocate_and_store_value(v.value, "", v.typing.clone())?;
 
-                self.builder
-                    .build_return(Some(&var.get_variable().ptr))
-                    .map_err(|e| CompilerError::LLVM(format!("{e}")))
-            }
-            LLVMValue::Variable(v) => self
-                .builder
-                .build_return(Some(&v.ptr))
-                .map_err(|e| CompilerError::LLVM(format!("{e}"))),
-            LLVMValue::Function(f) => self
-                .builder
-                .build_return(Some(&f.ptr.as_global_value().as_pointer_value()))
-                .map_err(|e| CompilerError::LLVM(format!("{e}"))),
-        }?;
+        //         self.builder
+        //             .build_return(Some(&var.get_variable().ptr))
+        //             .map_err(|e| CompilerError::LLVM(format!("{e}")))
+        //     }
+        //     LLVMValue::Variable(v) => self
+        //         .builder
+        //         .build_return(Some(&v.ptr))
+        //         .map_err(|e| CompilerError::LLVM(format!("{e}"))),
+        //     LLVMValue::Function(f) => self
+        //         .builder
+        //         .build_return(Some(&f.ptr.as_global_value().as_pointer_value()))
+        //         .map_err(|e| CompilerError::LLVM(format!("{e}"))),
+        // }?;
 
         Ok(())
     }
