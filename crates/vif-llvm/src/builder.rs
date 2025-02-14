@@ -94,6 +94,20 @@ impl<'ctx> LLVMValue<'ctx> {
         })
     }
 
+    pub fn is_value(&self) -> bool {
+        match self {
+            Self::RawValue(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_variable(&self) -> bool {
+        match self {
+            Self::Variable(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn get_variable(&self) -> VariablePointer<'ctx> {
         match self {
             Self::Variable(v) => v.clone(),

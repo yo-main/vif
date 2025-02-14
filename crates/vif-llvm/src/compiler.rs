@@ -113,6 +113,7 @@ impl<'ctx, 'function> Functions<'ctx> {
 
 #[derive(Debug, Clone)]
 pub struct Store<'ctx> {
+    return_as_pointer: bool,
     variables: Variables<'ctx>,
     functions: Functions<'ctx>,
 }
@@ -120,6 +121,7 @@ pub struct Store<'ctx> {
 impl<'ctx> Store<'ctx> {
     pub fn new() -> Self {
         Self {
+            return_as_pointer: false,
             variables: Variables::new(),
             functions: Functions::new(),
         }
@@ -254,21 +256,17 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     }
 
     pub fn add_return_main_function(&self) -> Result<(), CompilerError> {
-        self.llvm_builder
-            .return_statement(&self.llvm_builder.allocate_and_store_value(
-                self.llvm_builder.value_int(1),
-                "",
-                ast::Typing::new(true, ast::Type::Int),
-            )?)
+        self.llvm_builder.return_statement(&LLVMValue::new_value(
+            self.llvm_builder.value_int(1),
+            ast::Typing::new(true, ast::Type::Int),
+        ))
     }
 
     pub fn add_return_none(&self) -> Result<(), CompilerError> {
-        self.llvm_builder
-            .return_statement(&self.llvm_builder.allocate_and_store_value(
-                self.llvm_builder.value_bool(false),
-                "return_none",
-                ast::Typing::new(true, ast::Type::Int),
-            )?)
+        self.llvm_builder.return_statement(&LLVMValue::new_value(
+            self.llvm_builder.value_bool(false),
+            ast::Typing::new(true, ast::Type::Int),
+        ))
     }
 
     pub fn print_module_to_file(&self, path: &str) -> Result<(), CompilerError> {
@@ -385,7 +383,22 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         store: &mut Store<'ctx>,
     ) -> Result<(), CompilerError> {
         let value = self.expression(&token.value, store)?;
-        self.llvm_builder.return_statement(&value)
+        if store.return_as_pointer && value.is_value() {
+            let temp_var = self.llvm_builder.allocate_and_store_value(
+                value.as_value(),
+                "",
+                value.get_typing(),
+            )?;
+            self.llvm_builder.return_statement(&temp_var)
+        } else if !store.return_as_pointer && value.is_variable() {
+            let temp_var = LLVMValue::new_value(
+                self.llvm_builder.load_llvm_value("", &value)?,
+                value.get_typing(),
+            );
+            self.llvm_builder.return_statement(&temp_var)
+        } else {
+            self.llvm_builder.return_statement(&value)
+        }
     }
 
     pub fn call(
@@ -557,6 +570,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
 
         if self.function.name != "main" {
             let mut new_store = store.clone();
+            new_store.return_as_pointer = token.typing.return_as_pointer().unwrap();
             self.compile(token, &mut new_store)?;
         } else {
             self.compile(token, store)?;

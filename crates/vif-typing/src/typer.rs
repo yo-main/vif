@@ -86,6 +86,7 @@ where
             .iter()
             .map(|p| p.name.as_str())
             .collect::<Vec<&str>>();
+
         let return_pointers = returns.iter().any(|r| {
             for name in get_identifier_names(&r.value) {
                 if param_names.contains(&name.as_str()) {

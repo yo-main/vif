@@ -291,6 +291,13 @@ impl Typing {
             _ => false,
         }
     }
+
+    pub fn return_as_pointer(&self) -> Option<bool> {
+        match &self.r#type {
+            Type::Callable(c) => Some(c.return_pointer),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
