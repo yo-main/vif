@@ -172,6 +172,7 @@ impl std::fmt::Display for Signature {
 #[derive(Debug, Clone, Eq)]
 pub struct Callable {
     pub signature: Signature,
+    pub return_pointer: bool,
     pub output: Typing,
 }
 
@@ -182,8 +183,12 @@ impl PartialEq for Callable {
 }
 
 impl Callable {
-    pub fn new(signature: Signature, output: Typing) -> Self {
-        Self { signature, output }
+    pub fn new(signature: Signature, output: Typing, return_pointer: bool) -> Self {
+        Self {
+            signature,
+            output,
+            return_pointer,
+        }
     }
 }
 

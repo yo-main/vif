@@ -184,6 +184,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
                     ast::Type::Callable(Box::new(ast::Callable::new(
                         ast::Signature::new_with_infinite(),
                         Typing::new(true, ast::Type::None),
+                        false,
                     ))),
                 ),
             ),

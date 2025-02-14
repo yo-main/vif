@@ -81,10 +81,32 @@ where
         let signature =
             Signature::new_with_params(function.params.iter().map(|p| p.typing.clone()).collect());
 
+        let param_names = function
+            .params
+            .iter()
+            .map(|p| p.name.as_str())
+            .collect::<Vec<&str>>();
+        let return_pointers = returns.iter().any(|r| {
+            for name in get_identifier_names(&r.value) {
+                if param_names.contains(&name.as_str()) {
+                    return true;
+                }
+            }
+            false
+        });
+
         let callable = if returns.is_empty() {
-            Box::new(Callable::new(signature, Typing::new(false, Type::None)))
+            Box::new(Callable::new(
+                signature,
+                Typing::new(false, Type::None),
+                false,
+            ))
         } else {
-            Box::new(Callable::new(signature, returns[0].value.typing.clone()))
+            Box::new(Callable::new(
+                signature,
+                returns[0].value.typing.clone(),
+                return_pointers,
+            ))
         };
 
         for return_stmt in returns.iter() {
@@ -288,6 +310,7 @@ where
                                 Type::Callable(Box::new(Callable::new(
                                     Signature::new_with_infinite(),
                                     Typing::new(true, Type::None),
+                                    false,
                                 ))),
                             )
                         }
