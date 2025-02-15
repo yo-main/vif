@@ -1,7 +1,5 @@
-def test(a: int):
-    if a > 2:
-        return 3
-    return a
+var mut x = 1
 
-
-print(test(1))
+while True:
+    print(x)
+    x = x + 1

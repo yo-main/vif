@@ -369,8 +369,8 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             ast::Stmt::Var(var) => self.var_declaration(var, store)?,
             ast::Stmt::Condition(cond) => self.if_statement(cond, store)?,
             ast::Stmt::Block(blocks) => self.block(blocks, store)?,
+            ast::Stmt::While(whi) => self.while_statement(whi, store)?,
             _ => unreachable!(),
-            // ast::Stmt::While(whi) => self.while_statement(whi),
             // ast::Stmt::Assert(ass) => self.assert_statement(ass),
         };
 
@@ -514,23 +514,32 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     //     Ok(())
     // }
 
-    // fn while_statement(&mut self, token: &ast::While) -> Result<(), CompilerError> {
-    //     log::debug!("Starting while statement");
-    //     let loop_start = self.function.chunk.code.len();
+    fn while_statement(
+        &self,
+        token: &ast::While,
+        store: &mut Store<'ctx>,
+    ) -> Result<(), CompilerError> {
+        log::debug!("Starting while statement");
 
-    //     self.expression(&token.condition)?;
+        let cond_block = self.llvm_builder.create_block("cond");
+        let end_block = self.llvm_builder.create_block("end");
+        let loop_block = self.llvm_builder.create_block("loop");
 
-    //     let exit_jump = self.emit_jump(OpCode::JumpIfFalse(self.function.chunk.code.len()));
-    //     self.loop_details.push((loop_start, exit_jump));
-    //     self.emit_op_code(OpCode::Pop);
-    //     let res = self.statement(&token.body);
-    //     self.loop_details.pop().unwrap();
-    //     self.emit_op_code(OpCode::Goto(loop_start));
+        self.llvm_builder.goto_block(cond_block)?;
 
-    //     self.patch_jump(exit_jump);
-    //     self.emit_op_code(OpCode::Pop);
-    //     res
-    // }
+        self.llvm_builder.set_position_at(cond_block);
+        let cond = self.expression(&token.condition, store)?;
+        self.llvm_builder
+            .create_branche(cond, loop_block, end_block)?;
+
+        self.llvm_builder.set_position_at(loop_block);
+        self.statement(&token.body, store)?;
+        self.llvm_builder.goto_block(cond_block)?;
+
+        self.llvm_builder.set_position_at(end_block);
+
+        Ok(())
+    }
 
     // pub fn break_loop(&mut self) -> Result<(), CompilerError> {
     //     log::debug!("Starting break loop statement");
