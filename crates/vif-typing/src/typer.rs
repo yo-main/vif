@@ -57,7 +57,9 @@ where
             self.visit_statement(&mut function.params, stmt, references)?;
         }
 
-        self.update_function_typing(function)?;
+        if function.name != "main" {
+            self.update_function_typing(function)?;
+        }
 
         references.truncate(index);
 

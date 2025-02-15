@@ -1,4 +1,5 @@
 def entrypoint():
-	world = "world"
+	var world = "world"
 	print("Hello", world)
+
 entrypoint()
