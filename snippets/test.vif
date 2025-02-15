@@ -1,5 +1,5 @@
 var mut x = 1
 
-while True:
+while x <= 5:
     print(x)
     x = x + 1

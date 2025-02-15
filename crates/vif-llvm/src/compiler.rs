@@ -28,6 +28,7 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::net::AddrParseError;
 use std::path::Path;
+use vif_objects::ast::Expr;
 use vif_objects::ast::Typing;
 
 use crate::builder::LLVMValue;
@@ -265,7 +266,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     pub fn add_return_none(&self) -> Result<(), CompilerError> {
         self.llvm_builder.return_statement(&LLVMValue::new_value(
             self.llvm_builder.value_bool(false),
-            ast::Typing::new(true, ast::Type::Int),
+            ast::Typing::new(true, ast::Type::None),
         ))
     }
 
@@ -693,10 +694,10 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             }
             ast::ExprBody::Binary(t) => self.binary(t, store),
             ast::ExprBody::Call(t) => self.call(t, store),
+            ast::ExprBody::Assign(t) => self.assign(t, store),
             _ => unreachable!(),
             // ast::ExprBody::Unary(t) => self.unary(t),
             // ast::ExprBody::Grouping(t) => self.grouping(t),
-            // ast::ExprBody::Assign(t) => self.assign(t),
             // ast::ExprBody::Logical(t) => self.logical(t),
             // ast::ExprBody::LoopKeyword(t) => self.loop_keyword(t),
         }
@@ -726,10 +727,34 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     //         }
     //     }
 
-    //     fn assign(&mut self, token: &ast::Assign) -> Result<(), CompilerError> {
-    //         self.expression(&token.value)?;
-    //         self.set_variable(token.name.as_str())
-    //     }
+    fn assign(
+        &self,
+        token: &ast::Assign,
+        store: &mut Store<'ctx>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        let expr = self.expression(&token.value, store)?;
+        let variable = store.variables.get(token.name.clone()).unwrap();
+
+        match &expr {
+            LLVMValue::RawValue(_) => self
+                .llvm_builder
+                .store_value(variable.as_pointer(), expr.as_value())?,
+            LLVMValue::Variable(_) => self.llvm_builder.store_value(
+                variable.as_pointer(),
+                expr.as_pointer().as_basic_value_enum(),
+            )?,
+            LLVMValue::Function(_) => self.llvm_builder.store_value(
+                variable.as_pointer(),
+                expr.as_pointer().as_basic_value_enum(),
+            )?,
+        };
+
+        // assignment does not produce anything
+        Ok(LLVMValue::new_value(
+            self.llvm_builder.value_bool(false),
+            ast::Typing::new(true, ast::Type::None),
+        ))
+    }
 
     fn value(
         &self,
@@ -882,18 +907,16 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     //         Ok(())
     //     }
 
-    //     pub fn set_variable(&mut self, var_name: &str) -> Result<(), CompilerError> {
-    //         log::debug!("Starting variable assignment");
+    pub fn set_variable(
+        &mut self,
+        var_name: &str,
+        expr: &LLVMValue<'ctx>,
+        store: &mut Store,
+    ) -> Result<(), CompilerError> {
+        log::debug!("Starting variable assignment");
 
-    //         let op_code = match self.resolve_local(&var_name)? {
-    //             VariableType::Local(index) => OpCode::SetLocal(index),
-    //             VariableType::Inherited(v) => OpCode::SetInheritedLocal(v),
-    //             VariableType::Global(i) => OpCode::SetGlobal(i),
-    //         };
-
-    //         self.emit_op_code(op_code);
-    //         Ok(())
-    //     }
+        Ok(())
+    }
 
     pub fn get_variable(
         &self,
