@@ -1,15 +1,16 @@
-def fib(mut n):
+def fib(n: int):
     if n <= 1:
         return n
     return fib(n-2) + fib(n-1)
 
 var mut i = 0
 
-while i < 38:
-    var start = get_time()
+while i < 40:
+    # var start = get_time()
     var value = fib(i)
-    var duration = (get_time() - start) / 1000000
+    # var duration = (get_time() - start) / 1000000
 
-    print("Got", value, "after", duration, "seconds")
+    # print("Got", value, "after", duration, "seconds")
+    print("Got", value)
 
     i = i + 1
