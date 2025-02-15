@@ -90,8 +90,12 @@ where
             .collect::<Vec<&str>>();
 
         let return_pointers = returns.iter().any(|r| {
+            if !r.value.typing.mutable {
+                return false; // TODO: maybe I should just never returns a pointer
+            }
             for name in get_identifier_names(&r.value) {
                 if param_names.contains(&name.as_str()) {
+                    println!("YES {} {}", function.name, name);
                     return true;
                 }
             }
@@ -332,10 +336,8 @@ where
 
 fn get_identifier_names(expr: &Expr) -> Vec<String> {
     match &expr.body {
-        ExprBody::Binary(binary) => {
-            let mut res = get_identifier_names(&binary.left);
-            res.extend(get_identifier_names(&binary.right));
-            res
+        ExprBody::Value(Value::Variable(v)) => {
+            vec![v.to_owned()]
         }
         ExprBody::Unary(unary) => get_identifier_names(&unary.right),
         ExprBody::Grouping(grouping) => get_identifier_names(&grouping.expr),
@@ -344,10 +346,10 @@ fn get_identifier_names(expr: &Expr) -> Vec<String> {
             res.extend(get_identifier_names(&logical.right));
             res
         }
-        ExprBody::Value(Value::Variable(v)) => {
-            vec![v.to_owned()]
-        }
         ExprBody::Call(c) => get_identifier_names(&c.callee),
-        _ => Vec::new(),
+        ExprBody::Binary(_) => Vec::new(),
+        ExprBody::Assign(_) => Vec::new(),
+        ExprBody::LoopKeyword(_) => Vec::new(),
+        ExprBody::Value(_) => Vec::new(),
     }
 }
