@@ -1,6 +1,7 @@
 use crate::error::AstError;
 use crate::error::SyntaxError;
 use vif_objects::ast;
+use vif_objects::ast::Callable;
 use vif_objects::ast::Expr;
 use vif_objects::ast::ExprBody;
 use vif_objects::ast::Function;
@@ -35,7 +36,14 @@ impl<'a> Parser<'a> {
             name: "main".to_owned(),
             params: Vec::new(),
             body: self.ast,
-            typing: Typing::new(false, ast::Type::Int),
+            typing: Typing::new(
+                false,
+                ast::Type::Callable(Box::new(Callable::new(
+                    ast::Signature::Parameters(Vec::new()),
+                    Typing::new(false, ast::Type::Int),
+                    false,
+                ))),
+            ),
         }
     }
 

@@ -308,8 +308,11 @@ impl<'ctx> Builder<'ctx> {
     }
 
     fn declare_function(&self, function: &ast::Function, module: &Module<'ctx>) -> LLVMValue<'ctx> {
-        // let function_ptr_type = self.get_new_ptr();
-        let function_ptr_type = self.get_llvm_type(&function.typing);
+        let function_ptr_type = if function.typing.return_as_pointer().unwrap() {
+            self.get_new_ptr().as_basic_type_enum()
+        } else {
+            self.get_llvm_type(&function.typing)
+        };
 
         let args = function
             .params

@@ -1,14 +1,7 @@
-def test():
-    var mut a = 1
+def test(a: int):
+    if a > 2:
+        return 3
     return a
 
-def test2():
-    return test()
 
-def test3(i, j):
-    return j + 1
-
-var o = test2()
-
-assert o == 2
-print(test3(o, "az"))
+print(test(1))

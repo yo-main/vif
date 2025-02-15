@@ -384,6 +384,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     ) -> Result<(), CompilerError> {
         let value = self.expression(&token.value, store)?;
         if store.return_as_pointer && value.is_value() {
+            println!("COUCOU1 {}", value);
             let temp_var = self.llvm_builder.allocate_and_store_value(
                 value.as_value(),
                 "",
@@ -391,6 +392,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             )?;
             self.llvm_builder.return_statement(&temp_var)
         } else if !store.return_as_pointer && value.is_variable() {
+            println!("COUCOU2 {}", value);
             let temp_var = LLVMValue::new_value(
                 self.llvm_builder.load_llvm_value("", &value)?,
                 value.get_typing(),
@@ -568,10 +570,14 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
 
         let previous_block = self.llvm_builder.get_current_block().unwrap();
 
-        if self.function.name != "main" {
+        if token.name != "main" {
             let mut new_store = store.clone();
             new_store.return_as_pointer = token.typing.return_as_pointer().unwrap();
             self.compile(token, &mut new_store)?;
+            store.functions.add(
+                token.name.clone(),
+                new_store.functions.get(token.name.clone()).unwrap().clone(),
+            );
         } else {
             self.compile(token, store)?;
         }
