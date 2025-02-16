@@ -696,8 +696,8 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             ast::ExprBody::Call(t) => self.call(t, store),
             ast::ExprBody::Assign(t) => self.assign(t, store),
             ast::ExprBody::Grouping(t) => self.grouping(t, store),
+            ast::ExprBody::Unary(t) => self.unary(t, store),
             _ => unreachable!(),
-            // ast::ExprBody::Unary(t) => self.unary(t),
             // ast::ExprBody::Logical(t) => self.logical(t),
             // ast::ExprBody::LoopKeyword(t) => self.loop_keyword(t),
         }
@@ -1013,21 +1013,17 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     //         )));
     //     }
 
-    //     fn unary(&mut self, token: &ast::Unary) -> Result<(), CompilerError> {
-    //         self.expression(&token.right)?;
-    //         self.unary_operator(
-    //             &token.operator,
-    //             ItemReference::new(Some(token.right.span.clone())),
-    //         );
-    //         Ok(())
-    //     }
-
-    //     fn unary_operator(&mut self, token: &ast::UnaryOperator, reference: ItemReference) {
-    //         self.emit_op_code(match token {
-    //             ast::UnaryOperator::Minus => OpCode::Negate(reference),
-    //             ast::UnaryOperator::Not => OpCode::Not(reference),
-    //         })
-    //     }
+    fn unary(
+        &self,
+        token: &ast::Unary,
+        store: &mut Store<'ctx>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        let expr = self.expression(&token.right, store)?;
+        match token.operator {
+            ast::UnaryOperator::Minus => self.llvm_builder.create_neg(expr),
+            ast::UnaryOperator::Not => self.llvm_builder.create_not(expr),
+        }
+    }
 
     pub fn grouping(
         &self,

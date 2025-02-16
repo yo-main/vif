@@ -369,6 +369,91 @@ impl<'ctx> Builder<'ctx> {
         Ok(())
     }
 
+    pub fn create_not(
+        &self,
+        expression: LLVMValue<'ctx>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        let value = match &expression {
+            LLVMValue::RawValue(v) => v.value.as_basic_value_enum(),
+            LLVMValue::Variable(v) => self.load_variable("", &v)?,
+            LLVMValue::Function(f) => {
+                return Err(CompilerError::LLVM(format!(
+                    "Cannot apply <not> operator to function: {}",
+                    f.ptr.get_name().to_string_lossy()
+                )))
+            }
+        };
+
+        let cmp = match value {
+            BasicValueEnum::IntValue(i) => self
+                .builder
+                .build_int_compare(
+                    inkwell::IntPredicate::EQ,
+                    i,
+                    self.context.bool_type().const_int(0, false),
+                    "",
+                )
+                .map_err(|e| {
+                    CompilerError::LLVM(format!("Could not compare ints {} and 0: {e}", value))
+                })?,
+            BasicValueEnum::FloatValue(f) => self
+                .builder
+                .build_float_compare(
+                    inkwell::FloatPredicate::OEQ,
+                    f,
+                    self.value_float(0.).into_float_value(),
+                    "",
+                )
+                .map_err(|e| {
+                    CompilerError::LLVM(format!("Could not convert float {} to int: {e}", f))
+                })?,
+
+            //TODO: empty string ????
+            _ => unreachable!(),
+        };
+
+        Ok(LLVMValue::new_value(
+            cmp.as_basic_value_enum(),
+            Typing::new(true, ast::Type::Bool),
+        ))
+    }
+
+    pub fn create_neg(
+        &self,
+        expression: LLVMValue<'ctx>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        let value = match &expression {
+            LLVMValue::RawValue(v) => v.value.as_basic_value_enum(),
+            LLVMValue::Variable(v) => self.load_variable("", &v)?,
+            LLVMValue::Function(f) => {
+                return Err(CompilerError::LLVM(format!(
+                    "Cannot apply not to function: {}",
+                    f.ptr.get_name().to_string_lossy()
+                )))
+            }
+        };
+
+        if value.is_int_value() {
+            Ok(LLVMValue::new_value(
+                self.builder
+                    .build_int_neg(value.into_int_value(), "")
+                    .map_err(|e| CompilerError::LLVM(format!("{e}")))?
+                    .as_basic_value_enum(),
+                expression.get_typing(),
+            ))
+        } else if value.is_float_value() {
+            Ok(LLVMValue::new_value(
+                self.builder
+                    .build_float_neg(value.into_float_value(), "")
+                    .map_err(|e| CompilerError::LLVM(format!("{e}")))?
+                    .as_basic_value_enum(),
+                expression.get_typing(),
+            ))
+        } else {
+            unimplemented!()
+        }
+    }
+
     pub fn create_branche(
         &self,
         expression: LLVMValue<'ctx>,
