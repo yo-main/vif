@@ -695,9 +695,9 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             ast::ExprBody::Binary(t) => self.binary(t, store),
             ast::ExprBody::Call(t) => self.call(t, store),
             ast::ExprBody::Assign(t) => self.assign(t, store),
+            ast::ExprBody::Grouping(t) => self.grouping(t, store),
             _ => unreachable!(),
             // ast::ExprBody::Unary(t) => self.unary(t),
-            // ast::ExprBody::Grouping(t) => self.grouping(t),
             // ast::ExprBody::Logical(t) => self.logical(t),
             // ast::ExprBody::LoopKeyword(t) => self.loop_keyword(t),
         }
@@ -1029,9 +1029,13 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     //         })
     //     }
 
-    //     pub fn grouping(&mut self, token: &ast::Grouping) -> Result<(), CompilerError> {
-    //         self.expression(&token.expr)
-    //     }
+    pub fn grouping(
+        &self,
+        token: &ast::Grouping,
+        store: &mut Store<'ctx>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        self.expression(&token.expr, store)
+    }
 
     //     pub fn end(mut self) -> GlobalStore {
     //         match self.function.chunk.code.last() {
