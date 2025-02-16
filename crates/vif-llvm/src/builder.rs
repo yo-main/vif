@@ -138,12 +138,22 @@ impl<'ctx> LLVMValue<'ctx> {
         }
     }
 
-    pub fn get_basic_value_enum(&self) -> BasicMetadataValueEnum<'ctx> {
+    pub fn get_basic_metadata_value_enum(&self) -> BasicMetadataValueEnum<'ctx> {
         match self {
             Self::RawValue(r) => BasicMetadataValueEnum::from(r.value),
             Self::Variable(v) => BasicMetadataValueEnum::PointerValue(v.ptr),
             Self::Function(f) => {
                 BasicMetadataValueEnum::PointerValue(f.ptr.as_global_value().as_pointer_value())
+            }
+        }
+    }
+
+    pub fn get_basic_value_enum(&self) -> BasicValueEnum<'ctx> {
+        match self {
+            Self::RawValue(r) => BasicValueEnum::from(r.value),
+            Self::Variable(v) => BasicValueEnum::PointerValue(v.ptr),
+            Self::Function(f) => {
+                BasicValueEnum::PointerValue(f.ptr.as_global_value().as_pointer_value())
             }
         }
     }
@@ -249,6 +259,17 @@ impl<'ctx> Builder<'ctx> {
                 .as_basic_value_enum(),
         };
         self.allocate_and_store_value(v, token.name.as_str(), token.typing.clone())
+    }
+
+    pub fn allocate(&self, value: LLVMValue<'ctx>) -> Result<PointerValue<'ctx>, CompilerError> {
+        let v = value.get_basic_value_enum();
+        if v.is_pointer_value() {
+            return Ok(v.into_pointer_value());
+        }
+
+        self.builder
+            .build_alloca(v.get_type(), "")
+            .map_err(|e| CompilerError::LLVM(format!("{e}")))
     }
 
     pub fn allocate_and_store_value(
@@ -369,11 +390,8 @@ impl<'ctx> Builder<'ctx> {
         Ok(())
     }
 
-    pub fn create_not(
-        &self,
-        expression: LLVMValue<'ctx>,
-    ) -> Result<LLVMValue<'ctx>, CompilerError> {
-        let value = match &expression {
+    pub fn is_truthy(&self, value: LLVMValue<'ctx>) -> Result<LLVMValue<'ctx>, CompilerError> {
+        let value = match &value {
             LLVMValue::RawValue(v) => v.value.as_basic_value_enum(),
             LLVMValue::Variable(v) => self.load_variable("", &v)?,
             LLVMValue::Function(f) => {
@@ -388,7 +406,7 @@ impl<'ctx> Builder<'ctx> {
             BasicValueEnum::IntValue(i) => self
                 .builder
                 .build_int_compare(
-                    inkwell::IntPredicate::EQ,
+                    inkwell::IntPredicate::NE,
                     i,
                     self.context.bool_type().const_int(0, false),
                     "",
@@ -399,9 +417,9 @@ impl<'ctx> Builder<'ctx> {
             BasicValueEnum::FloatValue(f) => self
                 .builder
                 .build_float_compare(
-                    inkwell::FloatPredicate::OEQ,
+                    inkwell::FloatPredicate::ONE,
                     f,
-                    self.value_float(0.).into_float_value(),
+                    self.value_float(0.0).into_float_value(),
                     "",
                 )
                 .map_err(|e| {
@@ -414,6 +432,24 @@ impl<'ctx> Builder<'ctx> {
 
         Ok(LLVMValue::new_value(
             cmp.as_basic_value_enum(),
+            Typing::new(true, ast::Type::Bool),
+        ))
+    }
+
+    pub fn create_not(
+        &self,
+        expression: LLVMValue<'ctx>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        let value = self.is_truthy(expression)?;
+
+        let not_value = match value.get_basic_value_enum() {
+            BasicValueEnum::IntValue(i) => self.builder.build_not(i, ""),
+            _ => unreachable!(), // truthy should always return an int ?
+        }
+        .map_err(|e| CompilerError::LLVM(format!("Could not build not llvm op: {e}")))?;
+
+        Ok(LLVMValue::new_value(
+            not_value.as_basic_value_enum(),
             Typing::new(true, ast::Type::Bool),
         ))
     }
@@ -540,13 +576,12 @@ impl<'ctx> Builder<'ctx> {
 
     pub fn return_statement(&self, value: &LLVMValue<'ctx>) -> Result<(), CompilerError> {
         match value.get_basic_value_enum() {
-            BasicMetadataValueEnum::ArrayValue(a) => self.builder.build_return(Some(&a)),
-            BasicMetadataValueEnum::IntValue(i) => self.builder.build_return(Some(&i)),
-            BasicMetadataValueEnum::FloatValue(f) => self.builder.build_return(Some(&f)),
-            BasicMetadataValueEnum::PointerValue(ptr) => self.builder.build_return(Some(&ptr)),
-            BasicMetadataValueEnum::VectorValue(v) => self.builder.build_return(Some(&v)),
-            BasicMetadataValueEnum::StructValue(s) => self.builder.build_return(Some(&s)),
-            BasicMetadataValueEnum::MetadataValue(_) => unreachable!(),
+            BasicValueEnum::ArrayValue(a) => self.builder.build_return(Some(&a)),
+            BasicValueEnum::IntValue(i) => self.builder.build_return(Some(&i)),
+            BasicValueEnum::FloatValue(f) => self.builder.build_return(Some(&f)),
+            BasicValueEnum::PointerValue(ptr) => self.builder.build_return(Some(&ptr)),
+            BasicValueEnum::VectorValue(v) => self.builder.build_return(Some(&v)),
+            BasicValueEnum::StructValue(s) => self.builder.build_return(Some(&s)),
         }
         .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
         // match value {
@@ -665,6 +700,26 @@ impl<'ctx> Builder<'ctx> {
         Ok(LLVMValue::new_value(
             result.as_basic_value_enum(),
             value_left.get_typing(),
+        ))
+    }
+
+    pub fn and(
+        &self,
+        value_left: LLVMValue<'ctx>,
+        value_right: LLVMValue<'ctx>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        let result = self
+            .builder
+            .build_and(
+                value_left.get_basic_value_enum().into_int_value(),
+                value_right.get_basic_value_enum().into_int_value(),
+                "",
+            )
+            .map_err(|e| CompilerError::LLVM(format!("Could not build and operator: {e}")))?;
+
+        Ok(LLVMValue::new_value(
+            result.as_basic_value_enum(),
+            Typing::new(true, ast::Type::Bool),
         ))
     }
 

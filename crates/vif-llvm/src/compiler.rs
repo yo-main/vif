@@ -697,8 +697,8 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             ast::ExprBody::Assign(t) => self.assign(t, store),
             ast::ExprBody::Grouping(t) => self.grouping(t, store),
             ast::ExprBody::Unary(t) => self.unary(t, store),
+            ast::ExprBody::Logical(t) => self.logical(t, store),
             _ => unreachable!(),
-            // ast::ExprBody::Logical(t) => self.logical(t),
             // ast::ExprBody::LoopKeyword(t) => self.loop_keyword(t),
         }
     }
@@ -720,12 +720,68 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     //         }
     //     }
 
-    //     fn logical(&mut self, token: &ast::Logical) -> Result<(), CompilerError> {
-    //         match token.operator {
-    //             ast::LogicalOperator::And => self.and(token),
-    //             ast::LogicalOperator::Or => self.or(token),
-    //         }
-    //     }
+    fn logical(
+        &self,
+        token: &ast::Logical,
+        store: &mut Store<'ctx>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        match token.operator {
+            ast::LogicalOperator::And => self.and(token, store),
+            ast::LogicalOperator::Or => self.or(token, store),
+        }
+    }
+
+    fn and(
+        &self,
+        token: &ast::Logical,
+        store: &mut Store<'ctx>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        let expr1 = self.expression(&token.left, store)?;
+        let expr2 = self.expression(&token.right, store)?;
+
+        let expr1_is_true = self.llvm_builder.is_truthy(expr1)?;
+        let expr2_is_true = self.llvm_builder.is_truthy(expr2)?;
+
+        self.llvm_builder.and(expr1_is_true, expr2_is_true)
+    }
+
+    fn or(
+        &self,
+        token: &ast::Logical,
+        store: &mut Store<'ctx>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        let first_block = self.llvm_builder.create_block("first");
+        let second_block = self.llvm_builder.create_block("second");
+        let merge_block = self.llvm_builder.create_block("merge");
+
+        let expression1 = self.expression(&token.left, store)?;
+        let value = self.llvm_builder.allocate(expression1.clone())?;
+
+        let expression_1_truthy = self.llvm_builder.is_truthy(expression1.clone())?;
+
+        self.llvm_builder
+            .create_branche(expression_1_truthy, first_block, second_block)?;
+
+        self.llvm_builder.set_position_at(first_block);
+        self.llvm_builder
+            .store_value(value, expression1.get_basic_value_enum())?;
+        self.llvm_builder.goto_block(merge_block)?;
+
+        self.llvm_builder.set_position_at(second_block);
+        let expression2 = self.expression(&token.right, store)?;
+        self.llvm_builder
+            .store_value(value, expression2.get_basic_value_enum())?;
+        self.llvm_builder.goto_block(merge_block)?;
+
+        self.llvm_builder.set_position_at(merge_block);
+
+        let result = self.llvm_builder.load_llvm_value(
+            "",
+            &LLVMValue::new_variable(value, expression1.get_typing()),
+        )?;
+
+        Ok(LLVMValue::new_value(result, expression1.get_typing()))
+    }
 
     fn assign(
         &self,
