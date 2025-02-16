@@ -113,8 +113,24 @@ impl<'ctx, 'function> Functions<'ctx> {
 }
 
 #[derive(Debug, Clone)]
+struct LoopContext<'ctx> {
+    cond: inkwell::basic_block::BasicBlock<'ctx>,
+    end: inkwell::basic_block::BasicBlock<'ctx>,
+}
+
+impl<'ctx> LoopContext<'ctx> {
+    fn new(
+        cond: inkwell::basic_block::BasicBlock<'ctx>,
+        end: inkwell::basic_block::BasicBlock<'ctx>,
+    ) -> Self {
+        Self { cond, end }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Store<'ctx> {
     return_as_pointer: bool,
+    loop_context: Vec<LoopContext<'ctx>>,
     variables: Variables<'ctx>,
     functions: Functions<'ctx>,
 }
@@ -125,6 +141,7 @@ impl<'ctx> Store<'ctx> {
             return_as_pointer: false,
             variables: Variables::new(),
             functions: Functions::new(),
+            loop_context: Vec::new(),
         }
     }
 }
@@ -526,6 +543,10 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         let end_block = self.llvm_builder.create_block("end");
         let loop_block = self.llvm_builder.create_block("loop");
 
+        store
+            .loop_context
+            .push(LoopContext::new(cond_block.clone(), end_block.clone()));
+
         self.llvm_builder.goto_block(cond_block)?;
 
         self.llvm_builder.set_position_at(cond_block);
@@ -538,6 +559,8 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         self.llvm_builder.goto_block(cond_block)?;
 
         self.llvm_builder.set_position_at(end_block);
+
+        _ = store.loop_context.pop();
 
         Ok(())
     }
@@ -698,8 +721,8 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             ast::ExprBody::Grouping(t) => self.grouping(t, store),
             ast::ExprBody::Unary(t) => self.unary(t, store),
             ast::ExprBody::Logical(t) => self.logical(t, store),
+            ast::ExprBody::LoopKeyword(t) => self.loop_keyword(t, store),
             _ => unreachable!(),
-            // ast::ExprBody::LoopKeyword(t) => self.loop_keyword(t),
         }
     }
 
@@ -849,14 +872,26 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         }
     }
 
-    //     fn loop_keyword(&mut self, token: &ast::LoopKeyword) -> Result<(), CompilerError> {
-    //         match token {
-    //             ast::LoopKeyword::Break => self.break_loop()?,
-    //             ast::LoopKeyword::Continue => self.continue_loop()?,
-    //         };
+    fn loop_keyword(
+        &self,
+        token: &ast::LoopKeyword,
+        store: &mut Store<'ctx>,
+    ) -> Result<LLVMValue<'ctx>, CompilerError> {
+        match token {
+            ast::LoopKeyword::Break => self
+                .llvm_builder
+                .goto_block(store.loop_context.last().unwrap().end)?,
+            ast::LoopKeyword::Continue => self
+                .llvm_builder
+                .goto_block(store.loop_context.last().unwrap().cond)?,
+        };
 
-    //         Ok(())
-    //     }
+        // this doesn't return any value
+        Ok(LLVMValue::new_value(
+            self.llvm_builder.value_bool(false),
+            ast::Typing::new(true, ast::Type::None),
+        ))
+    }
 
     fn binary(
         &self,
