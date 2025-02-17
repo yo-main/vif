@@ -1,11 +1,5 @@
 use crate::builder::Builder;
-use crate::builder::VariablePointer;
 use crate::error::CompilerError;
-use crate::Global;
-use crate::NativeFunction;
-use crate::NativeFunctionCallee;
-use crate::OpCode;
-use inkwell::execution_engine::JitFunction;
 
 use inkwell;
 use inkwell::basic_block::BasicBlock;
@@ -14,35 +8,19 @@ use inkwell::targets::FileType;
 use inkwell::targets::InitializationConfig;
 use inkwell::targets::Target;
 use inkwell::targets::TargetMachine;
-use inkwell::types::BasicMetadataTypeEnum;
-use inkwell::types::BasicTypeEnum;
-use inkwell::values::AsValueRef;
 use inkwell::values::BasicMetadataValueEnum;
 use inkwell::values::BasicValue;
-use inkwell::values::BasicValueEnum;
 use inkwell::values::FunctionValue;
-use inkwell::values::IntMathValue;
 use inkwell::values::PointerValue;
-use inkwell::AddressSpace;
-use std::any::Any;
 use std::collections::HashMap;
-use std::net::AddrParseError;
 use std::path::Path;
-use vif_objects::ast::Expr;
 use vif_objects::ast::Typing;
 
 use crate::builder::LLVMValue;
 use vif_loader::log;
 use vif_objects::ast;
-use vif_objects::function::Arity;
 use vif_objects::function::Function;
-use vif_objects::global_store::GlobalStore;
 use vif_objects::op_code::ItemReference;
-use vif_objects::span::Span;
-use vif_objects::variable::InheritedLocalPos;
-use vif_objects::variable::InheritedVariable;
-use vif_objects::variable::Variable;
-use vif_objects::variable::VariableType;
 
 type FuncType = unsafe extern "C" fn() -> i32;
 
@@ -128,14 +106,14 @@ impl<'ctx> LoopContext<'ctx> {
 }
 
 #[derive(Debug, Clone)]
-pub struct Store<'ctx> {
+pub struct CompilerContext<'ctx> {
     return_as_pointer: bool,
     loop_context: Vec<LoopContext<'ctx>>,
     variables: Variables<'ctx>,
     functions: Functions<'ctx>,
 }
 
-impl<'ctx> Store<'ctx> {
+impl<'ctx> CompilerContext<'ctx> {
     pub fn new() -> Self {
         Self {
             return_as_pointer: false,
@@ -150,9 +128,6 @@ pub struct Compiler<'function, 'ctx> {
     context: &'ctx inkwell::context::Context,
     module: inkwell::module::Module<'ctx>,
     llvm_builder: Builder<'ctx>,
-    // scope_depth: usize,
-    // loop_details: Vec<(usize, usize)>,
-    // globals: GlobalStore,
     function: &'function mut Function,
 }
 
@@ -166,26 +141,14 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         let compiler = Compiler {
             context,
             function,
-            // scope_depth,
             module: context.create_module("vif"),
             llvm_builder: builder,
-            // loop_details: Vec::new(),
-            // globals: GlobalStore::new(),
         };
-
-        //     compiler.make_global(Global::Native(NativeFunction::new(
-        //         NativeFunctionCallee::GetTime,
-        //     )));
-
-        //     compiler.make_global(Global::Native(NativeFunction::new(
-        //         NativeFunctionCallee::Sleep,
-        //     )));
-        // };
 
         compiler
     }
 
-    pub fn add_builtin_functions(&self, store: &mut Store<'ctx>) {
+    pub fn add_builtin_functions(&self, context: &mut CompilerContext<'ctx>) {
         let print_type = self.context.i64_type().fn_type(
             &[self
                 .context
@@ -195,7 +158,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         );
         let print = self.module.add_function("printf", print_type, None);
 
-        store.functions.add(
+        context.functions.add(
             "print".to_owned(),
             LLVMValue::new_function(
                 print,
@@ -214,13 +177,13 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     pub fn compile(
         &self,
         function: &'function ast::Function,
-        store: &mut Store<'ctx>,
+        context: &mut CompilerContext<'ctx>,
     ) -> Result<BasicBlock<'ctx>, CompilerError> {
         let function_value = self
             .llvm_builder
             .declare_user_function(function, &self.module);
 
-        store
+        context
             .functions
             .add(function.name.to_owned(), function_value.clone());
 
@@ -230,7 +193,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             .iter()
             .zip(function.params.iter())
         {
-            store.variables.add(
+            context.variables.add(
                 param.name.to_owned(),
                 LLVMValue::new_variable(value.clone(), param.typing.clone()),
             );
@@ -240,34 +203,8 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             .llvm_builder
             .create_function_block(&function_value, "entry");
 
-        // let i8_ptr_type = context.i32_type();
-        // let puts_type = i8_ptr_type.fn_type(
-        //     &[
-        //         context.ptr_type(inkwell::AddressSpace::default()).into(),
-        //         context.i32_type().into(),
-        //     ],
-        //     false,
-        // );
-        // let puts = module.add_function("puts", puts_type, None);
-
-        // let main_type = context.i32_type().fn_type(&[], false);
-        // let main_func = module.add_function("main", main_type, None);
-
-        // let entry_block = context.append_basic_block(main_func, "entry");
-
-        // builder.position_at_end(entry_block);
-
-        // let hello_world = self
-        //     .llvm_builder
-        //     .declare_global_string("hello_world", "Hello, World!\n");
-
-        // self.llvm_builder
-        //     .builder
-        //     .build_call(puts, &[hello_world.as_pointer_value().into()], "call_puts")
-        //     .map_err(|e| CompilerError::Unknown(format!("LLVM issue: {}", e)))?;
-
         for token in function.body.iter() {
-            self.statement(token, store)?;
+            self.statement(token, context)?;
         }
 
         Ok(entry_block)
@@ -351,44 +288,21 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         Ok(())
     }
 
-    // fn emit_op_code(&mut self, op_code: OpCode) {
-    //     self.function.chunk.write_chunk(op_code);
-    // }
-
-    // fn emit_jump(&mut self, op_code: OpCode) -> usize {
-    //     self.emit_op_code(op_code);
-    //     self.function.chunk.code.len() - 1
-    // }
-
-    // fn emit_global(&mut self, variable: Global) {
-    //     self.globals.push(variable);
-    //     self.emit_op_code(OpCode::Global(self.globals.len() - 1))
-    // }
-
-    // fn patch_jump(&mut self, offset: usize) {
-    //     let curr = self.function.chunk.code.len();
-    //     match self.function.chunk.code.get_mut(offset) {
-    //         Some(OpCode::JumpIfFalse(ref mut i)) => *i = curr - *i - 1,
-    //         Some(OpCode::Jump(ref mut i)) => *i = curr - *i - 1,
-    //         _ => (),
-    //     }
-    // }
-
     pub fn statement(
         &self,
         token: &'function ast::Stmt,
-        store: &mut Store<'ctx>,
+        context: &mut CompilerContext<'ctx>,
     ) -> Result<(), CompilerError> {
         log::debug!("Starting statement");
         match token {
-            ast::Stmt::Expression(expr) => self.expression_statement(expr, store)?,
-            ast::Stmt::Return(ret) => self.return_statement(ret, store)?,
-            ast::Stmt::Function(func) => self.function_declaration(func, store)?,
-            ast::Stmt::Var(var) => self.var_declaration(var, store)?,
-            ast::Stmt::Condition(cond) => self.if_statement(cond, store)?,
-            ast::Stmt::Block(blocks) => self.block(blocks, store)?,
-            ast::Stmt::While(whi) => self.while_statement(whi, store)?,
-            ast::Stmt::Assert(ass) => unimplemented!(), // TODO!!! self.assert_statement(ass),
+            ast::Stmt::Expression(expr) => self.expression_statement(expr, context)?,
+            ast::Stmt::Return(ret) => self.return_statement(ret, context)?,
+            ast::Stmt::Function(func) => self.function_declaration(func, context)?,
+            ast::Stmt::Var(var) => self.var_declaration(var, context)?,
+            ast::Stmt::Condition(cond) => self.if_statement(cond, context)?,
+            ast::Stmt::Block(blocks) => self.block(blocks, context)?,
+            ast::Stmt::While(whi) => self.while_statement(whi, context)?,
+            ast::Stmt::Assert(_) => unimplemented!(), // TODO!!! self.assert_statement(ass),
         };
 
         Ok(())
@@ -397,17 +311,17 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     fn return_statement(
         &self,
         token: &'function ast::Return,
-        store: &mut Store<'ctx>,
+        context: &mut CompilerContext<'ctx>,
     ) -> Result<(), CompilerError> {
-        let value = self.expression(&token.value, store)?;
-        if store.return_as_pointer && value.is_value() {
+        let value = self.expression(&token.value, context)?;
+        if context.return_as_pointer && value.is_value() {
             let temp_var = self.llvm_builder.allocate_and_store_value(
                 value.as_value(),
                 "",
                 value.get_typing(),
             )?;
             self.llvm_builder.return_statement(&temp_var)
-        } else if !store.return_as_pointer && value.is_variable() {
+        } else if !context.return_as_pointer && value.is_variable() {
             let temp_var = LLVMValue::new_value(
                 self.llvm_builder.load_llvm_value("", &value)?,
                 value.get_typing(),
@@ -421,9 +335,9 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     pub fn call(
         &self,
         token: &'function ast::Call,
-        store: &mut Store<'ctx>,
+        context: &mut CompilerContext<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
-        let function_value = self.expression(&token.callee, store)?;
+        let function_value = self.expression(&token.callee, context)?;
 
         let mut args;
 
@@ -433,7 +347,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
                 .arguments
                 .iter()
                 .map(|e| {
-                    let value = self.expression(e, store).unwrap();
+                    let value = self.expression(e, context).unwrap();
                     str_fmt.push_str(value.get_typing().r#type.printf_formatter());
                     value
                 })
@@ -457,7 +371,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             args = token
                 .arguments
                 .iter()
-                .map(|e| self.expression(e, store).unwrap())
+                .map(|e| self.expression(e, context).unwrap())
                 .map(|e| match e {
                     LLVMValue::RawValue(_) => self
                         .llvm_builder
@@ -474,22 +388,14 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             &args,
             function_value.get_name().as_str(),
         )
-        // for arg in token.arguments.iter() {
-        //     self.function_parameter(arg)?;
-        // }
-
-        // self.emit_op_code(OpCode::Call((
-        //     token.arguments.len(),
-        //     ItemReference::new(Some(token.callee.span.clone())),
-        // )));
     }
 
     fn if_statement(
         &self,
         token: &ast::Condition,
-        store: &mut Store<'ctx>,
+        context: &mut CompilerContext<'ctx>,
     ) -> Result<(), CompilerError> {
-        let expression = self.expression(&token.expr, store)?;
+        let expression = self.expression(&token.expr, context)?;
 
         let current_block = self.llvm_builder.get_current_block().unwrap();
         let end_block = self.llvm_builder.create_block("end");
@@ -497,13 +403,13 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         let mut else_block = None;
 
         self.llvm_builder.set_position_at(then_block);
-        self.statement(&token.then, store)?;
+        self.statement(&token.then, context)?;
         self.llvm_builder.goto_block(end_block)?;
 
         if token.r#else.is_some() {
             else_block = Some(self.llvm_builder.create_block("else"));
             self.llvm_builder.set_position_at(else_block.unwrap());
-            self.statement(token.r#else.as_ref().unwrap(), store)?;
+            self.statement(token.r#else.as_ref().unwrap(), context)?;
             self.llvm_builder.goto_block(end_block)?;
         }
 
@@ -538,7 +444,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     fn while_statement(
         &self,
         token: &ast::While,
-        store: &mut Store<'ctx>,
+        context: &mut CompilerContext<'ctx>,
     ) -> Result<(), CompilerError> {
         log::debug!("Starting while statement");
 
@@ -546,74 +452,51 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         let end_block = self.llvm_builder.create_block("end");
         let loop_block = self.llvm_builder.create_block("loop");
 
-        store
+        context
             .loop_context
             .push(LoopContext::new(cond_block.clone(), end_block.clone()));
 
         self.llvm_builder.goto_block(cond_block)?;
 
         self.llvm_builder.set_position_at(cond_block);
-        let cond = self.expression(&token.condition, store)?;
+        let cond = self.expression(&token.condition, context)?;
         self.llvm_builder
             .create_branche(cond, loop_block, end_block)?;
 
         self.llvm_builder.set_position_at(loop_block);
-        self.statement(&token.body, store)?;
+        self.statement(&token.body, context)?;
         self.llvm_builder.goto_block(cond_block)?;
 
         self.llvm_builder.set_position_at(end_block);
 
-        _ = store.loop_context.pop();
+        _ = context.loop_context.pop();
 
         Ok(())
     }
 
-    // pub fn break_loop(&mut self) -> Result<(), CompilerError> {
-    //     log::debug!("Starting break loop statement");
-    //     self.emit_op_code(OpCode::False(ItemReference::new(None))); // fake a false condition
-    //     match self.loop_details.last() {
-    //         Some(detail) => self.emit_op_code(OpCode::Goto(detail.1)),
-    //         None => {
-    //             return Err(CompilerError::SyntaxError(format!(
-    //                 "Unexpected break statement"
-    //             )))
-    //         }
-    //     }
-    //     Ok(())
-    // }
-
-    // pub fn continue_loop(&mut self) -> Result<(), CompilerError> {
-    //     log::debug!("Starting continue loop statement");
-    //     match self.loop_details.last() {
-    //         Some(detail) => self.emit_op_code(OpCode::Goto(detail.0)),
-    //         None => {
-    //             return Err(CompilerError::SyntaxError(format!(
-    //                 "Unexpected continue statement"
-    //             )))
-    //         }
-    //     }
-    //     Ok(())
-    // }
-
     fn function_declaration(
         &self,
         token: &'function ast::Function,
-        store: &mut Store<'ctx>,
+        context: &mut CompilerContext<'ctx>,
     ) -> Result<(), CompilerError> {
         log::debug!("Starting function declaration");
 
         let previous_block = self.llvm_builder.get_current_block().unwrap();
 
         if token.name != "main" {
-            let mut new_store = store.clone();
-            new_store.return_as_pointer = token.typing.return_as_pointer().unwrap();
-            self.compile(token, &mut new_store)?;
-            store.functions.add(
+            let mut new_context = context.clone();
+            new_context.return_as_pointer = token.typing.return_as_pointer().unwrap();
+            self.compile(token, &mut new_context)?;
+            context.functions.add(
                 token.name.clone(),
-                new_store.functions.get(token.name.clone()).unwrap().clone(),
+                new_context
+                    .functions
+                    .get(token.name.clone())
+                    .unwrap()
+                    .clone(),
             );
         } else {
-            self.compile(token, store)?;
+            self.compile(token, context)?;
         }
 
         let last_block = self.llvm_builder.get_current_block().unwrap();
@@ -623,30 +506,15 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
 
         self.llvm_builder.set_position_at(previous_block);
         Ok(())
-
-        // let function_block = self.llvm_builder.declare_user_function(token, &self.module);
-        // self.function_statement(token)?;
     }
 
-    // fn function_statement(&self, token: &ast::Function) -> Result<(), CompilerError> {
-    // let mut compiler = Compiler::new(&mut function, self.context);
-
-    // for variable in token.params.iter() {
-    //     compiler.register_function_parameter(Box::new(variable.name.clone()));
-    // }
-
-    // compiler.compile(&token)?;
-
-    // let mut globals = compiler.end();
-    // std::mem::swap(&mut globals, &mut self.globals);
-    // log::debug!("Function compiling terminated");
-    // self.emit_global(Global::Function(Box::new(function)));
-    // Ok(())
-    // }
-
-    fn block(&self, token: &Vec<ast::Stmt>, store: &mut Store<'ctx>) -> Result<(), CompilerError> {
+    fn block(
+        &self,
+        token: &Vec<ast::Stmt>,
+        context: &mut CompilerContext<'ctx>,
+    ) -> Result<(), CompilerError> {
         for stmt in token.iter() {
-            self.statement(stmt, store)?;
+            self.statement(stmt, context)?;
         }
 
         Ok(())
@@ -655,114 +523,61 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     fn var_declaration(
         &self,
         token: &'function ast::Variable,
-        store: &mut Store<'ctx>,
+        context: &mut CompilerContext<'ctx>,
     ) -> Result<(), CompilerError> {
-        let value = self.expression(&token.value, store)?;
+        let value = self.expression(&token.value, context)?;
         let var_ptr = self.llvm_builder.declare_variable(token, value)?;
-        store.variables.add(token.name.to_owned(), var_ptr);
+        context.variables.add(token.name.to_owned(), var_ptr);
         Ok(())
     }
-
-    // fn initialize_variable(&mut self) {
-    //     if let Some(var) = self.function.locals.last_mut() {
-    //         log::debug!("Initialize variable {var}");
-    //         var.depth = Some(self.scope_depth);
-    //     }
-    // }
-
-    // fn define_variable(&mut self, variable_index: usize) {
-    //     log::debug!("Starting define variable");
-    //     self.initialize_variable();
-    //     self.emit_op_code(OpCode::CreateLocal(variable_index - 1))
-    // }
-
-    // fn register_variable(&mut self, name: Box<String>) -> usize {
-    //     log::debug!("Register variable {}", name);
-    //     let variable = Variable::new(name, None);
-    //     self.function.locals.push(variable);
-    //     return self.function.locals.len();
-    // }
-
-    // fn register_function_parameter(&mut self, variable_name: Box<String>) {
-    //     self.function
-    //         .locals
-    //         .push(Variable::new(variable_name, Some(self.scope_depth)));
-    // }
-
-    // fn make_global(&mut self, variable: Global) -> usize {
-    //     match self.globals.find(&variable) {
-    //         Some(index) => return index,
-    //         None => {
-    //             self.globals.push(variable);
-    //             return self.globals.len() - 1;
-    //         }
-    //     }
-    // }
 
     fn expression_statement(
         &self,
         token: &'function Box<ast::Expr>,
-        store: &mut Store<'ctx>,
+        context: &mut CompilerContext<'ctx>,
     ) -> Result<(), CompilerError> {
         log::debug!("Starting expression statement");
-        self.expression(token, store)?;
+        self.expression(token, context)?;
         Ok(())
     }
 
     fn expression(
         &self,
         token: &'function Box<ast::Expr>,
-        store: &mut Store<'ctx>,
+        context: &mut CompilerContext<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         match &token.body {
             ast::ExprBody::Value(t) => {
-                self.value(t, ItemReference::new(Some(token.span.clone())), store)
+                self.value(t, ItemReference::new(Some(token.span.clone())), context)
             }
-            ast::ExprBody::Binary(t) => self.binary(t, store),
-            ast::ExprBody::Call(t) => self.call(t, store),
-            ast::ExprBody::Assign(t) => self.assign(t, store),
-            ast::ExprBody::Grouping(t) => self.grouping(t, store),
-            ast::ExprBody::Unary(t) => self.unary(t, store),
-            ast::ExprBody::Logical(t) => self.logical(t, store),
-            ast::ExprBody::LoopKeyword(t) => self.loop_keyword(t, store),
+            ast::ExprBody::Binary(t) => self.binary(t, context),
+            ast::ExprBody::Call(t) => self.call(t, context),
+            ast::ExprBody::Assign(t) => self.assign(t, context),
+            ast::ExprBody::Grouping(t) => self.grouping(t, context),
+            ast::ExprBody::Unary(t) => self.unary(t, context),
+            ast::ExprBody::Logical(t) => self.logical(t, context),
+            ast::ExprBody::LoopKeyword(t) => self.loop_keyword(t, context),
         }
     }
-
-    //     fn function_parameter(&mut self, token: &Box<ast::Expr>) -> Result<(), CompilerError> {
-    //         match &token.body {
-    //             ast::ExprBody::Binary(t) => self.binary(t),
-    //             ast::ExprBody::Unary(t) => self.unary(t),
-    //             ast::ExprBody::Grouping(t) => self.grouping(t),
-    //             ast::ExprBody::Value(t) => self.value(t, ItemReference::new(Some(token.span.clone()))),
-    //             ast::ExprBody::Assign(t) => self.assign(t),
-    //             ast::ExprBody::Logical(t) => self.logical(t),
-    //             ast::ExprBody::Call(t) => self.call(t),
-    //             ast::ExprBody::LoopKeyword(t) => {
-    //                 return Err(CompilerError::SyntaxError(format!(
-    //                     "{t} not accepted as function parameter"
-    //                 )))
-    //             }
-    //         }
-    //     }
 
     fn logical(
         &self,
         token: &ast::Logical,
-        store: &mut Store<'ctx>,
+        context: &mut CompilerContext<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         match token.operator {
-            ast::LogicalOperator::And => self.and(token, store),
-            ast::LogicalOperator::Or => self.or(token, store),
+            ast::LogicalOperator::And => self.and(token, context),
+            ast::LogicalOperator::Or => self.or(token, context),
         }
     }
 
     fn and(
         &self,
         token: &ast::Logical,
-        store: &mut Store<'ctx>,
+        context: &mut CompilerContext<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
-        let expr1 = self.expression(&token.left, store)?;
-        let expr2 = self.expression(&token.right, store)?;
+        let expr1 = self.expression(&token.left, context)?;
+        let expr2 = self.expression(&token.right, context)?;
 
         let expr1_is_true = self.llvm_builder.is_truthy(expr1)?;
         let expr2_is_true = self.llvm_builder.is_truthy(expr2)?;
@@ -773,13 +588,13 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     fn or(
         &self,
         token: &ast::Logical,
-        store: &mut Store<'ctx>,
+        context: &mut CompilerContext<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         let first_block = self.llvm_builder.create_block("first");
         let second_block = self.llvm_builder.create_block("second");
         let merge_block = self.llvm_builder.create_block("merge");
 
-        let expression1 = self.expression(&token.left, store)?;
+        let expression1 = self.expression(&token.left, context)?;
         let value = self.llvm_builder.allocate(expression1.clone())?;
 
         let expression_1_truthy = self.llvm_builder.is_truthy(expression1.clone())?;
@@ -793,7 +608,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         self.llvm_builder.goto_block(merge_block)?;
 
         self.llvm_builder.set_position_at(second_block);
-        let expression2 = self.expression(&token.right, store)?;
+        let expression2 = self.expression(&token.right, context)?;
         self.llvm_builder
             .store_value(value, expression2.get_basic_value_enum())?;
         self.llvm_builder.goto_block(merge_block)?;
@@ -811,10 +626,10 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     fn assign(
         &self,
         token: &ast::Assign,
-        store: &mut Store<'ctx>,
+        context: &mut CompilerContext<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
-        let expr = self.expression(&token.value, store)?;
-        let variable = store.variables.get(token.name.clone()).unwrap();
+        let expr = self.expression(&token.value, context)?;
+        let variable = context.variables.get(token.name.clone()).unwrap();
 
         match &expr {
             LLVMValue::RawValue(_) => self
@@ -841,7 +656,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         &self,
         token: &'function ast::Value,
         reference: ItemReference,
-        store: &mut Store<'ctx>,
+        context: &mut CompilerContext<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         match token {
             ast::Value::Integer(i) => Ok(LLVMValue::new_value(
@@ -865,8 +680,8 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
                 Typing::new(false, ast::Type::None),
             )),
             ast::Value::Variable(s) => self
-                .get_variable(&s, store)
-                .or_else(|_| self.get_function(&s, store)),
+                .get_variable(&s, context)
+                .or_else(|_| self.get_function(&s, context)),
             ast::Value::String(s) => Ok(LLVMValue::new_variable(
                 self.llvm_builder.global_string("", s)?.as_pointer_value(),
                 Typing::new(false, ast::Type::String),
@@ -877,15 +692,15 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     fn loop_keyword(
         &self,
         token: &ast::LoopKeyword,
-        store: &mut Store<'ctx>,
+        context: &mut CompilerContext<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         match token {
             ast::LoopKeyword::Break => self
                 .llvm_builder
-                .goto_block(store.loop_context.last().unwrap().end)?,
+                .goto_block(context.loop_context.last().unwrap().end)?,
             ast::LoopKeyword::Continue => self
                 .llvm_builder
-                .goto_block(store.loop_context.last().unwrap().cond)?,
+                .goto_block(context.loop_context.last().unwrap().cond)?,
         };
 
         // this doesn't return any value
@@ -898,12 +713,12 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     fn binary(
         &self,
         token: &'function ast::Binary,
-        store: &mut Store<'ctx>,
+        context: &mut CompilerContext<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         let reference = ItemReference::new(Some(token.right.span.clone()));
-        let value_left = self.expression(&token.left, store)?;
-        let value_right = self.expression(&token.right, store)?;
-        self.operator(&token.operator, value_left, value_right, reference, store)
+        let value_left = self.expression(&token.left, context)?;
+        let value_right = self.expression(&token.right, context)?;
+        self.operator(&token.operator, value_left, value_right, reference, context)
     }
 
     fn operator(
@@ -912,7 +727,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         value_left: LLVMValue<'ctx>,
         value_right: LLVMValue<'ctx>,
         reference: ItemReference,
-        store: &mut Store<'ctx>,
+        context: &mut CompilerContext<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         match token {
             ast::Operator::Plus => self.llvm_builder.add(value_left, value_right),
@@ -934,7 +749,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             // might have to transform them earlier because we don't know the ptr to update here
             ast::Operator::PlusEqual => {
                 let var_name = value_left.get_name();
-                let var = store.variables.get(var_name).ok_or_else(|| {
+                let var = context.variables.get(var_name).ok_or_else(|| {
                     CompilerError::Unknown(format!("Variable unknown: {}", value_left.get_name()))
                 })?;
                 let new_value = self.llvm_builder.add(value_left, value_right).unwrap();
@@ -944,7 +759,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             }
             ast::Operator::MinusEqual => {
                 let var_name = value_left.get_name();
-                let var = store.variables.get(var_name).ok_or_else(|| {
+                let var = context.variables.get(var_name).ok_or_else(|| {
                     CompilerError::Unknown(format!("Variable unknown: {}", value_left.get_name()))
                 })?;
                 let new_value = self.llvm_builder.sub(value_left, value_right).unwrap();
@@ -955,7 +770,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
 
             ast::Operator::DevideEqual => {
                 let var_name = value_left.get_name();
-                let var = store.variables.get(var_name).ok_or_else(|| {
+                let var = context.variables.get(var_name).ok_or_else(|| {
                     CompilerError::Unknown(format!("Variable unknown: {}", value_left.get_name()))
                 })?;
                 let new_value = self.llvm_builder.divide(value_left, value_right).unwrap();
@@ -965,7 +780,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             }
             ast::Operator::MultiplyEqual => {
                 let var_name = value_left.get_name();
-                let var = store.variables.get(var_name).ok_or_else(|| {
+                let var = context.variables.get(var_name).ok_or_else(|| {
                     CompilerError::Unknown(format!("Variable unknown: {}", value_left.get_name()))
                 })?;
                 let new_value = self.llvm_builder.multiply(value_left, value_right).unwrap();
@@ -976,35 +791,11 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         }
     }
 
-    //     pub fn and(&mut self, token: &ast::Logical) -> Result<(), CompilerError> {
-    //         log::debug!("Starting and operation");
-    //         self.expression(&token.left)?;
-    //         let end_jump = self.emit_jump(OpCode::JumpIfFalse(self.function.chunk.code.len()));
-    //         self.emit_op_code(OpCode::Pop);
-    //         self.expression(&token.right)?;
-    //         self.patch_jump(end_jump);
-    //         Ok(())
-    //     }
-
-    //     pub fn or(&mut self, token: &ast::Logical) -> Result<(), CompilerError> {
-    //         log::debug!("Starting or operation");
-    //         self.expression(&token.left)?;
-    //         let else_jump = self.emit_jump(OpCode::JumpIfFalse(self.function.chunk.code.len()));
-    //         let end_jump = self.emit_jump(OpCode::Jump(self.function.chunk.code.len()));
-
-    //         self.patch_jump(else_jump);
-    //         self.emit_op_code(OpCode::Pop);
-
-    //         self.expression(&token.right)?;
-    //         self.patch_jump(end_jump);
-    //         Ok(())
-    //     }
-
     pub fn set_variable(
         &mut self,
         var_name: &str,
         expr: &LLVMValue<'ctx>,
-        store: &mut Store,
+        context: &mut CompilerContext,
     ) -> Result<(), CompilerError> {
         log::debug!("Starting variable assignment");
 
@@ -1014,11 +805,11 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     pub fn get_variable(
         &self,
         var_name: &str,
-        store: &mut Store<'ctx>,
+        context: &mut CompilerContext<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         log::debug!("Starting variable");
 
-        if let Some(ptr) = store.variables.get(var_name.to_owned()) {
+        if let Some(ptr) = context.variables.get(var_name.to_owned()) {
             Ok(ptr.clone())
         } else {
             Err(CompilerError::Unknown(format!(
@@ -1026,22 +817,14 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
                 var_name
             )))
         }
-
-        // let op_code = match self.resolve_local(var_name)? {
-        //     VariableType::Local(index) => OpCode::GetLocal(index),
-        //     VariableType::Inherited(v) => OpCode::GetInheritedLocal(v),
-        //     VariableType::Global(v) => OpCode::GetGlobal(v),
-        // };
-
-        // self.emit_op_code(op_code);
     }
 
     pub fn get_function(
         &self,
         function_name: &str,
-        store: &mut Store<'ctx>,
+        context: &mut CompilerContext<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
-        if let Some(ptr) = store.functions.get(function_name.to_owned()) {
+        if let Some(ptr) = context.functions.get(function_name.to_owned()) {
             Ok(ptr.clone())
         } else {
             Err(CompilerError::Unknown(format!(
@@ -1049,69 +832,14 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
                 function_name
             )))
         }
-
-        // let op_code = match self.resolve_local(var_name)? {
-        //     VariableType::Local(index) => OpCode::GetLocal(index),
-        //     VariableType::Inherited(v) => OpCode::GetInheritedLocal(v),
-        //     VariableType::Global(v) => OpCode::GetGlobal(v),
-        // };
-
-        // self.emit_op_code(op_code);
     }
-
-    //     fn resolve_local(&mut self, var_name: &str) -> Result<VariableType, CompilerError> {
-    //         log::debug!("Resolve variable {}", var_name);
-
-    //         for (i, local) in self.function.locals.iter().enumerate().rev() {
-    //             if local.name.as_str() != var_name {
-    //                 continue;
-    //             }
-
-    //             if local.depth.is_none() {
-    //                 return Err(CompilerError::Unknown(format!(
-    //                     "Can't read local variable in its own initializer: {}",
-    //                     var_name
-    //                 )));
-    //             };
-
-    //             return Ok(VariableType::Local(i));
-    //         }
-
-    //         for local in self.function.inherited_locals.iter().rev() {
-    //             if local.var_name.as_str() != var_name {
-    //                 continue;
-    //             };
-    //             return Ok(VariableType::Inherited(InheritedLocalPos::new(
-    //                 local.pos,
-    //                 local.depth,
-    //             )));
-    //         }
-
-    //         for (i, global) in self.globals.as_vec().iter().enumerate() {
-    //             match global {
-    //                 Global::Identifier(v) => {
-    //                     if v.name.as_str() == var_name {
-    //                         return Ok(VariableType::Global(i));
-    //                     };
-    //                 }
-    //                 Global::Native(f) if f.name == var_name => {
-    //                     return Ok(VariableType::Global(i));
-    //                 }
-    //                 _ => continue,
-    //             }
-    //         }
-
-    //         return Err(CompilerError::ConstantNotFound(format!(
-    //             "Unknown variable: {var_name}"
-    //         )));
-    //     }
 
     fn unary(
         &self,
         token: &ast::Unary,
-        store: &mut Store<'ctx>,
+        context: &mut CompilerContext<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
-        let expr = self.expression(&token.right, store)?;
+        let expr = self.expression(&token.right, context)?;
         match token.operator {
             ast::UnaryOperator::Minus => self.llvm_builder.create_neg(expr),
             ast::UnaryOperator::Not => self.llvm_builder.create_not(expr),
@@ -1121,19 +849,8 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
     pub fn grouping(
         &self,
         token: &ast::Grouping,
-        store: &mut Store<'ctx>,
+        context: &mut CompilerContext<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
-        self.expression(&token.expr, store)
+        self.expression(&token.expr, context)
     }
-
-    //     pub fn end(mut self) -> GlobalStore {
-    //         match self.function.chunk.code.last() {
-    //             Some(OpCode::Return(r)) => (),
-    //             _ => {
-    //                 self.emit_op_code(OpCode::None(ItemReference::new(None)));
-    //                 self.emit_op_code(OpCode::Return(ItemReference::new(None)));
-    //             }
-    //         }
-    //         self.globals
-    //     }
 }

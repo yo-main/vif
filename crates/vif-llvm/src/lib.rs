@@ -4,7 +4,7 @@ mod error;
 
 use std::path::Path;
 
-use crate::compiler::Store;
+use crate::compiler::CompilerContext;
 use crate::error::CompilerError;
 use compiler::Compiler;
 
@@ -24,7 +24,7 @@ fn compile<'func, 'ctx>(
 ) -> Result<Compiler<'func, 'ctx>, CompilerError> {
     let compiler = Compiler::new(function, &context);
 
-    let mut store = Store::new();
+    let mut store = CompilerContext::new();
     compiler.add_builtin_functions(&mut store);
     compiler.compile(&ast_function, &mut store)?;
     compiler.add_return_main_function()?;
