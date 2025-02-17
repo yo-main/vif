@@ -388,8 +388,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             ast::Stmt::Condition(cond) => self.if_statement(cond, store)?,
             ast::Stmt::Block(blocks) => self.block(blocks, store)?,
             ast::Stmt::While(whi) => self.while_statement(whi, store)?,
-            _ => unreachable!(),
-            // ast::Stmt::Assert(ass) => self.assert_statement(ass),
+            ast::Stmt::Assert(ass) => unimplemented!(), // TODO!!! self.assert_statement(ass),
         };
 
         Ok(())
@@ -522,7 +521,11 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
         Ok(())
     }
 
-    // fn assert_statement(&mut self, token: &ast::Assert) -> Result<(), CompilerError> {
+    // fn assert_statement(
+    //     &self,
+    //     token: &ast::Assert,
+    //     store: &mut Store<'ctx>,
+    // ) -> Result<LLVMValue<'ctx>, CompilerError> {
     //     log::debug!("Starting assert statement");
     //     self.expression(&token.value)?;
     //     self.emit_op_code(OpCode::AssertTrue(ItemReference::new(Some(
@@ -722,7 +725,6 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
             ast::ExprBody::Unary(t) => self.unary(t, store),
             ast::ExprBody::Logical(t) => self.logical(t, store),
             ast::ExprBody::LoopKeyword(t) => self.loop_keyword(t, store),
-            _ => unreachable!(),
         }
     }
 
