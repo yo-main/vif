@@ -415,20 +415,10 @@ name = "vif-cli"
 version = "0.1.0"
 dependencies = [
  "vif-ast",
- "vif-compiler",
  "vif-llvm",
  "vif-loader",
  "vif-objects",
  "vif-typing",
-]
-
-[[package]]
-name = "vif-compiler"
-version = "0.1.0"
-dependencies = [
- "vif-loader",
- "vif-objects",
- "vif-scanner",
 ]
 
 [[package]]

@@ -7,5 +7,4 @@ edition = "2021"
 
 [dependencies]
 chrono = "0.4.31"
-# vif-compiler = { version = "0.1.0", path = "../vif-compiler" }
 vif-objects = { version = "0.1.0", path = "../vif-objects" }
