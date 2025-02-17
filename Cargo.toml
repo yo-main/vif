@@ -5,7 +5,6 @@ members = [
   "crates/vif-native",
   "crates/vif-typing",
   "crates/vif-scanner",
-  "crates/vif-compiler",
   "crates/vif-ast",
   "crates/vif-loader",
   "crates/vif-typing",
