@@ -19,10 +19,9 @@ use vif_objects::op_code::OpCode;
 
 fn compile<'func, 'ctx>(
     ast_function: &vif_objects::ast::Function,
-    function: &'func mut Function,
     context: &'ctx Context,
-) -> Result<Compiler<'func, 'ctx>, CompilerError> {
-    let compiler = Compiler::new(function, &context);
+) -> Result<Compiler<'ctx>, CompilerError> {
+    let compiler = Compiler::new(&context);
 
     let mut store = CompilerContext::new();
     compiler.add_builtin_functions(&mut store);
@@ -33,19 +32,17 @@ fn compile<'func, 'ctx>(
 }
 
 pub fn get_llvm_ir(ast_function: &vif_objects::ast::Function) -> Result<String, CompilerError> {
-    let mut function = Function::new(Arity::None, ast_function.name.clone());
     let context = inkwell::context::Context::create();
 
-    let compiler = compile(ast_function, &mut function, &context)?;
+    let compiler = compile(ast_function, &context)?;
 
     Ok(compiler.as_string())
 }
 
 pub fn compile_and_execute(ast_function: &vif_objects::ast::Function) -> Result<(), CompilerError> {
-    let mut function = Function::new(Arity::None, ast_function.name.clone());
     let context = inkwell::context::Context::create();
 
-    let compiler = compile(ast_function, &mut function, &context)?;
+    let compiler = compile(ast_function, &context)?;
 
     compiler.execute()
 }
@@ -53,10 +50,9 @@ pub fn compile_and_execute(ast_function: &vif_objects::ast::Function) -> Result<
 pub fn compile_and_build_binary(
     ast_function: &vif_objects::ast::Function,
 ) -> Result<(), CompilerError> {
-    let mut function = Function::new(Arity::None, ast_function.name.clone());
     let context = inkwell::context::Context::create();
 
-    let compiler = compile(ast_function, &mut function, &context)?;
+    let compiler = compile(ast_function, &context)?;
 
     compiler.build_binary("here.o")
 }

@@ -124,23 +124,18 @@ impl<'ctx> CompilerContext<'ctx> {
     }
 }
 
-pub struct Compiler<'function, 'ctx> {
+pub struct Compiler<'ctx> {
     context: &'ctx inkwell::context::Context,
     module: inkwell::module::Module<'ctx>,
     llvm_builder: Builder<'ctx>,
-    function: &'function mut Function,
 }
 
-impl<'function, 'ctx> Compiler<'function, 'ctx> {
-    pub fn new(
-        function: &'function mut Function,
-        context: &'ctx inkwell::context::Context,
-    ) -> Self {
+impl<'ctx> Compiler<'ctx> {
+    pub fn new(context: &'ctx inkwell::context::Context) -> Self {
         let builder = Builder::new(context);
 
         let compiler = Compiler {
             context,
-            function,
             module: context.create_module("vif"),
             llvm_builder: builder,
         };
@@ -176,7 +171,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
 
     pub fn compile(
         &self,
-        function: &'function ast::Function,
+        function: &ast::Function,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<BasicBlock<'ctx>, CompilerError> {
         let function_value = self
@@ -290,7 +285,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
 
     pub fn statement(
         &self,
-        token: &'function ast::Stmt,
+        token: &ast::Stmt,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<(), CompilerError> {
         log::debug!("Starting statement");
@@ -310,7 +305,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
 
     fn return_statement(
         &self,
-        token: &'function ast::Return,
+        token: &ast::Return,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<(), CompilerError> {
         let value = self.expression(&token.value, context)?;
@@ -334,7 +329,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
 
     pub fn call(
         &self,
-        token: &'function ast::Call,
+        token: &ast::Call,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         let function_value = self.expression(&token.callee, context)?;
@@ -476,7 +471,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
 
     fn function_declaration(
         &self,
-        token: &'function ast::Function,
+        token: &ast::Function,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<(), CompilerError> {
         log::debug!("Starting function declaration");
@@ -522,7 +517,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
 
     fn var_declaration(
         &self,
-        token: &'function ast::Variable,
+        token: &ast::Variable,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<(), CompilerError> {
         let value = self.expression(&token.value, context)?;
@@ -533,7 +528,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
 
     fn expression_statement(
         &self,
-        token: &'function Box<ast::Expr>,
+        token: &Box<ast::Expr>,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<(), CompilerError> {
         log::debug!("Starting expression statement");
@@ -543,7 +538,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
 
     fn expression(
         &self,
-        token: &'function Box<ast::Expr>,
+        token: &Box<ast::Expr>,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         match &token.body {
@@ -654,7 +649,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
 
     fn value(
         &self,
-        token: &'function ast::Value,
+        token: &ast::Value,
         reference: ItemReference,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
@@ -712,7 +707,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
 
     fn binary(
         &self,
-        token: &'function ast::Binary,
+        token: &ast::Binary,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         let reference = ItemReference::new(Some(token.right.span.clone()));
@@ -723,7 +718,7 @@ impl<'function, 'ctx> Compiler<'function, 'ctx> {
 
     fn operator(
         &self,
-        token: &'function ast::Operator,
+        token: &ast::Operator,
         value_left: LLVMValue<'ctx>,
         value_right: LLVMValue<'ctx>,
         reference: ItemReference,
