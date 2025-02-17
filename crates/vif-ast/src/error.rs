@@ -1,4 +1,4 @@
-use vif_objects::{ast::TypeError, span::Span};
+use vif_objects::span::Span;
 use vif_scanner::ScannerError;
 
 #[derive(Debug)]

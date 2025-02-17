@@ -1,5 +1,3 @@
-use std::any::Any;
-
 use vif_objects::ast::Type;
 
 pub trait TypeMerger {

@@ -1,15 +1,9 @@
-use std::any::Any;
-use std::borrow::Borrow;
-use std::os::unix::process::CommandExt;
-
 use crate::error::CompilerError;
 use inkwell::basic_block::BasicBlock;
-use inkwell::llvm_sys::{LLVMCallConv, LLVMValueKind};
 use inkwell::module::Module;
-use inkwell::types::{AnyType, BasicMetadataTypeEnum, BasicType, BasicTypeEnum, PointerType};
+use inkwell::types::{BasicMetadataTypeEnum, BasicType, PointerType};
 use inkwell::values::{
-    AnyValue, AsValueRef, BasicMetadataValueEnum, BasicValue, BasicValueEnum, FunctionValue,
-    PointerValue,
+    BasicMetadataValueEnum, BasicValue, BasicValueEnum, FunctionValue, PointerValue,
 };
 use inkwell::AddressSpace;
 use vif_objects::ast::{self, Typing};
@@ -133,18 +127,8 @@ impl<'ctx> LLVMValue<'ctx> {
     pub fn as_value(&self) -> BasicValueEnum<'ctx> {
         match self {
             Self::RawValue(v) => v.value,
-            Self::Variable(v) => unreachable!(),
-            Self::Function(f) => unreachable!(),
-        }
-    }
-
-    pub fn get_basic_metadata_value_enum(&self) -> BasicMetadataValueEnum<'ctx> {
-        match self {
-            Self::RawValue(r) => BasicMetadataValueEnum::from(r.value),
-            Self::Variable(v) => BasicMetadataValueEnum::PointerValue(v.ptr),
-            Self::Function(f) => {
-                BasicMetadataValueEnum::PointerValue(f.ptr.as_global_value().as_pointer_value())
-            }
+            Self::Variable(_) => unreachable!(),
+            Self::Function(_) => unreachable!(),
         }
     }
 
@@ -185,9 +169,6 @@ impl<'ctx> Builder<'ctx> {
             context,
             builder: context.create_builder(),
         }
-    }
-    pub fn create_module(&self, module_name: &str) -> inkwell::module::Module {
-        self.context.create_module(module_name)
     }
 
     fn get_llvm_type(&self, typing: &ast::Typing) -> inkwell::types::BasicTypeEnum<'ctx> {
@@ -284,26 +265,6 @@ impl<'ctx> Builder<'ctx> {
             let ptr = self
                 .builder
                 .build_alloca(value.get_type(), name)
-                .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
-            self.store_value(ptr, value)?;
-            ptr
-        };
-
-        Ok(LLVMValue::new_variable(ptr, typing))
-    }
-
-    pub fn mallocate_and_store_value(
-        &self,
-        value: BasicValueEnum<'ctx>,
-        name: &str,
-        typing: Typing,
-    ) -> Result<LLVMValue<'ctx>, CompilerError> {
-        let ptr = if let BasicValueEnum::PointerValue(p) = value {
-            p
-        } else {
-            let ptr = self
-                .builder
-                .build_malloc(value.get_type(), name)
                 .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
             self.store_value(ptr, value)?;
             ptr

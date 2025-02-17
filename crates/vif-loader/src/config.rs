@@ -1,6 +1,5 @@
 use crate::cli;
 use lazy_static::lazy_static;
-use std::fs::canonicalize;
 use std::path::PathBuf;
 
 lazy_static! {

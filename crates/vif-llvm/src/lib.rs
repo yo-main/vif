@@ -2,20 +2,12 @@ mod builder;
 mod compiler;
 mod error;
 
-use std::path::Path;
-
 use crate::compiler::CompilerContext;
 use crate::error::CompilerError;
 use compiler::Compiler;
 
 use inkwell;
 use inkwell::context::Context;
-use vif_objects::function::Arity;
-use vif_objects::function::Function;
-use vif_objects::function::NativeFunction;
-use vif_objects::function::NativeFunctionCallee;
-use vif_objects::global::Global;
-use vif_objects::op_code::OpCode;
 
 fn compile<'func, 'ctx>(
     ast_function: &vif_objects::ast::Function,
@@ -60,7 +52,7 @@ pub fn compile_and_build_binary(
 pub fn execute_llvm_from_stdin() -> Result<(), CompilerError> {
     let context = inkwell::context::Context::create();
     let buffer = inkwell::memory_buffer::MemoryBuffer::create_from_stdin()
-        .map_err(|e| CompilerError::LLVM("Could not create memory buffer".to_owned()))?;
+        .map_err(|_| CompilerError::LLVM("Could not create memory buffer".to_owned()))?;
 
     let module = context.create_module_from_ir(buffer).unwrap();
 

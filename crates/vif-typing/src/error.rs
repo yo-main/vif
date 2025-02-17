@@ -1,7 +1,4 @@
-use vif_objects::{
-    ast::{Callable, Type, Typing},
-    span::Span,
-};
+use vif_objects::{ast::Typing, span::Span};
 
 #[derive(Debug)]
 pub enum TypingError {

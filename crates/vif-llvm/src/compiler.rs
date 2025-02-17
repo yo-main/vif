@@ -10,43 +10,13 @@ use inkwell::targets::Target;
 use inkwell::targets::TargetMachine;
 use inkwell::values::BasicMetadataValueEnum;
 use inkwell::values::BasicValue;
-use inkwell::values::FunctionValue;
-use inkwell::values::PointerValue;
 use std::collections::HashMap;
-use std::path::Path;
 use vif_objects::ast::Typing;
 
 use crate::builder::LLVMValue;
 use vif_loader::log;
 use vif_objects::ast;
-use vif_objects::function::Function;
 use vif_objects::op_code::ItemReference;
-
-type FuncType = unsafe extern "C" fn() -> i32;
-
-#[derive(Debug, Clone)]
-struct StoredVariable<'ctx> {
-    ptr: PointerValue<'ctx>,
-    typing: Typing,
-}
-
-impl<'ctx> StoredVariable<'ctx> {
-    fn new(ptr: PointerValue<'ctx>, typing: Typing) -> Self {
-        Self { ptr, typing }
-    }
-}
-
-#[derive(Debug, Clone)]
-struct StoredFunction<'ctx> {
-    ptr: FunctionValue<'ctx>,
-    // f: &'function ast::Function,
-}
-
-impl<'ctx, 'function> StoredFunction<'ctx> {
-    fn new(ptr: FunctionValue<'ctx>) -> Self {
-        Self { ptr }
-    }
-}
 
 #[derive(Debug, Clone)]
 struct Variables<'ctx> {
@@ -217,12 +187,6 @@ impl<'ctx> Compiler<'ctx> {
             self.llvm_builder.value_bool(false),
             ast::Typing::new(true, ast::Type::None),
         ))
-    }
-
-    pub fn print_module_to_file(&self, path: &str) -> Result<(), CompilerError> {
-        self.module
-            .print_to_file(Path::new(path))
-            .map_err(|e| CompilerError::LLVM(format!("{e}")))
     }
 
     pub fn as_string(&self) -> String {
@@ -784,17 +748,6 @@ impl<'ctx> Compiler<'ctx> {
                 Ok(new_value)
             }
         }
-    }
-
-    pub fn set_variable(
-        &mut self,
-        var_name: &str,
-        expr: &LLVMValue<'ctx>,
-        context: &mut CompilerContext,
-    ) -> Result<(), CompilerError> {
-        log::debug!("Starting variable assignment");
-
-        Ok(())
     }
 
     pub fn get_variable(

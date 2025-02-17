@@ -10,7 +10,6 @@ use vif_objects::function::Arity;
 use vif_objects::function::Function;
 use vif_objects::global_store::GlobalStore;
 use vif_objects::op_code::ItemReference;
-use vif_objects::span::Span;
 use vif_objects::variable::InheritedLocalPos;
 use vif_objects::variable::InheritedVariable;
 use vif_objects::variable::Variable;
