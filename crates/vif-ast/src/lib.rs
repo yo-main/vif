@@ -1,6 +1,8 @@
 mod debug;
 mod error;
+mod objects;
 mod parser;
+
 pub use debug::print_ast_tree;
 pub use error::AstError;
 use parser::Parser;
