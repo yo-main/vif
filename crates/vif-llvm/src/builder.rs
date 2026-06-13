@@ -543,6 +543,7 @@ impl<'ctx> Builder<'ctx> {
             BasicValueEnum::PointerValue(ptr) => self.builder.build_return(Some(&ptr)),
             BasicValueEnum::VectorValue(v) => self.builder.build_return(Some(&v)),
             BasicValueEnum::StructValue(s) => self.builder.build_return(Some(&s)),
+            BasicValueEnum::ScalableVectorValue(_) => unimplemented!(),
         }
         .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
         // match value {
@@ -577,7 +578,7 @@ impl<'ctx> Builder<'ctx> {
             .build_direct_call(function.ptr.clone(), args, name)
             .map_err(|e| CompilerError::LLVM(format!("{e}")))?;
 
-        if let Some(v) = call_result.try_as_basic_value().left() {
+        if let Some(v) = call_result.try_as_basic_value().basic() {
             Ok(self.allocate_and_store_value(v, "", function.typing.clone())?)
         } else {
             self.allocate_and_store_value(

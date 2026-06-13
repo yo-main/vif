@@ -21,3 +21,7 @@ profile.pb
 here.ll
 
 .direnv/*
+
+
+# llvm binaries
+llvm/
