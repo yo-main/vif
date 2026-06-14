@@ -1,11 +1,11 @@
 mod debug;
 mod error;
 mod objects;
-mod parser;
+mod old_parser;
 
 pub use debug::print_ast_tree;
 pub use error::AstError;
-use parser::Parser;
+use old_parser::Parser;
 use vif_loader::log;
 use vif_objects::ast::Function;
 use vif_scanner::Scanner;
