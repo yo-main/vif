@@ -79,28 +79,6 @@ pub enum TokenType {
     EOF,
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub struct Token {
-    pub r#type: TokenType,
-    pub line: usize,
-}
-
-impl Token {
-    pub fn new(r#type: TokenType, line: usize) -> Self {
-        Token { r#type, line }
-    }
-
-    pub fn create(r#type: TokenType) -> Self {
-        Token { r#type, line: 0 }
-    }
-}
-
-impl Display for Token {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.r#type)
-    }
-}
-
 impl Display for TokenType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

@@ -9,7 +9,6 @@ use vif_objects::ast::Typing;
 use vif_objects::ast::Value;
 use vif_objects::ast::Variable;
 use vif_scanner::Scanner;
-use vif_scanner::Token;
 use vif_scanner::TokenType;
 use vif_typing::type_merger::SoftTypeMerger;
 use vif_typing::type_merger::TypeMerger;
@@ -68,12 +67,12 @@ impl<'a> Parser<'a> {
 
     fn declaration(&mut self) -> Result<ast::Stmt, AstError> {
         match self.scanner.peek()? {
-            t if t.r#type == TokenType::NewLine => {
+            TokenType::NewLine => {
                 self.scanner.scan().unwrap();
                 self.declaration()
             }
-            t if t.r#type == TokenType::Var => self.var_declaration(),
-            t if t.r#type == TokenType::Def => self.function_declaration(),
+            TokenType::Var => self.var_declaration(),
+            TokenType::Def => self.function_declaration(),
             _ => self.statement(),
         }
     }
@@ -82,15 +81,13 @@ impl<'a> Parser<'a> {
         self.scanner.scan()?;
 
         let name = match self.scanner.scan() {
-            Ok(t) => match t.r#type {
-                TokenType::ValueIdentifier(s) => s,
-                _ => {
-                    return Err(SyntaxError::new(
-                        format!("Expected an identifier after def"),
-                        self.scanner.get_span().clone(),
-                    ))
-                }
-            },
+            Ok(TokenType::ValueIdentifier(s)) => s,
+            _ => {
+                return Err(SyntaxError::new(
+                    format!("Expected an identifier after def"),
+                    self.scanner.get_span().clone(),
+                ))
+            }
             Err(e) => return Err(e.into()),
         };
 
@@ -99,65 +96,52 @@ impl<'a> Parser<'a> {
 
         loop {
             let mutable = match self.scanner.peek() {
-                Ok(t) => match &t.r#type {
-                    TokenType::Mut => {
-                        self.scanner.scan()?;
-                        true
-                    }
-                    _ => false,
-                },
+                Ok(TokenType::Mut) => {
+                    self.scanner.advance()?;
+                    true
+                }
+                Ok(_) => false,
                 _ => break,
             };
 
-            match self.scanner.peek() {
-                Ok(t) => match &t.r#type {
-                    TokenType::RightParen => break,
-                    TokenType::Comma => {
-                        self.scanner.scan().unwrap();
-                        continue;
-                    }
-                    TokenType::ValueIdentifier(s) => {
-                        let func_name = s.clone();
+            match self.scanner.peek()? {
+                TokenType::RightParen => break,
+                TokenType::Comma => {
+                    self.scanner.scan().unwrap();
+                    continue;
+                }
+                TokenType::ValueIdentifier(s) => {
+                    let func_name = s.clone();
 
-                        self.scanner.scan().unwrap();
+                    self.scanner.scan().unwrap();
 
-                        self.consume(TokenType::DoubleDot, "Expected : after parameter")?;
+                    self.consume(TokenType::DoubleDot, "Expected : after parameter")?;
 
-                        let t = match self.scanner.peek() {
-                            Ok(t) => match &t.r#type {
-                                TokenType::Int => ast::Type::Int,
-                                TokenType::Bool => ast::Type::Bool,
-                                TokenType::Str => ast::Type::String,
-                                TokenType::Float => ast::Type::Float,
-                                t => {
-                                    return Err(SyntaxError::new(
-                                        format!("Not a type: {t}"),
-                                        self.scanner.get_span().clone(),
-                                    ))
-                                }
-                            },
-                            _ => {
-                                return Err(SyntaxError::new(
-                                    "Expected parameter type".to_owned(),
-                                    self.scanner.get_span().clone(),
-                                ))
-                            }
-                        };
-                        self.scanner.scan().unwrap();
+                    let t = match self.scanner.peek()? {
+                        TokenType::Int => ast::Type::Int,
+                        TokenType::Bool => ast::Type::Bool,
+                        TokenType::Str => ast::Type::String,
+                        TokenType::Float => ast::Type::Float,
+                        t => {
+                            return Err(SyntaxError::new(
+                                format!("Not a type: {t}"),
+                                self.scanner.get_span().clone(),
+                            ))
+                        }
+                    };
+                    self.scanner.scan().unwrap();
 
-                        parameters.push(ast::FunctionParameter {
-                            name: func_name,
-                            typing: Typing::new(mutable, t),
-                        });
-                    }
-                    _ => {
-                        return Err(SyntaxError::new(
-                            format!("Expected a parameter name"),
-                            self.scanner.get_span().clone(),
-                        ))
-                    }
-                },
-                _ => break,
+                    parameters.push(ast::FunctionParameter {
+                        name: func_name,
+                        typing: Typing::new(mutable, t),
+                    });
+                }
+                _ => {
+                    return Err(SyntaxError::new(
+                        format!("Expected a parameter name"),
+                        self.scanner.get_span().clone(),
+                    ))
+                }
             };
         }
 
@@ -174,12 +158,12 @@ impl<'a> Parser<'a> {
     }
 
     fn statement(&mut self) -> Result<ast::Stmt, AstError> {
-        Ok(match self.scanner.peek() {
-            Ok(t) if t.r#type == TokenType::Indent => ast::Stmt::Block(self.block()?),
-            Ok(t) if t.r#type == TokenType::If => ast::Stmt::Condition(self.if_statement()?),
-            Ok(t) if t.r#type == TokenType::While => ast::Stmt::While(self.while_statement()?),
-            Ok(t) if t.r#type == TokenType::Return => ast::Stmt::Return(self.return_statement()?),
-            Ok(t) if t.r#type == TokenType::Assert => ast::Stmt::Assert(self.assert_statement()?),
+        Ok(match self.scanner.peek()? {
+            TokenType::Indent => ast::Stmt::Block(self.block()?),
+            TokenType::If => ast::Stmt::Condition(self.if_statement()?),
+            TokenType::While => ast::Stmt::While(self.while_statement()?),
+            TokenType::Return => ast::Stmt::Return(self.return_statement()?),
+            TokenType::Assert => ast::Stmt::Assert(self.assert_statement()?),
             _ => ast::Stmt::Expression(self.expression()?),
         })
     }
@@ -188,8 +172,8 @@ impl<'a> Parser<'a> {
         //TODO: rework this to have expression value displayed when doing an assertion
         self.scanner.scan().unwrap();
 
-        let value = match self.scanner.peek() {
-            Ok(t) if t.r#type == TokenType::NewLine => Box::new(Expr::new(
+        let value = match self.scanner.peek()? {
+            TokenType::NewLine => Box::new(Expr::new(
                 ExprBody::Value(Value::None),
                 Typing::new(false, ast::Type::None),
                 self.scanner.get_span().clone(),
@@ -209,35 +193,19 @@ impl<'a> Parser<'a> {
     fn var_declaration(&mut self) -> Result<ast::Stmt, AstError> {
         self.scanner.scan()?;
 
-        let mutable = match self.scanner.peek() {
-            Ok(t) => match t.r#type {
-                TokenType::Mut => {
-                    self.scanner.scan()?;
-                    true
-                }
-                _ => false,
-            },
-            _ => {
-                return Err(SyntaxError::new(
-                    format!("Expected a variable name, get EOF"),
-                    self.scanner.get_span().clone(),
-                ))
+        let mutable = match self.scanner.peek()? {
+            TokenType::Mut => {
+                self.scanner.scan()?;
+                true
             }
+            _ => false,
         };
 
-        let name = match self.scanner.scan() {
-            Ok(t) => match t.r#type {
-                TokenType::ValueIdentifier(s) => s,
-                t => {
-                    return Err(SyntaxError::new(
-                        format!("Expected an variable name, got {}", t),
-                        self.scanner.get_span().clone(),
-                    ))
-                }
-            },
-            _ => {
+        let name = match self.scanner.scan()? {
+            TokenType::ValueIdentifier(s) => s,
+            t => {
                 return Err(SyntaxError::new(
-                    format!("Expected an variable name, got EOF"),
+                    format!("Expected an variable name, got {}", t),
                     self.scanner.get_span().clone(),
                 ))
             }
@@ -278,8 +246,8 @@ impl<'a> Parser<'a> {
     fn return_statement(&mut self) -> Result<ast::Return, AstError> {
         self.scanner.scan().unwrap();
 
-        let value = match self.scanner.peek() {
-            Ok(t) if t.r#type == TokenType::NewLine => Box::new(Expr::new(
+        let value = match self.scanner.peek()? {
+            TokenType::NewLine => Box::new(Expr::new(
                 ExprBody::Value(Value::None),
                 Typing::new(true, ast::Type::None),
                 self.scanner.get_span().clone(),
@@ -340,13 +308,13 @@ impl<'a> Parser<'a> {
         self.scanner.scan().unwrap();
 
         loop {
-            match self.scanner.peek() {
-                Ok(t) if t.r#type == TokenType::NewLine => {
+            match self.scanner.peek()? {
+                TokenType::NewLine => {
                     self.scanner.scan().unwrap();
                     continue;
                 }
-                Ok(t) if t.r#type == TokenType::Dedent => break,
-                Ok(t) if t.r#type == TokenType::EOF => return Ok(stmts),
+                TokenType::Dedent => break,
+                TokenType::EOF => return Ok(stmts),
                 _ => stmts.push(self.declaration()?),
             }
         }
@@ -357,13 +325,9 @@ impl<'a> Parser<'a> {
     }
 
     fn expression(&mut self) -> Result<Box<Expr>, AstError> {
-        // if self.r#match(&TokenType::Comma) {
-        //     let operator = self.advance().unwrap();
-        //     let right = self.expression()?;
-        //     return Ok(Box::new(Expr::Binary(Binary::new(expr, operator, right)?)));
-        // }
         self.assignment()
     }
+
     fn assignment(&mut self) -> Result<Box<Expr>, AstError> {
         let expr = self.or()?;
 
@@ -610,12 +574,12 @@ impl<'a> Parser<'a> {
         let mut arguments = Vec::new();
 
         loop {
-            match self.scanner.peek() {
-                Ok(t) if t.r#type == TokenType::Comma => {
+            match self.scanner.peek()? {
+                TokenType::Comma => {
                     self.scanner.scan().unwrap();
                     arguments.push(self.expression()?);
                 }
-                Ok(t) if t.r#type == TokenType::RightParen => break,
+                TokenType::RightParen => break,
                 _ => arguments.push(self.expression()?),
             }
         }
@@ -631,9 +595,9 @@ impl<'a> Parser<'a> {
     }
 
     fn primary(&mut self) -> Result<Box<Expr>, AstError> {
-        let next = self.scanner.scan().unwrap();
+        let next = self.scanner.scan()?;
 
-        Ok(match next.r#type {
+        Ok(match next {
             TokenType::False => Box::new(Expr::new(
                 ExprBody::Value(Value::False),
                 Typing::new(true, ast::Type::Bool),
@@ -704,7 +668,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn consume(&mut self, expected: TokenType, msg: &str) -> Result<Token, AstError> {
+    fn consume(&mut self, expected: TokenType, msg: &str) -> Result<TokenType, AstError> {
         if self.scanner.check(&expected) {
             return Ok(self.scanner.scan()?);
         }
