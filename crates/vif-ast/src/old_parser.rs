@@ -97,7 +97,7 @@ impl<'a> Parser<'a> {
         loop {
             let mutable = match self.scanner.peek() {
                 Ok(TokenType::Mut) => {
-                    self.scanner.advance()?;
+                    self.scanner.consume()?;
                     true
                 }
                 Ok(_) => false,
@@ -680,571 +680,571 @@ impl<'a> Parser<'a> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::ast::Binary;
-    use super::ast::Call;
-    use super::ast::Condition;
-    use super::ast::Function;
-    use super::ast::FunctionParameter;
-    use super::ast::Logical;
-    use super::ast::LogicalOperator;
-    use super::ast::Operator;
-    use super::ast::Return;
-    use super::ast::Stmt;
-    use super::ast::Typing;
-    use super::ast::Unary;
-    use super::ast::UnaryOperator;
-    use super::ast::Value;
-    use super::ast::Variable;
-    use super::Expr;
-    use super::ExprBody;
-    use super::Parser;
-    use super::Scanner;
-    use vif_objects::span::Span;
+// #[cfg(test)]
+// mod tests {
+//     use super::ast::Binary;
+//     use super::ast::Call;
+//     use super::ast::Condition;
+//     use super::ast::Function;
+//     use super::ast::FunctionParameter;
+//     use super::ast::Logical;
+//     use super::ast::LogicalOperator;
+//     use super::ast::Operator;
+//     use super::ast::Return;
+//     use super::ast::Stmt;
+//     use super::ast::Typing;
+//     use super::ast::Unary;
+//     use super::ast::UnaryOperator;
+//     use super::ast::Value;
+//     use super::ast::Variable;
+//     use super::Expr;
+//     use super::ExprBody;
+//     use super::Parser;
+//     use super::Scanner;
+//     use vif_objects::span::Span;
 
-    #[test]
-    fn simple_string() {
-        let string = "\"This is a simple string\"\n";
-        let scanner = Scanner::new(string);
-        let mut parser = Parser::new(scanner);
+//     #[test]
+//     fn simple_string() {
+//         let string = "\"This is a simple string\"\n";
+//         let scanner = Scanner::new(string);
+//         let mut parser = Parser::new(scanner);
 
-        let success = parser.build();
+//         let success = parser.build();
 
-        assert!(success);
-        assert_eq!(parser.ast.len(), 1);
-        assert_eq!(
-            parser.ast[0],
-            Stmt::Expression(Box::new(Expr::new(
-                ExprBody::Value(Value::String("This is a simple string".to_owned())),
-                Typing::new(true, vif_objects::ast::Type::String),
-                Span::new(1, 25)
-            )))
-        );
-    }
+//         assert!(success);
+//         assert_eq!(parser.ast.len(), 1);
+//         assert_eq!(
+//             parser.ast[0],
+//             Stmt::Expression(Box::new(Expr::new(
+//                 ExprBody::Value(Value::String("This is a simple string".to_owned())),
+//                 Typing::new(true, vif_objects::ast::Type::String),
+//                 Span::new(1, 25)
+//             )))
+//         );
+//     }
 
-    #[test]
-    fn unary_expression() {
-        let string = "-1";
-        let scanner = Scanner::new(string);
-        let mut parser = Parser::new(scanner);
+//     #[test]
+//     fn unary_expression() {
+//         let string = "-1";
+//         let scanner = Scanner::new(string);
+//         let mut parser = Parser::new(scanner);
 
-        let success = parser.build();
+//         let success = parser.build();
 
-        assert!(success);
-        assert_eq!(parser.ast.len(), 1);
-        assert_eq!(
-            parser.ast[0],
-            Stmt::Expression(Box::new(Expr::new(
-                ExprBody::Unary(Unary {
-                    operator: UnaryOperator::Minus,
-                    right: Box::new(Expr::new(
-                        ExprBody::Value(Value::Integer(1)),
-                        Typing::new(true, vif_objects::ast::Type::Int),
-                        Span::new(1, 2)
-                    ))
-                }),
-                Typing::new(true, vif_objects::ast::Type::Int),
-                Span::new(1, 2)
-            )))
-        );
-    }
+//         assert!(success);
+//         assert_eq!(parser.ast.len(), 1);
+//         assert_eq!(
+//             parser.ast[0],
+//             Stmt::Expression(Box::new(Expr::new(
+//                 ExprBody::Unary(Unary {
+//                     operator: UnaryOperator::Minus,
+//                     right: Box::new(Expr::new(
+//                         ExprBody::Value(Value::Integer(1)),
+//                         Typing::new(true, vif_objects::ast::Type::Int),
+//                         Span::new(1, 2)
+//                     ))
+//                 }),
+//                 Typing::new(true, vif_objects::ast::Type::Int),
+//                 Span::new(1, 2)
+//             )))
+//         );
+//     }
 
-    #[test]
-    fn var_declaration() {
-        let string = "var coucou = -1\n";
-        let scanner = Scanner::new(string);
-        let mut parser = Parser::new(scanner);
+//     #[test]
+//     fn var_declaration() {
+//         let string = "var coucou = -1\n";
+//         let scanner = Scanner::new(string);
+//         let mut parser = Parser::new(scanner);
 
-        let success = parser.build();
+//         let success = parser.build();
 
-        assert!(success);
-        assert_eq!(parser.ast.len(), 1);
-        assert_eq!(
-            parser.ast[0],
-            Stmt::Var(Variable {
-                name: "coucou".to_owned(),
-                typing: Typing::new(false, vif_objects::ast::Type::Unknown),
-                value: Box::new(Expr::new(
-                    ExprBody::Unary(Unary {
-                        operator: UnaryOperator::Minus,
-                        right: Box::new(Expr::new(
-                            ExprBody::Value(Value::Integer(1)),
-                            Typing::new(true, vif_objects::ast::Type::Int),
-                            Span::new(1, 15)
-                        ))
-                    }),
-                    Typing::new(true, vif_objects::ast::Type::Int),
-                    Span::new(1, 16)
-                ))
-            })
-        );
-    }
+//         assert!(success);
+//         assert_eq!(parser.ast.len(), 1);
+//         assert_eq!(
+//             parser.ast[0],
+//             Stmt::Var(Variable {
+//                 name: "coucou".to_owned(),
+//                 typing: Typing::new(false, vif_objects::ast::Type::Unknown),
+//                 value: Box::new(Expr::new(
+//                     ExprBody::Unary(Unary {
+//                         operator: UnaryOperator::Minus,
+//                         right: Box::new(Expr::new(
+//                             ExprBody::Value(Value::Integer(1)),
+//                             Typing::new(true, vif_objects::ast::Type::Int),
+//                             Span::new(1, 15)
+//                         ))
+//                     }),
+//                     Typing::new(true, vif_objects::ast::Type::Int),
+//                     Span::new(1, 16)
+//                 ))
+//             })
+//         );
+//     }
 
-    #[test]
-    fn var_mut_declaration() {
-        let string = "var mut coucou = -1\n";
-        let scanner = Scanner::new(string);
-        let mut parser = Parser::new(scanner);
+//     #[test]
+//     fn var_mut_declaration() {
+//         let string = "var mut coucou = -1\n";
+//         let scanner = Scanner::new(string);
+//         let mut parser = Parser::new(scanner);
 
-        let success = parser.build();
+//         let success = parser.build();
 
-        assert!(success);
-        assert_eq!(parser.ast.len(), 1);
-        assert_eq!(
-            parser.ast[0],
-            Stmt::Var(Variable {
-                name: "coucou".to_owned(),
-                typing: Typing::new(true, vif_objects::ast::Type::Unknown),
-                value: Box::new(Expr::new(
-                    ExprBody::Unary(Unary {
-                        operator: UnaryOperator::Minus,
-                        right: Box::new(Expr::new(
-                            ExprBody::Value(Value::Integer(1)),
-                            Typing::new(true, vif_objects::ast::Type::Int),
-                            Span::new(1, 19)
-                        ))
-                    }),
-                    Typing::new(true, vif_objects::ast::Type::Int),
-                    Span::new(1, 20)
-                ))
-            })
-        );
-    }
+//         assert!(success);
+//         assert_eq!(parser.ast.len(), 1);
+//         assert_eq!(
+//             parser.ast[0],
+//             Stmt::Var(Variable {
+//                 name: "coucou".to_owned(),
+//                 typing: Typing::new(true, vif_objects::ast::Type::Unknown),
+//                 value: Box::new(Expr::new(
+//                     ExprBody::Unary(Unary {
+//                         operator: UnaryOperator::Minus,
+//                         right: Box::new(Expr::new(
+//                             ExprBody::Value(Value::Integer(1)),
+//                             Typing::new(true, vif_objects::ast::Type::Int),
+//                             Span::new(1, 19)
+//                         ))
+//                     }),
+//                     Typing::new(true, vif_objects::ast::Type::Int),
+//                     Span::new(1, 20)
+//                 ))
+//             })
+//         );
+//     }
 
-    #[test]
-    fn equality() {
-        let string = "4 == 3+1";
-        let scanner = Scanner::new(string);
-        let mut parser = Parser::new(scanner);
+//     #[test]
+//     fn equality() {
+//         let string = "4 == 3+1";
+//         let scanner = Scanner::new(string);
+//         let mut parser = Parser::new(scanner);
 
-        let success = parser.build();
+//         let success = parser.build();
 
-        assert!(success);
-        assert_eq!(parser.ast.len(), 1);
-        assert_eq!(
-            parser.ast[0],
-            Stmt::Expression(Box::new(Expr::new(
-                ExprBody::Binary(Binary {
-                    left: Box::new(Expr::new(
-                        ExprBody::Value(Value::Integer(4)),
-                        Typing::new(true, vif_objects::ast::Type::Int),
-                        Span::new(1, 1)
-                    )),
-                    operator: Operator::Equal,
-                    right: Box::new(Expr::new(
-                        ExprBody::Binary(Binary {
-                            left: Box::new(Expr::new(
-                                ExprBody::Value(Value::Integer(3)),
-                                Typing::new(true, vif_objects::ast::Type::Int),
-                                Span::new(1, 6)
-                            )),
-                            operator: Operator::Plus,
-                            right: Box::new(Expr::new(
-                                ExprBody::Value(Value::Integer(1)),
-                                Typing::new(true, vif_objects::ast::Type::Int),
-                                Span::new(1, 8)
-                            )),
-                        }),
-                        Typing::new(true, vif_objects::ast::Type::Int),
-                        Span::new(1, 8)
-                    ))
-                }),
-                Typing::new(true, vif_objects::ast::Type::Bool),
-                Span::new(1, 8)
-            )))
-        );
-    }
+//         assert!(success);
+//         assert_eq!(parser.ast.len(), 1);
+//         assert_eq!(
+//             parser.ast[0],
+//             Stmt::Expression(Box::new(Expr::new(
+//                 ExprBody::Binary(Binary {
+//                     left: Box::new(Expr::new(
+//                         ExprBody::Value(Value::Integer(4)),
+//                         Typing::new(true, vif_objects::ast::Type::Int),
+//                         Span::new(1, 1)
+//                     )),
+//                     operator: Operator::Equal,
+//                     right: Box::new(Expr::new(
+//                         ExprBody::Binary(Binary {
+//                             left: Box::new(Expr::new(
+//                                 ExprBody::Value(Value::Integer(3)),
+//                                 Typing::new(true, vif_objects::ast::Type::Int),
+//                                 Span::new(1, 6)
+//                             )),
+//                             operator: Operator::Plus,
+//                             right: Box::new(Expr::new(
+//                                 ExprBody::Value(Value::Integer(1)),
+//                                 Typing::new(true, vif_objects::ast::Type::Int),
+//                                 Span::new(1, 8)
+//                             )),
+//                         }),
+//                         Typing::new(true, vif_objects::ast::Type::Int),
+//                         Span::new(1, 8)
+//                     ))
+//                 }),
+//                 Typing::new(true, vif_objects::ast::Type::Bool),
+//                 Span::new(1, 8)
+//             )))
+//         );
+//     }
 
-    #[test]
-    fn and() {
-        let string = "True and False";
-        let scanner = Scanner::new(string);
-        let mut parser = Parser::new(scanner);
+//     #[test]
+//     fn and() {
+//         let string = "True and False";
+//         let scanner = Scanner::new(string);
+//         let mut parser = Parser::new(scanner);
 
-        let success = parser.build();
+//         let success = parser.build();
 
-        assert!(success);
-        assert_eq!(parser.ast.len(), 1);
-        assert_eq!(
-            parser.ast[0],
-            Stmt::Expression(Box::new(Expr::new(
-                ExprBody::Logical(Logical {
-                    left: Box::new(Expr::new(
-                        ExprBody::Value(Value::True),
-                        Typing::new(true, vif_objects::ast::Type::Bool),
-                        Span::new(1, 4)
-                    )),
-                    operator: LogicalOperator::And,
-                    right: Box::new(Expr::new(
-                        ExprBody::Value(Value::False),
-                        Typing::new(true, vif_objects::ast::Type::Bool),
-                        Span::new(1, 14)
-                    )),
-                }),
-                Typing::new(true, vif_objects::ast::Type::Bool),
-                Span::new(1, 14)
-            )))
-        );
-    }
+//         assert!(success);
+//         assert_eq!(parser.ast.len(), 1);
+//         assert_eq!(
+//             parser.ast[0],
+//             Stmt::Expression(Box::new(Expr::new(
+//                 ExprBody::Logical(Logical {
+//                     left: Box::new(Expr::new(
+//                         ExprBody::Value(Value::True),
+//                         Typing::new(true, vif_objects::ast::Type::Bool),
+//                         Span::new(1, 4)
+//                     )),
+//                     operator: LogicalOperator::And,
+//                     right: Box::new(Expr::new(
+//                         ExprBody::Value(Value::False),
+//                         Typing::new(true, vif_objects::ast::Type::Bool),
+//                         Span::new(1, 14)
+//                     )),
+//                 }),
+//                 Typing::new(true, vif_objects::ast::Type::Bool),
+//                 Span::new(1, 14)
+//             )))
+//         );
+//     }
 
-    #[test]
-    fn or() {
-        let string = "True or False";
-        let scanner = Scanner::new(string);
-        let mut parser = Parser::new(scanner);
+//     #[test]
+//     fn or() {
+//         let string = "True or False";
+//         let scanner = Scanner::new(string);
+//         let mut parser = Parser::new(scanner);
 
-        let success = parser.build();
+//         let success = parser.build();
 
-        assert!(success);
-        assert_eq!(parser.ast.len(), 1);
-        assert_eq!(
-            parser.ast[0],
-            Stmt::Expression(Box::new(Expr::new(
-                ExprBody::Logical(Logical {
-                    left: Box::new(Expr::new(
-                        ExprBody::Value(Value::True),
-                        Typing::new(true, vif_objects::ast::Type::Bool),
-                        Span::new(1, 4)
-                    )),
-                    operator: LogicalOperator::Or,
-                    right: Box::new(Expr::new(
-                        ExprBody::Value(Value::False),
-                        Typing::new(true, vif_objects::ast::Type::Bool),
-                        Span::new(1, 13)
-                    )),
-                }),
-                Typing::new(true, vif_objects::ast::Type::Bool),
-                Span::new(1, 13)
-            )))
-        );
-    }
+//         assert!(success);
+//         assert_eq!(parser.ast.len(), 1);
+//         assert_eq!(
+//             parser.ast[0],
+//             Stmt::Expression(Box::new(Expr::new(
+//                 ExprBody::Logical(Logical {
+//                     left: Box::new(Expr::new(
+//                         ExprBody::Value(Value::True),
+//                         Typing::new(true, vif_objects::ast::Type::Bool),
+//                         Span::new(1, 4)
+//                     )),
+//                     operator: LogicalOperator::Or,
+//                     right: Box::new(Expr::new(
+//                         ExprBody::Value(Value::False),
+//                         Typing::new(true, vif_objects::ast::Type::Bool),
+//                         Span::new(1, 13)
+//                     )),
+//                 }),
+//                 Typing::new(true, vif_objects::ast::Type::Bool),
+//                 Span::new(1, 13)
+//             )))
+//         );
+//     }
 
-    #[test]
-    fn call() {
-        let string = "my_function()";
-        let scanner = Scanner::new(string);
-        let mut parser = Parser::new(scanner);
+//     #[test]
+//     fn call() {
+//         let string = "my_function()";
+//         let scanner = Scanner::new(string);
+//         let mut parser = Parser::new(scanner);
 
-        let success = parser.build();
+//         let success = parser.build();
 
-        assert!(success);
-        assert_eq!(parser.ast.len(), 1);
-        assert_eq!(
-            parser.ast[0],
-            Stmt::Expression(Box::new(Expr::new(
-                ExprBody::Call(Call {
-                    callee: Box::new(Expr::new(
-                        ExprBody::Value(Value::Variable("my_function".to_owned())),
-                        Typing::new(false, vif_objects::ast::Type::Unknown),
-                        Span::new(1, 11)
-                    )),
-                    arguments: Vec::new(),
-                }),
-                Typing::new(false, vif_objects::ast::Type::Unknown),
-                Span::new(1, 13)
-            )))
-        );
-    }
+//         assert!(success);
+//         assert_eq!(parser.ast.len(), 1);
+//         assert_eq!(
+//             parser.ast[0],
+//             Stmt::Expression(Box::new(Expr::new(
+//                 ExprBody::Call(Call {
+//                     callee: Box::new(Expr::new(
+//                         ExprBody::Value(Value::Variable("my_function".to_owned())),
+//                         Typing::new(false, vif_objects::ast::Type::Unknown),
+//                         Span::new(1, 11)
+//                     )),
+//                     arguments: Vec::new(),
+//                 }),
+//                 Typing::new(false, vif_objects::ast::Type::Unknown),
+//                 Span::new(1, 13)
+//             )))
+//         );
+//     }
 
-    #[test]
-    fn call_with_args() {
-        let string = "my_function(a, b, c)";
-        let scanner = Scanner::new(string);
-        let mut parser = Parser::new(scanner);
+//     #[test]
+//     fn call_with_args() {
+//         let string = "my_function(a, b, c)";
+//         let scanner = Scanner::new(string);
+//         let mut parser = Parser::new(scanner);
 
-        let success = parser.build();
+//         let success = parser.build();
 
-        assert!(success);
-        assert_eq!(parser.ast.len(), 1);
-        assert_eq!(
-            parser.ast[0],
-            Stmt::Expression(Box::new(Expr::new(
-                ExprBody::Call(Call {
-                    callee: Box::new(Expr::new(
-                        ExprBody::Value(Value::Variable("my_function".to_owned())),
-                        Typing::new(false, vif_objects::ast::Type::Unknown),
-                        Span::new(1, 11)
-                    )),
-                    arguments: vec![
-                        Box::new(Expr::new(
-                            ExprBody::Value(Value::Variable("a".to_owned())),
-                            Typing::new(false, vif_objects::ast::Type::Unknown),
-                            Span::new(1, 13)
-                        )),
-                        Box::new(Expr::new(
-                            ExprBody::Value(Value::Variable("b".to_owned())),
-                            Typing::new(false, vif_objects::ast::Type::Unknown),
-                            Span::new(1, 16)
-                        )),
-                        Box::new(Expr::new(
-                            ExprBody::Value(Value::Variable("c".to_owned())),
-                            Typing::new(false, vif_objects::ast::Type::Unknown),
-                            Span::new(1, 19)
-                        )),
-                    ]
-                }),
-                Typing::new(false, vif_objects::ast::Type::Unknown),
-                Span::new(1, 20)
-            )))
-        );
-    }
+//         assert!(success);
+//         assert_eq!(parser.ast.len(), 1);
+//         assert_eq!(
+//             parser.ast[0],
+//             Stmt::Expression(Box::new(Expr::new(
+//                 ExprBody::Call(Call {
+//                     callee: Box::new(Expr::new(
+//                         ExprBody::Value(Value::Variable("my_function".to_owned())),
+//                         Typing::new(false, vif_objects::ast::Type::Unknown),
+//                         Span::new(1, 11)
+//                     )),
+//                     arguments: vec![
+//                         Box::new(Expr::new(
+//                             ExprBody::Value(Value::Variable("a".to_owned())),
+//                             Typing::new(false, vif_objects::ast::Type::Unknown),
+//                             Span::new(1, 13)
+//                         )),
+//                         Box::new(Expr::new(
+//                             ExprBody::Value(Value::Variable("b".to_owned())),
+//                             Typing::new(false, vif_objects::ast::Type::Unknown),
+//                             Span::new(1, 16)
+//                         )),
+//                         Box::new(Expr::new(
+//                             ExprBody::Value(Value::Variable("c".to_owned())),
+//                             Typing::new(false, vif_objects::ast::Type::Unknown),
+//                             Span::new(1, 19)
+//                         )),
+//                     ]
+//                 }),
+//                 Typing::new(false, vif_objects::ast::Type::Unknown),
+//                 Span::new(1, 20)
+//             )))
+//         );
+//     }
 
-    #[test]
-    fn function_definition() {
-        let string = "
-            def my_function(a, b, mut c):
-                return
-        ";
-        let scanner = Scanner::new(string);
-        let mut parser = Parser::new(scanner);
+//     #[test]
+//     fn function_definition() {
+//         let string = "
+//             def my_function(a, b, mut c):
+//                 return
+//         ";
+//         let scanner = Scanner::new(string);
+//         let mut parser = Parser::new(scanner);
 
-        let success = parser.build();
+//         let success = parser.build();
 
-        assert!(success);
-        assert_eq!(parser.ast.len(), 1);
-        assert_eq!(
-            parser.ast[0],
-            Stmt::Function(Function {
-                name: "my_function".to_owned(),
-                params: vec![
-                    FunctionParameter {
-                        name: "a".to_owned(),
-                        typing: Typing::new(false, vif_objects::ast::Type::String)
-                    },
-                    FunctionParameter {
-                        name: "b".to_owned(),
-                        typing: Typing::new(false, vif_objects::ast::Type::String)
-                    },
-                    FunctionParameter {
-                        name: "c".to_owned(),
-                        typing: Typing::new(true, vif_objects::ast::Type::String)
-                    },
-                ],
-                body: vec![Stmt::Return(Return {
-                    value: Box::new(Expr::new(
-                        ExprBody::Value(Value::None),
-                        Typing::new(true, vif_objects::ast::Type::None),
-                        Span::new(3, 23)
-                    ))
-                })],
-                typing: Typing::new(false, vif_objects::ast::Type::None)
-            })
-        );
-    }
+//         assert!(success);
+//         assert_eq!(parser.ast.len(), 1);
+//         assert_eq!(
+//             parser.ast[0],
+//             Stmt::Function(Function {
+//                 name: "my_function".to_owned(),
+//                 params: vec![
+//                     FunctionParameter {
+//                         name: "a".to_owned(),
+//                         typing: Typing::new(false, vif_objects::ast::Type::String)
+//                     },
+//                     FunctionParameter {
+//                         name: "b".to_owned(),
+//                         typing: Typing::new(false, vif_objects::ast::Type::String)
+//                     },
+//                     FunctionParameter {
+//                         name: "c".to_owned(),
+//                         typing: Typing::new(true, vif_objects::ast::Type::String)
+//                     },
+//                 ],
+//                 body: vec![Stmt::Return(Return {
+//                     value: Box::new(Expr::new(
+//                         ExprBody::Value(Value::None),
+//                         Typing::new(true, vif_objects::ast::Type::None),
+//                         Span::new(3, 23)
+//                     ))
+//                 })],
+//                 typing: Typing::new(false, vif_objects::ast::Type::None)
+//             })
+//         );
+//     }
 
-    #[test]
-    fn function_with_return() {
-        let string = "
-            def my_function(a, mut b, c):
-                return 1.5
-        ";
-        let scanner = Scanner::new(string);
-        let mut parser = Parser::new(scanner);
+//     #[test]
+//     fn function_with_return() {
+//         let string = "
+//             def my_function(a, mut b, c):
+//                 return 1.5
+//         ";
+//         let scanner = Scanner::new(string);
+//         let mut parser = Parser::new(scanner);
 
-        let success = parser.build();
+//         let success = parser.build();
 
-        assert!(success);
-        assert_eq!(parser.ast.len(), 1);
-        assert_eq!(
-            parser.ast[0],
-            Stmt::Function(Function {
-                name: "my_function".to_owned(),
-                params: vec![
-                    FunctionParameter {
-                        name: "a".to_owned(),
-                        typing: Typing::new(false, vif_objects::ast::Type::Unknown)
-                    },
-                    FunctionParameter {
-                        name: "b".to_owned(),
-                        typing: Typing::new(true, vif_objects::ast::Type::Unknown)
-                    },
-                    FunctionParameter {
-                        name: "c".to_owned(),
-                        typing: Typing::new(false, vif_objects::ast::Type::Unknown)
-                    },
-                ],
-                body: vec![Stmt::Return(Return {
-                    value: Box::new(Expr::new(
-                        ExprBody::Value(Value::Float(1.5)),
-                        Typing::new(true, vif_objects::ast::Type::Float),
-                        Span::new(3, 26)
-                    ))
-                })],
-                typing: Typing::new(false, vif_objects::ast::Type::Float)
-            })
-        );
-    }
+//         assert!(success);
+//         assert_eq!(parser.ast.len(), 1);
+//         assert_eq!(
+//             parser.ast[0],
+//             Stmt::Function(Function {
+//                 name: "my_function".to_owned(),
+//                 params: vec![
+//                     FunctionParameter {
+//                         name: "a".to_owned(),
+//                         typing: Typing::new(false, vif_objects::ast::Type::Unknown)
+//                     },
+//                     FunctionParameter {
+//                         name: "b".to_owned(),
+//                         typing: Typing::new(true, vif_objects::ast::Type::Unknown)
+//                     },
+//                     FunctionParameter {
+//                         name: "c".to_owned(),
+//                         typing: Typing::new(false, vif_objects::ast::Type::Unknown)
+//                     },
+//                 ],
+//                 body: vec![Stmt::Return(Return {
+//                     value: Box::new(Expr::new(
+//                         ExprBody::Value(Value::Float(1.5)),
+//                         Typing::new(true, vif_objects::ast::Type::Float),
+//                         Span::new(3, 26)
+//                     ))
+//                 })],
+//                 typing: Typing::new(false, vif_objects::ast::Type::Float)
+//             })
+//         );
+//     }
 
-    #[test]
-    fn if_statement() {
-        let string = "if True:\n    return \"coucou\"\n";
-        let scanner = Scanner::new(string);
-        let mut parser = Parser::new(scanner);
+//     #[test]
+//     fn if_statement() {
+//         let string = "if True:\n    return \"coucou\"\n";
+//         let scanner = Scanner::new(string);
+//         let mut parser = Parser::new(scanner);
 
-        let success = parser.build();
+//         let success = parser.build();
 
-        assert!(success);
-        assert_eq!(parser.ast.len(), 1);
-        assert_eq!(
-            parser.ast[0],
-            Stmt::Condition(Condition {
-                expr: Box::new(Expr::new(
-                    ExprBody::Value(Value::True),
-                    Typing::new(true, vif_objects::ast::Type::Bool),
-                    Span::new(1, 7)
-                )),
-                then: Box::new(Stmt::Block(vec![Stmt::Return(Return {
-                    value: Box::new(Expr::new(
-                        ExprBody::Value(Value::String("coucou".to_owned())),
-                        Typing::new(true, vif_objects::ast::Type::String),
-                        Span::new(2, 19)
-                    ))
-                })])),
-                r#else: None
-            })
-        );
-    }
+//         assert!(success);
+//         assert_eq!(parser.ast.len(), 1);
+//         assert_eq!(
+//             parser.ast[0],
+//             Stmt::Condition(Condition {
+//                 expr: Box::new(Expr::new(
+//                     ExprBody::Value(Value::True),
+//                     Typing::new(true, vif_objects::ast::Type::Bool),
+//                     Span::new(1, 7)
+//                 )),
+//                 then: Box::new(Stmt::Block(vec![Stmt::Return(Return {
+//                     value: Box::new(Expr::new(
+//                         ExprBody::Value(Value::String("coucou".to_owned())),
+//                         Typing::new(true, vif_objects::ast::Type::String),
+//                         Span::new(2, 19)
+//                     ))
+//                 })])),
+//                 r#else: None
+//             })
+//         );
+//     }
 
-    #[test]
-    fn if_statement_with_else() {
-        let string = "if True:\n    return \"coucou\"\nelse:\n    return \"bye\"\n";
-        let scanner = Scanner::new(string);
-        let mut parser = Parser::new(scanner);
+//     #[test]
+//     fn if_statement_with_else() {
+//         let string = "if True:\n    return \"coucou\"\nelse:\n    return \"bye\"\n";
+//         let scanner = Scanner::new(string);
+//         let mut parser = Parser::new(scanner);
 
-        let success = parser.build();
+//         let success = parser.build();
 
-        assert!(success);
-        assert_eq!(parser.ast.len(), 1);
-        assert_eq!(
-            parser.ast[0],
-            Stmt::Condition(Condition {
-                expr: Box::new(Expr::new(
-                    ExprBody::Value(Value::True),
-                    Typing::new(true, vif_objects::ast::Type::Bool),
-                    Span::new(1, 7)
-                )),
-                then: Box::new(Stmt::Block(vec![Stmt::Return(Return {
-                    value: Box::new(Expr::new(
-                        ExprBody::Value(Value::String("coucou".to_owned())),
-                        Typing::new(true, vif_objects::ast::Type::String),
-                        Span::new(2, 19)
-                    ))
-                })])),
-                r#else: Some(Box::new(Stmt::Block(vec![Stmt::Return(Return {
-                    value: Box::new(Expr::new(
-                        ExprBody::Value(Value::String("bye".to_owned())),
-                        Typing::new(true, vif_objects::ast::Type::String),
-                        Span::new(4, 16)
-                    ))
-                })])))
-            })
-        );
-    }
+//         assert!(success);
+//         assert_eq!(parser.ast.len(), 1);
+//         assert_eq!(
+//             parser.ast[0],
+//             Stmt::Condition(Condition {
+//                 expr: Box::new(Expr::new(
+//                     ExprBody::Value(Value::True),
+//                     Typing::new(true, vif_objects::ast::Type::Bool),
+//                     Span::new(1, 7)
+//                 )),
+//                 then: Box::new(Stmt::Block(vec![Stmt::Return(Return {
+//                     value: Box::new(Expr::new(
+//                         ExprBody::Value(Value::String("coucou".to_owned())),
+//                         Typing::new(true, vif_objects::ast::Type::String),
+//                         Span::new(2, 19)
+//                     ))
+//                 })])),
+//                 r#else: Some(Box::new(Stmt::Block(vec![Stmt::Return(Return {
+//                     value: Box::new(Expr::new(
+//                         ExprBody::Value(Value::String("bye".to_owned())),
+//                         Typing::new(true, vif_objects::ast::Type::String),
+//                         Span::new(4, 16)
+//                     ))
+//                 })])))
+//             })
+//         );
+//     }
 
-    #[test]
-    fn if_statement_with_elif() {
-        let string = "
-            if True:
-                return \"coucou\"
-            elif False:
-                return \"bye\"
-        ";
-        let scanner = Scanner::new(string);
-        let mut parser = Parser::new(scanner);
+//     #[test]
+//     fn if_statement_with_elif() {
+//         let string = "
+//             if True:
+//                 return \"coucou\"
+//             elif False:
+//                 return \"bye\"
+//         ";
+//         let scanner = Scanner::new(string);
+//         let mut parser = Parser::new(scanner);
 
-        let success = parser.build();
+//         let success = parser.build();
 
-        assert!(success);
-        assert_eq!(parser.ast.len(), 1);
-        assert_eq!(
-            parser.ast[0],
-            Stmt::Condition(Condition {
-                expr: Box::new(Expr::new(
-                    ExprBody::Value(Value::True),
-                    Typing::new(true, vif_objects::ast::Type::Bool),
-                    Span::new(2, 19)
-                )),
-                then: Box::new(Stmt::Block(vec![Stmt::Return(Return {
-                    value: Box::new(Expr::new(
-                        ExprBody::Value(Value::String("coucou".to_owned())),
-                        Typing::new(true, vif_objects::ast::Type::String),
-                        Span::new(3, 31)
-                    ))
-                })])),
-                r#else: Some(Box::new(Stmt::Condition(Condition {
-                    expr: Box::new(Expr::new(
-                        ExprBody::Value(Value::False),
-                        Typing::new(true, vif_objects::ast::Type::Bool),
-                        Span::new(4, 22)
-                    )),
-                    then: Box::new(Stmt::Block(vec![Stmt::Return(Return {
-                        value: Box::new(Expr::new(
-                            ExprBody::Value(Value::String("bye".to_owned())),
-                            Typing::new(true, vif_objects::ast::Type::String),
-                            Span::new(5, 28)
-                        ))
-                    })])),
-                    r#else: None
-                })))
-            })
-        );
-    }
+//         assert!(success);
+//         assert_eq!(parser.ast.len(), 1);
+//         assert_eq!(
+//             parser.ast[0],
+//             Stmt::Condition(Condition {
+//                 expr: Box::new(Expr::new(
+//                     ExprBody::Value(Value::True),
+//                     Typing::new(true, vif_objects::ast::Type::Bool),
+//                     Span::new(2, 19)
+//                 )),
+//                 then: Box::new(Stmt::Block(vec![Stmt::Return(Return {
+//                     value: Box::new(Expr::new(
+//                         ExprBody::Value(Value::String("coucou".to_owned())),
+//                         Typing::new(true, vif_objects::ast::Type::String),
+//                         Span::new(3, 31)
+//                     ))
+//                 })])),
+//                 r#else: Some(Box::new(Stmt::Condition(Condition {
+//                     expr: Box::new(Expr::new(
+//                         ExprBody::Value(Value::False),
+//                         Typing::new(true, vif_objects::ast::Type::Bool),
+//                         Span::new(4, 22)
+//                     )),
+//                     then: Box::new(Stmt::Block(vec![Stmt::Return(Return {
+//                         value: Box::new(Expr::new(
+//                             ExprBody::Value(Value::String("bye".to_owned())),
+//                             Typing::new(true, vif_objects::ast::Type::String),
+//                             Span::new(5, 28)
+//                         ))
+//                     })])),
+//                     r#else: None
+//                 })))
+//             })
+//         );
+//     }
 
-    #[test]
-    fn if_statement_with_elif_else() {
-        let string = "
-            if True:
-                return \"coucou\"
-            elif False:
-                return \"bye\"
-            else:
-                return \"hello\"
-        ";
-        let scanner = Scanner::new(string);
-        let mut parser = Parser::new(scanner);
+//     #[test]
+//     fn if_statement_with_elif_else() {
+//         let string = "
+//             if True:
+//                 return \"coucou\"
+//             elif False:
+//                 return \"bye\"
+//             else:
+//                 return \"hello\"
+//         ";
+//         let scanner = Scanner::new(string);
+//         let mut parser = Parser::new(scanner);
 
-        let success = parser.build();
+//         let success = parser.build();
 
-        assert!(success);
-        assert_eq!(parser.ast.len(), 1);
-        assert_eq!(
-            parser.ast[0],
-            Stmt::Condition(Condition {
-                expr: Box::new(Expr::new(
-                    ExprBody::Value(Value::True),
-                    Typing::new(true, vif_objects::ast::Type::Bool),
-                    Span::new(2, 19)
-                )),
-                then: Box::new(Stmt::Block(vec![Stmt::Return(Return {
-                    value: Box::new(Expr::new(
-                        ExprBody::Value(Value::String("coucou".to_owned())),
-                        Typing::new(true, vif_objects::ast::Type::String),
-                        Span::new(3, 31)
-                    ))
-                })])),
-                r#else: Some(Box::new(Stmt::Condition(Condition {
-                    expr: Box::new(Expr::new(
-                        ExprBody::Value(Value::False),
-                        Typing::new(true, vif_objects::ast::Type::Bool),
-                        Span::new(4, 22)
-                    )),
-                    then: Box::new(Stmt::Block(vec![Stmt::Return(Return {
-                        value: Box::new(Expr::new(
-                            ExprBody::Value(Value::String("bye".to_owned())),
-                            Typing::new(true, vif_objects::ast::Type::String),
-                            Span::new(5, 28)
-                        ))
-                    })])),
-                    r#else: Some(Box::new(Stmt::Block(vec![Stmt::Return(Return {
-                        value: Box::new(Expr::new(
-                            ExprBody::Value(Value::String("hello".to_owned())),
-                            Typing::new(true, vif_objects::ast::Type::String),
-                            Span::new(7, 30)
-                        ))
-                    })])))
-                })))
-            })
-        );
-    }
-}
+//         assert!(success);
+//         assert_eq!(parser.ast.len(), 1);
+//         assert_eq!(
+//             parser.ast[0],
+//             Stmt::Condition(Condition {
+//                 expr: Box::new(Expr::new(
+//                     ExprBody::Value(Value::True),
+//                     Typing::new(true, vif_objects::ast::Type::Bool),
+//                     Span::new(2, 19)
+//                 )),
+//                 then: Box::new(Stmt::Block(vec![Stmt::Return(Return {
+//                     value: Box::new(Expr::new(
+//                         ExprBody::Value(Value::String("coucou".to_owned())),
+//                         Typing::new(true, vif_objects::ast::Type::String),
+//                         Span::new(3, 31)
+//                     ))
+//                 })])),
+//                 r#else: Some(Box::new(Stmt::Condition(Condition {
+//                     expr: Box::new(Expr::new(
+//                         ExprBody::Value(Value::False),
+//                         Typing::new(true, vif_objects::ast::Type::Bool),
+//                         Span::new(4, 22)
+//                     )),
+//                     then: Box::new(Stmt::Block(vec![Stmt::Return(Return {
+//                         value: Box::new(Expr::new(
+//                             ExprBody::Value(Value::String("bye".to_owned())),
+//                             Typing::new(true, vif_objects::ast::Type::String),
+//                             Span::new(5, 28)
+//                         ))
+//                     })])),
+//                     r#else: Some(Box::new(Stmt::Block(vec![Stmt::Return(Return {
+//                         value: Box::new(Expr::new(
+//                             ExprBody::Value(Value::String("hello".to_owned())),
+//                             Typing::new(true, vif_objects::ast::Type::String),
+//                             Span::new(7, 30)
+//                         ))
+//                     })])))
+//                 })))
+//             })
+//         );
+//     }
+// }

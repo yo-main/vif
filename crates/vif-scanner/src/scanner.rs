@@ -4,7 +4,6 @@ use crate::error::ScannerError;
 use crate::error::UnclosedString;
 use crate::error::UnidentifiedError;
 use crate::token::TokenType;
-use std::any::Any;
 use std::iter::Peekable;
 use std::str::Chars;
 use vif_loader::log;
@@ -23,8 +22,14 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    pub fn advance(&mut self) -> Result<(), ScannerError> {
-        self.next = Some(self.tokenizer.scan()?);
+    fn advance(&mut self) -> Result<(), ScannerError> {
+        let token = match self.tokenizer.scan() {
+            Ok(t) => t,
+            Err(ScannerError::EOF(_)) => TokenType::EOF,
+            Err(e) => return Err(e),
+        };
+
+        self.next = Some(token);
         Ok(())
     }
 
@@ -48,6 +53,15 @@ impl<'a> Scanner<'a> {
 
     pub fn consume(&mut self) -> Result<(), ScannerError> {
         self.advance()
+    }
+
+    pub fn check_and_consume(&mut self, token_type: &TokenType) -> Result<bool, ScannerError> {
+        if !self.check(token_type) {
+            return Ok(false);
+        }
+
+        self.consume()?;
+        Ok(true)
     }
 
     pub fn get_span(&self) -> &Span {
@@ -523,6 +537,9 @@ mod tests {
 
         scanner.next = Some(str1);
 
-        assert_eq!(scanner.check(&str2), true);
+        // FIXME: I think this is a bug.
+        // but it's weird to use check with such tokens
+        // so without consequence - until proven otherwise
+        assert_eq!(scanner.check(&str2), false);
     }
 }

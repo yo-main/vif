@@ -1,42 +1,5 @@
-#[derive(Clone, Debug)]
-pub struct Span {
-    line: usize,
-    index: usize,
-}
-
-impl Span {
-    pub fn new(line: usize, index: usize) -> Self {
-        Span { line, index }
-    }
-
-    pub fn new_line(&mut self) {
-        self.line += 1;
-        self.index = 0;
-    }
-
-    pub fn get_line(&self) -> usize {
-        self.line
-    }
-
-    pub fn incr_index(&mut self) {
-        self.index += 1
-    }
-
-    pub fn decr_line(&mut self) {
-        self.line = self.line.saturating_sub(1)
-    }
-
-    pub fn format(&self, content: &str, msg: &str) -> String {
-        let row = content
-            .split('\n')
-            .nth(self.line.saturating_sub(1))
-            .unwrap_or("row unknown");
-
-        format!("Line {} - {row}\n{msg}", self.line)
-    }
-}
-
-#[derive(Debug)]
+use vif_objects::span::Span;
+#[derive(Debug, PartialEq)]
 pub enum Operator {
     Plus,
     Minus,
@@ -51,13 +14,13 @@ pub enum Operator {
     LessEqual,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum UnaryOperator {
     Minus,
     Not,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Condition {
     pub expr: Box<Expr>,
     pub then: Box<Stmt>,
@@ -70,14 +33,14 @@ impl Condition {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Binary {
     pub left: Box<Expr>,
     pub operator: Operator,
     pub right: Box<Expr>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Unary {
     pub operator: UnaryOperator,
     pub right: Box<Expr>,
@@ -89,36 +52,43 @@ impl Unary {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Variable {
     pub name: String,
     pub value: Box<Expr>,
     pub mutable: bool,
+    pub annotation: Option<TypeAnnotation>,
 }
 
 impl Variable {
-    pub fn new(name: String, value: Box<Expr>, mutable: bool) -> Self {
+    pub fn new(
+        name: String,
+        value: Box<Expr>,
+        mutable: bool,
+        annotation: Option<TypeAnnotation>,
+    ) -> Self {
         Variable {
             name,
             value,
             mutable,
+            annotation,
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Assign {
     pub name: String,
     pub value: Box<Expr>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Call {
     pub callee: Box<Expr>,
     pub arguments: Vec<Box<Expr>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Return {
     pub value: Box<Expr>,
 }
@@ -129,23 +99,42 @@ impl Return {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Assert {
     pub value: Box<Expr>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
+pub enum TypeAnnotation {
+    Int,
+    Float,
+    String,
+    Bool,
+}
+
+#[derive(Debug, PartialEq)]
 pub struct FunctionParameter {
     pub name: String,
     pub mutable: bool,
+    pub annotation: Option<TypeAnnotation>,
 }
 
-#[derive(Debug)]
+impl FunctionParameter {
+    pub fn new(name: String, mutable: bool, annotation: Option<TypeAnnotation>) -> Self {
+        Self {
+            name,
+            mutable,
+            annotation,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
 pub struct Entrypoint {
     pub body: Vec<Stmt>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Function {
     pub name: String,
     pub params: Vec<FunctionParameter>,
@@ -158,7 +147,7 @@ impl Function {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct While {
     pub condition: Box<Expr>,
     pub body: Box<Stmt>,
@@ -170,13 +159,13 @@ impl While {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum LoopKeyword {
     Continue,
     Break,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Value {
     String(String),
     Integer(i64),
@@ -187,13 +176,13 @@ pub enum Value {
     None,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum LogicalOperator {
     And,
     Or,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Logical {
     pub left: Box<Expr>,
     pub operator: LogicalOperator,
@@ -210,13 +199,13 @@ impl Logical {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Expr {
     pub span: Span,
     pub body: ExprBody,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ExprBody {
     Binary(Binary),
     Unary(Unary),
@@ -233,7 +222,7 @@ impl Expr {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Stmt {
     Expression(Box<Expr>),
     Var(Variable),
@@ -465,6 +454,7 @@ mod test {
             name: "variable".to_owned(),
             value: Box::new(Expr::new(ExprBody::Value(Value::True), Span::new(1, 1))),
             mutable: true,
+            annotation: None,
         });
 
         assert_eq!(ast.get_all_returns().len(), 0)
