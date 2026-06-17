@@ -1,21 +1,21 @@
+use crate::objects::Assert;
+use crate::objects::Assign;
+use crate::objects::Binary;
+use crate::objects::Call;
+use crate::objects::Condition;
+use crate::objects::Expr;
+use crate::objects::ExprBody;
+use crate::objects::Function;
+use crate::objects::Logical;
+use crate::objects::LoopKeyword;
+use crate::objects::Return;
+use crate::objects::Stmt;
+use crate::objects::Unary;
+use crate::objects::Value;
+use crate::objects::Variable;
+use crate::objects::While;
+use crate::Entrypoint;
 use treeline::Tree;
-use vif_objects::ast::Assert;
-use vif_objects::ast::Assign;
-use vif_objects::ast::Binary;
-use vif_objects::ast::Call;
-use vif_objects::ast::Condition;
-use vif_objects::ast::Expr;
-use vif_objects::ast::ExprBody;
-use vif_objects::ast::Function;
-use vif_objects::ast::Grouping;
-use vif_objects::ast::Logical;
-use vif_objects::ast::LoopKeyword;
-use vif_objects::ast::Return;
-use vif_objects::ast::Stmt;
-use vif_objects::ast::Unary;
-use vif_objects::ast::Value;
-use vif_objects::ast::Variable;
-use vif_objects::ast::While;
 
 struct Node {
     name: String,
@@ -37,8 +37,12 @@ impl Node {
     }
 }
 
-pub fn print_ast_tree(function: &Function) {
-    let tree = print_function(function);
+pub fn print_ast_tree(function: &Entrypoint) {
+    let tree = Tree::new(
+        Node::new("Entrypoint", "Entrypoint"),
+        function.body.iter().map(print_stmt).collect(),
+    );
+
     println!("{tree}");
 }
 
@@ -66,7 +70,6 @@ fn print_expr(expr: &Expr) -> Tree<Node> {
     match &expr.body {
         ExprBody::Binary(b) => print_binary(&b),
         ExprBody::Unary(u) => print_unary(&u),
-        ExprBody::Grouping(g) => print_grouping(&g),
         ExprBody::Value(v) => print_value(&v),
         ExprBody::LoopKeyword(l) => print_loop(&l),
         ExprBody::Assign(a) => print_assign(&a),
@@ -86,13 +89,6 @@ fn print_unary(unary: &Unary) -> Tree<Node> {
     Tree::new(
         Node::new(&format!("{}", unary.operator), "unary"),
         vec![print_expr(&unary.right)],
-    )
-}
-
-fn print_grouping(grouping: &Grouping) -> Tree<Node> {
-    Tree::new(
-        Node::new(&format!("{} {}", grouping.left, grouping.right), "grouping"),
-        vec![print_expr(&grouping.expr)],
     )
 }
 

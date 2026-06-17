@@ -4,6 +4,7 @@ use std::io::Write;
 use std::path::PathBuf;
 use vif_ast::build_ast;
 use vif_ast::print_ast_tree;
+use vif_ast::Entrypoint;
 use vif_llvm::compile_and_build_binary;
 use vif_llvm::compile_and_execute;
 use vif_llvm::execute_llvm_from_stdin;
@@ -41,23 +42,26 @@ impl Vif {
     }
 
     fn get_llvm_ir(&self, path: &PathBuf) -> Result<String, String> {
-        self.get_ast(&path)
-            .and_then(|ast| get_llvm_ir(&ast).map_err(|e| format!("{e}")))
+        !todo!()
+        // self.get_ast(&path)
+        //     .and_then(|ast| get_llvm_ir(&ast).map_err(|e| format!("{e}")))
     }
 
-    fn get_ast(&self, path: &PathBuf) -> Result<Function, String> {
+    fn get_ast(&self, path: &PathBuf) -> Result<Entrypoint, String> {
         self.read_file(&path)
             .and_then(|content| self.build_ast(content.as_str()))
     }
 
     fn execute_file(&self, path: &PathBuf) -> Result<(), String> {
-        self.get_ast(&path)
-            .and_then(|ast| compile_and_execute(&ast).map_err(|e| format!("{e}")))
+        !todo!()
+        // self.get_ast(&path)
+        //     .and_then(|ast| compile_and_execute(&ast).map_err(|e| format!("{e}")))
     }
 
     fn build_binary(&self, path: &PathBuf) -> Result<(), String> {
-        self.get_ast(&path)
-            .and_then(|ast| compile_and_build_binary(&ast).map_err(|e| format!("{e}")))
+        !todo!()
+        // self.get_ast(&path)
+        // .and_then(|ast| compile_and_build_binary(&ast).map_err(|e| format!("{e}")))
     }
 
     fn read_file(&self, path: &PathBuf) -> Result<String, String> {
@@ -80,15 +84,17 @@ impl Vif {
         }
     }
 
-    fn build_ast(&self, content: &str) -> Result<Function, String> {
+    fn build_ast(&self, content: &str) -> Result<Entrypoint, String> {
         let mut ast = match build_ast(content) {
             Ok(ast) => ast,
             Err(errors) => return Err(errors[0].format(content)),
         };
 
-        match run_typing_checks(&mut ast) {
-            Err(err) => Err(err.format(content)),
-            _ => Ok(ast),
-        }
+        // match run_typing_checks(&mut ast) {
+        // Err(err) => Err(err.format(content)),
+        // _ => Ok(ast),
+        // }
+
+        Ok(ast)
     }
 }

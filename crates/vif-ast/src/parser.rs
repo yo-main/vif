@@ -11,6 +11,10 @@ use vif_scanner::TokenType;
 pub struct Parser {}
 
 impl Parser {
+    pub fn new() -> Self {
+        Self {}
+    }
+
     pub fn build(scanner: &mut Scanner) -> Result<Entrypoint, Vec<AstError>> {
         let parser = Self {};
 
