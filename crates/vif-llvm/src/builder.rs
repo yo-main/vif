@@ -6,12 +6,12 @@ use inkwell::values::{
     BasicMetadataValueEnum, BasicValue, BasicValueEnum, FunctionValue, PointerValue,
 };
 use inkwell::AddressSpace;
-use vif_objects::ast::{self, Typing};
+use vif_typing::Type;
 
 #[derive(Clone, Debug)]
 pub struct VariablePointer<'ctx> {
     ptr: PointerValue<'ctx>,
-    typing: Typing,
+    typing: Type,
 }
 
 impl<'ctx> VariablePointer<'ctx> {
@@ -19,7 +19,7 @@ impl<'ctx> VariablePointer<'ctx> {
         BasicMetadataValueEnum::PointerValue(self.ptr)
     }
 
-    pub fn get_typing(&self) -> &Typing {
+    pub fn get_typing(&self) -> &Type {
         &self.typing
     }
 }
@@ -27,7 +27,7 @@ impl<'ctx> VariablePointer<'ctx> {
 #[derive(Clone, Debug)]
 pub struct FunctionPointer<'ctx> {
     ptr: FunctionValue<'ctx>,
-    typing: Typing,
+    typing: Type,
 }
 
 impl<'ctx> FunctionPointer<'ctx> {
@@ -43,11 +43,11 @@ impl<'ctx> FunctionPointer<'ctx> {
 #[derive(Clone, Debug)]
 pub struct RawValue<'ctx> {
     value: BasicValueEnum<'ctx>,
-    typing: Typing,
+    typing: Type,
 }
 
 impl<'ctx> RawValue<'ctx> {
-    fn new(value: BasicValueEnum<'ctx>, typing: Typing) -> Self {
+    fn new(value: BasicValueEnum<'ctx>, typing: Type) -> Self {
         RawValue { value, typing }
     }
 }
@@ -70,18 +70,18 @@ impl<'ctx> std::fmt::Display for LLVMValue<'ctx> {
 }
 
 impl<'ctx> LLVMValue<'ctx> {
-    pub fn new_value(value: BasicValueEnum<'ctx>, typing: Typing) -> Self {
+    pub fn new_value(value: BasicValueEnum<'ctx>, typing: Type) -> Self {
         LLVMValue::RawValue(RawValue::new(value, typing))
     }
 
-    pub fn new_function(function: FunctionValue<'ctx>, typing: Typing) -> Self {
+    pub fn new_function(function: FunctionValue<'ctx>, typing: Type) -> Self {
         LLVMValue::Function(FunctionPointer {
             ptr: function,
             typing,
         })
     }
 
-    pub fn new_variable(variable: PointerValue<'ctx>, typing: Typing) -> Self {
+    pub fn new_variable(variable: PointerValue<'ctx>, typing: Type) -> Self {
         LLVMValue::Variable(VariablePointer {
             ptr: variable,
             typing,
@@ -150,7 +150,7 @@ impl<'ctx> LLVMValue<'ctx> {
         }
     }
 
-    pub fn get_typing(&self) -> Typing {
+    pub fn get_typing(&self) -> Type {
         match self {
             Self::RawValue(v) => v.typing.clone(),
             Self::Variable(v) => v.typing.clone(),
@@ -171,7 +171,7 @@ impl<'ctx> Builder<'ctx> {
         }
     }
 
-    fn get_llvm_type(&self, typing: &ast::Typing) -> inkwell::types::BasicTypeEnum<'ctx> {
+    fn get_llvm_type(&self, typing: &Type) -> inkwell::types::BasicTypeEnum<'ctx> {
         match &typing.r#type {
             ast::Type::Int => self.context.i64_type().as_basic_type_enum(),
             ast::Type::Float => self.context.f64_type().as_basic_type_enum(),
@@ -187,7 +187,7 @@ impl<'ctx> Builder<'ctx> {
         }
     }
 
-    fn get_pointer(&self, typing: &ast::Typing) -> inkwell::types::BasicTypeEnum<'ctx> {
+    fn get_pointer(&self, typing: &Type) -> inkwell::types::BasicTypeEnum<'ctx> {
         match &typing.r#type {
             ast::Type::Int => self.context.i64_type().as_basic_type_enum(),
             ast::Type::Float => self.context.f64_type().as_basic_type_enum(),
@@ -257,7 +257,7 @@ impl<'ctx> Builder<'ctx> {
         &self,
         value: BasicValueEnum<'ctx>,
         name: &str,
-        typing: Typing,
+        typing: Type,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         let ptr = if let BasicValueEnum::PointerValue(p) = value {
             p
@@ -391,10 +391,7 @@ impl<'ctx> Builder<'ctx> {
             _ => unreachable!(),
         };
 
-        Ok(LLVMValue::new_value(
-            cmp.as_basic_value_enum(),
-            Typing::new(true, ast::Type::Bool),
-        ))
+        Ok(LLVMValue::new_value(cmp.as_basic_value_enum(), Type::Bool))
     }
 
     pub fn create_not(
@@ -411,7 +408,7 @@ impl<'ctx> Builder<'ctx> {
 
         Ok(LLVMValue::new_value(
             not_value.as_basic_value_enum(),
-            Typing::new(true, ast::Type::Bool),
+            Type::Bool,
         ))
     }
 
@@ -584,7 +581,7 @@ impl<'ctx> Builder<'ctx> {
             self.allocate_and_store_value(
                 BasicValueEnum::IntValue(self.context.i64_type().const_int(0, false)),
                 "",
-                Typing::new(true, ast::Type::None),
+                Type::None,
             )
         }
     }
@@ -681,7 +678,7 @@ impl<'ctx> Builder<'ctx> {
 
         Ok(LLVMValue::new_value(
             result.as_basic_value_enum(),
-            Typing::new(true, ast::Type::Bool),
+            Type::new(true, ast::Type::Bool),
         ))
     }
 

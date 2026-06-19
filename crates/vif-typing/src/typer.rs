@@ -1,23 +1,34 @@
+use vif_ast as ast;
+
 use crate::error::DifferentSignatureBetweenReturns;
 use crate::error::IncompatibleTypes;
 use crate::error::TypingError;
+
+use crate::objects::Assert;
+use crate::objects::Assign;
+use crate::objects::Binary;
+use crate::objects::Call;
+use crate::objects::Condition;
+use crate::objects::Expr;
+use crate::objects::ExprBody;
+use crate::objects::Function;
+use crate::objects::FunctionParameter;
+use crate::objects::Logical;
+use crate::objects::LogicalOperator;
+use crate::objects::Return;
+use crate::objects::Stmt;
+use crate::objects::Type;
+use crate::objects::Unary;
+use crate::objects::Value;
+use crate::objects::Variable;
+use crate::objects::While;
+
 use crate::references::FunctionReference;
 use crate::references::Reference;
 use crate::references::References;
 use crate::references::VariableReference;
+
 use crate::type_merger::TypeMerger;
-use vif_objects::ast::Callable;
-use vif_objects::ast::Expr;
-use vif_objects::ast::ExprBody;
-use vif_objects::ast::Function;
-use vif_objects::ast::FunctionParameter;
-use vif_objects::ast::LogicalOperator;
-use vif_objects::ast::Return;
-use vif_objects::ast::Signature;
-use vif_objects::ast::Stmt;
-use vif_objects::ast::Type;
-use vif_objects::ast::Typing;
-use vif_objects::ast::Value;
 
 pub struct BottomUpTyper<M>
 where
@@ -34,41 +45,65 @@ where
         BottomUpTyper { type_merger }
     }
 
-    pub fn run(
+    pub fn run(entrypoint: &ast::Entrypoint, type_merger: M) -> Result<Vec<Stmt>, TypingError> {
+        let typer = Self::new(type_merger);
+        let mut references = References::new();
+
+        for stmt in entrypoint.body.iter() {
+            typer.visit_statement(stmt, &mut references)?;
+        }
+
+        todo!()
+    }
+
+    pub fn visit_function(
         &self,
-        function: &mut Function,
+        function: &ast::Function,
         references: &mut References,
-    ) -> Result<(), TypingError> {
+    ) -> Result<Function, TypingError> {
         let index = references.len();
 
+        let params = function
+            .params
+            .iter()
+            .map(|param| {
+                let typing = param
+                    .annotation
+                    .as_ref()
+                    .map_or(Type::Unknown, |a| Type::from_annotation(a));
+
+                references.push(Reference::Variable(VariableReference::new(
+                    param.name.clone(),
+                    typing.clone(),
+                    param.mutable,
+                )));
+                FunctionParameter::new(param.name.clone(), param.mutable, typing.clone())
+            })
+            .collect();
+
+        let stmts = function
+            .body
+            .iter()
+            .map(|stmt| self.visit_statement(stmt, references))
+            .collect::<Result<Vec<Stmt>, TypingError>>()?;
+
+        let mut typed_function = Function::new(function.name.clone(), params, stmts, Type::Unknown);
+
+        self.update_function_typing(&mut typed_function)?;
+
         references.push(Reference::Function(FunctionReference {
-            name: function.name.clone(),
-            typing: function.typing.clone(),
+            name: typed_function.name.clone(),
+            output: typed_function.output.clone(),
         }));
-
-        for param in function.params.iter() {
-            references.push(Reference::Variable(VariableReference::new(
-                param.name.clone(),
-                param.typing.clone(),
-            )));
-        }
-
-        for stmt in function.body.iter_mut() {
-            self.visit_statement(&mut function.params, stmt, references)?;
-        }
-
-        if function.name != "main" {
-            self.update_function_typing(function)?;
-        }
 
         references.truncate(index);
 
         references.push(Reference::new_function(
-            function.name.clone(),
-            function.typing.clone(),
+            typed_function.name.clone(),
+            typed_function.output.clone(),
         ));
 
-        Ok(())
+        Ok(typed_function)
     }
 
     fn update_function_typing(&self, function: &mut Function) -> Result<(), TypingError> {
@@ -77,11 +112,11 @@ where
             .iter()
             .map(|b| b.get_all_returns())
             .flatten()
-            .filter(|r| r.value.typing.r#type != Type::Unknown)
+            .filter(|r| r.value.typing != Type::Unknown)
             .collect::<Vec<&Return>>();
 
-        let signature =
-            Signature::new_with_params(function.params.iter().map(|p| p.typing.clone()).collect());
+        // let signature =
+        //     Signature::new_with_params(function.params.iter().map(|p| p.typing.clone()).collect());
 
         let param_names = function
             .params
@@ -89,83 +124,84 @@ where
             .map(|p| p.name.as_str())
             .collect::<Vec<&str>>();
 
-        let return_pointers = returns.iter().any(|r| {
-            if !r.value.typing.mutable {
-                return false; // TODO: maybe I should just never returns a pointer
-            }
-            for name in get_identifier_names(&r.value) {
-                if param_names.contains(&name.as_str()) {
-                    println!("YES {} {}", function.name, name);
-                    return true;
-                }
-            }
-            false
-        });
+        // let return_pointers = returns.iter().any(|r| {
+        //     if !r.value.typing.mutable {
+        //         return false; // TODO: maybe I should just never returns a pointer
+        //     }
+        //     for name in get_identifier_names(&r.value) {
+        //         if param_names.contains(&name.as_str()) {
+        //             println!("YES {} {}", function.name, name);
+        //             return true;
+        //         }
+        //     }
+        //     false
+        // });
 
-        let callable = if returns.is_empty() {
-            Box::new(Callable::new(
-                signature,
-                Typing::new(false, Type::None),
-                false,
-            ))
+        if returns.is_empty() {
+            function.output = Type::None;
         } else {
-            Box::new(Callable::new(
-                signature,
-                returns[0].value.typing.clone(),
-                return_pointers,
-            ))
+            function.output = returns[0].value.typing.clone();
         };
 
         for return_stmt in returns.iter() {
-            if return_stmt.value.typing.r#type.get_concrete_type()
-                != callable.output.r#type.get_concrete_type()
-            {
+            if return_stmt.value.typing.get_concrete_type() != function.output.get_concrete_type() {
                 return Err(DifferentSignatureBetweenReturns::new(
                     function.name.clone(),
                     return_stmt.value.typing.clone(),
-                    callable.output.clone(),
+                    function.output.clone(),
                     return_stmt.value.span.clone(),
                 ));
             }
         }
-
-        function.typing = Typing::new(
-            returns.iter().all(|r| r.value.typing.mutable),
-            Type::Callable(callable),
-        );
 
         Ok(())
     }
 
     fn visit_statement<'a>(
         &self,
-        params: &mut Vec<FunctionParameter>,
-        stmt: &mut Stmt,
+        stmt: &ast::Stmt,
         references: &mut References,
-    ) -> Result<(), TypingError> {
-        match stmt {
-            Stmt::Expression(expr) => self.visit_expression(params, expr, references)?,
-            Stmt::Block(block) => {
-                for stmt in block.iter_mut() {
-                    self.visit_statement(params, stmt, references)?;
-                }
+    ) -> Result<Stmt, TypingError> {
+        Ok(match stmt {
+            ast::Stmt::Expression(expr) => {
+                Stmt::Expression(self.visit_expression(expr, references)?)
             }
-            Stmt::Condition(cond) => {
-                self.visit_expression(params, &mut cond.expr, references)?;
-                self.visit_statement(params, &mut cond.then, references)?;
-                if let Some(stmt_else) = &mut cond.r#else {
-                    self.visit_statement(params, stmt_else, references)?;
-                }
+            ast::Stmt::Block(block) => {
+                let stmts = block
+                    .iter()
+                    .map(|stmt| self.visit_statement(stmt, references))
+                    .collect::<Result<Vec<Stmt>, TypingError>>()?;
+
+                Stmt::Block(stmts)
             }
-            Stmt::Return(ret) => self.visit_expression(params, &mut ret.value, references)?,
-            Stmt::Assert(assert) => self.visit_expression(params, &mut assert.value, references)?,
-            Stmt::While(block) => {
-                self.visit_expression(params, &mut block.condition, references)?;
-                self.visit_statement(params, &mut block.body, references)?;
+            ast::Stmt::Condition(cond) => {
+                let expr = self.visit_expression(&cond.expr, references)?;
+                let then = self.visit_statement(&cond.then, references)?;
+                let mut r#else = None;
+
+                if let Some(stmt_else) = &cond.r#else {
+                    r#else.replace(Box::new(self.visit_statement(&stmt_else, references)?));
+                };
+
+                Stmt::Condition(Condition::new(expr, Box::new(then), r#else, Type::Unknown))
             }
-            Stmt::Var(v) => {
-                self.visit_expression(params, &mut v.value, references)?;
-                v.typing.r#type = v.value.typing.r#type.clone();
+            ast::Stmt::Return(ret) => {
+                let expr = self.visit_expression(&ret.value, references)?;
+                let typing = expr.typing.clone();
+                Stmt::Return(Return::new(expr, typing))
+            }
+            ast::Stmt::Assert(assert) => {
+                let expr = self.visit_expression(&assert.value, references)?;
+                Stmt::Assert(Assert::new(expr))
+            }
+            ast::Stmt::While(block) => {
+                let expr = self.visit_expression(&block.condition, references)?;
+                let body = self.visit_statement(&block.body, references)?;
+                Stmt::While(While::new(expr, Box::new(body), Type::Unknown))
+            }
+            ast::Stmt::Var(v) => {
+                let expr = self.visit_expression(&v.value, references)?;
+                let typing = expr.typing.clone();
 
                 // should not be needed as we get identifier typing from the call above
 
@@ -185,152 +221,193 @@ where
                 //     }
                 // }
 
-                references.push(Reference::new_variable(v.name.clone(), v.typing.clone()))
-            }
-            Stmt::Function(f) => {
-                self.run(f, references)?;
-            }
-        };
+                references.push(Reference::new_variable(
+                    v.name.clone(),
+                    typing.clone(),
+                    v.mutable,
+                ));
 
-        Ok(())
+                Stmt::Var(Variable::new(v.name.clone(), expr, v.mutable, typing))
+            }
+            ast::Stmt::Function(f) => Stmt::Function(self.visit_function(f, references)?),
+        })
     }
 
-    fn visit_expression<'a>(
+    fn visit_expression(
         &self,
-        params: &mut Vec<FunctionParameter>,
-        expr: &mut Expr,
+        expr: &ast::Expr,
         references: &mut References,
-    ) -> Result<(), TypingError> {
-        match &mut expr.body {
-            ExprBody::Binary(binary) => {
-                self.visit_expression(params, &mut binary.left, references)?;
-                self.visit_expression(params, &mut binary.right, references)?;
-
-                expr.typing.r#type = self
-                    .type_merger
-                    .merge(&binary.left.typing.r#type, &binary.right.typing.r#type)
-                    .ok_or_else(|| {
-                        IncompatibleTypes::new(
-                            binary.left.typing.r#type.as_string(),
-                            binary.right.typing.r#type.as_string(),
-                            expr.span.clone(),
-                        )
-                    })?;
-
-                expr.typing.mutable = true;
-            }
-            ExprBody::Unary(unary) => {
-                self.visit_expression(params, &mut unary.right, references)?;
-                expr.typing.r#type = unary.right.typing.r#type.clone();
-                expr.typing = unary.right.typing.clone();
-            }
-            ExprBody::Grouping(grouping) => {
-                self.visit_expression(params, &mut grouping.expr, references)?;
-                expr.typing.r#type = grouping.expr.typing.r#type.clone();
-                expr.typing = grouping.expr.typing.clone();
-            }
-            ExprBody::Assign(assign) => {
-                self.visit_expression(params, &mut assign.value, references)?;
-
-                if let Some(t) = references.get_typing(&assign.name) {
-                    expr.typing.r#type = t.r#type.clone();
-                    expr.typing.mutable = t.mutable;
-                }
-                // TODO: should probably override the variable we have in references here
-            }
-            ExprBody::Logical(logical) => {
-                self.visit_expression(params, &mut logical.left, references)?;
-                self.visit_expression(params, &mut logical.right, references)?;
-
-                match logical.operator {
-                    LogicalOperator::And => {
-                        expr.typing.r#type = Type::Bool;
-                        expr.typing.mutable = true;
-                    }
-                    LogicalOperator::Or => {
-                        expr.typing.r#type = self
-                            .type_merger
-                            .merge(&logical.left.typing.r#type, &logical.right.typing.r#type)
-                            .ok_or_else(|| {
-                                IncompatibleTypes::new(
-                                    logical.left.typing.r#type.as_string(),
-                                    logical.right.typing.r#type.as_string(),
-                                    expr.span.clone(),
-                                )
-                            })?;
-                        expr.typing.mutable =
-                            logical.left.typing.mutable && logical.right.typing.mutable;
-                    }
-                }
-            }
-            ExprBody::Call(call) => {
-                self.visit_expression(params, &mut call.callee, references)?;
-                for arg in call.arguments.iter_mut() {
-                    self.visit_expression(params, arg, references)?;
-                }
-
-                expr.typing.r#type = call.callee.typing.r#type.clone();
-                expr.typing.mutable = call.callee.typing.mutable;
-                let callable_names = get_identifier_names(&call.callee);
-
-                // check function parameters typing
-                for callable_name in callable_names.iter() {
-                    if let Some(function_reference) =
-                        references.get_function_typing_ref(callable_name)
-                    {
-                        match &mut function_reference.r#type {
-                            Type::Callable(callable) => match &mut callable.signature {
-                                Signature::Parameters(params) => {
-                                    for (param, arg) in params.iter_mut().zip(call.arguments.iter())
-                                    {
-                                        if param.r#type != arg.typing.r#type {
-                                            return Err(IncompatibleTypes::new(
-                                                param.r#type.as_string(),
-                                                arg.typing.r#type.as_string(),
-                                                expr.span.clone(),
-                                            ));
-                                        }
-                                    }
-                                }
-                                _ => (),
-                            },
-                            _ => continue,
-                        }
-                    }
-                }
-
-                // update function parameters typing if it's them being called
-                for param in params.iter_mut() {
-                    if callable_names.contains(&param.name) {
-                        param.typing = call.callee.typing.clone();
-                    }
-                }
-            }
-            ExprBody::Value(Value::Variable(v)) => {
+    ) -> Result<Expr, TypingError> {
+        Ok(match &expr.body {
+            ast::ExprBody::Value(ast::Value::Variable(v)) => {
                 if let Some(typing) = references.get_typing(v.as_str()) {
-                    expr.typing = typing;
+                    Expr::new(
+                        ExprBody::Value(ast::Value::Variable(v.clone())),
+                        expr.span.clone(),
+                        typing,
+                    )
                 } else {
                     match v.as_str() {
-                        "print" => {
-                            expr.typing = Typing::new(
-                                false,
-                                Type::Callable(Box::new(Callable::new(
-                                    Signature::new_with_infinite(),
-                                    Typing::new(true, Type::None),
-                                    false,
-                                ))),
-                            )
-                        }
+                        // "print" => Expr::new(
+                        //     ExprBody::Value(ast::Value::Variable("print".to_owned())),
+                        //     expr.span.clone(),
+                        //     Type::Callable(Box::new(Callable::new(
+                        //         Signature::new_with_infinite(),
+                        //         Typing::new(true, Type::None),
+                        //         false,
+                        //     ))),
+                        // ),
                         // "get_time" =>
                         // "sleep" =>
                         _ => panic!("Unknown variable ? {}", v),
                     }
                 }
             }
-            ExprBody::Value(_) => expr.typing.mutable = true,
-            ExprBody::LoopKeyword(_) => expr.typing.mutable = false,
-        };
-        Ok(())
+            ast::ExprBody::Value(v) => Expr::new(
+                ExprBody::Value(v.clone()),
+                expr.span.clone(),
+                match v {
+                    ast::Value::String(_) => Type::String,
+                    ast::Value::Integer(_) => Type::Int,
+                    ast::Value::Float(_) => Type::Float,
+                    ast::Value::True => Type::Bool,
+                    ast::Value::False => Type::Bool,
+                    ast::Value::None => Type::None,
+                    ast::Value::Variable(_) => unreachable!(),
+                },
+            ),
+            ast::ExprBody::Binary(binary) => {
+                let left = self.visit_expression(&binary.left, references)?;
+                let right = self.visit_expression(&binary.right, references)?;
+                let typing = self
+                    .type_merger
+                    .merge(&left.typing, &right.typing)
+                    .ok_or_else(|| {
+                        IncompatibleTypes::new(
+                            left.typing.as_string(),
+                            right.typing.as_string(),
+                            expr.span.clone(),
+                        )
+                    })?;
+
+                Expr::new(
+                    ExprBody::Binary(Binary::new(
+                        Box::new(left),
+                        binary.operator.clone(),
+                        Box::new(right),
+                    )),
+                    expr.span.clone(),
+                    typing,
+                )
+            }
+            ast::ExprBody::Unary(unary) => {
+                let right = self.visit_expression(&unary.right, references)?;
+                let typing = right.typing.clone();
+                Expr::new(
+                    ExprBody::Unary(Unary::new(unary.operator.clone(), Box::new(right))),
+                    expr.span.clone(),
+                    typing,
+                )
+            }
+            ast::ExprBody::Assign(assign) => {
+                let value = self.visit_expression(&assign.value, references)?;
+                let typing = value.typing.clone();
+                Expr::new(
+                    ExprBody::Assign(Assign::new(
+                        assign.name.to_owned(),
+                        Box::new(value),
+                        typing.clone(),
+                    )),
+                    expr.span.clone(),
+                    typing,
+                )
+            }
+            ast::ExprBody::Logical(logical) => {
+                let left = self.visit_expression(&logical.left, references)?;
+                let right = self.visit_expression(&logical.right, references)?;
+
+                let typing = match logical.operator {
+                    LogicalOperator::And => Type::Bool,
+                    LogicalOperator::Or => self
+                        .type_merger
+                        .merge(&left.typing, &right.typing)
+                        .ok_or_else(|| {
+                            IncompatibleTypes::new(
+                                left.typing.as_string(),
+                                right.typing.as_string(),
+                                expr.span.clone(),
+                            )
+                        })?,
+                };
+
+                Expr::new(
+                    ExprBody::Logical(Logical::new(
+                        Box::new(left),
+                        logical.operator.clone(),
+                        Box::new(right),
+                    )),
+                    expr.span.clone(),
+                    typing,
+                )
+            }
+            ast::ExprBody::Call(call) => {
+                let callee = self.visit_expression(&call.callee, references)?;
+                let arguments = call
+                    .arguments
+                    .iter()
+                    .map(|arg| self.visit_expression(arg, references).map(|e| Box::new(e)))
+                    .collect::<Result<Vec<Box<Expr>>, TypingError>>()?;
+                let typing = callee.typing.clone();
+
+                let expr = Expr::new(
+                    ExprBody::Call(Call::new(Box::new(callee), arguments)),
+                    expr.span.clone(),
+                    typing.clone(),
+                );
+
+                let callable_names = get_identifier_names(&expr);
+
+                // check function parameters typing
+                for callable_name in callable_names.iter() {
+                    if let Some(function_reference) =
+                        references.get_function_typing_ref(callable_name)
+                    {
+                        match (&function_reference, &expr.typing) {
+                            (Type::Callable(function_callable), Type::Callable(callable)) => {
+                                for (param, arg) in function_callable
+                                    .parameters
+                                    .iter()
+                                    .zip(callable.parameters.iter())
+                                {
+                                    if param.typing != arg.typing {
+                                        return Err(IncompatibleTypes::new(
+                                            param.typing.as_string(),
+                                            arg.typing.as_string(),
+                                            expr.span.clone(),
+                                        ));
+                                    }
+                                }
+                            }
+                            _ => continue,
+                        }
+                    }
+                }
+
+                // update function parameters typing if it's them being called
+                // for param in params.iter_mut() {
+                //     if callable_names.contains(&param.name) {
+                //         param.typing = call.callee.typing.clone();
+                //     }
+                // }
+
+                expr
+            }
+            ast::ExprBody::LoopKeyword(v) => Expr::new(
+                ExprBody::LoopKeyword(v.clone()),
+                expr.span.clone(),
+                Type::KeyWord,
+            ),
+        })
     }
 }
 
@@ -340,7 +417,6 @@ fn get_identifier_names(expr: &Expr) -> Vec<String> {
             vec![v.to_owned()]
         }
         ExprBody::Unary(unary) => get_identifier_names(&unary.right),
-        ExprBody::Grouping(grouping) => get_identifier_names(&grouping.expr),
         ExprBody::Logical(logical) => {
             let mut res = get_identifier_names(&logical.left);
             res.extend(get_identifier_names(&logical.right));

@@ -375,7 +375,6 @@ dependencies = [
  "vif-loader",
  "vif-objects",
  "vif-scanner",
- "vif-typing",
 ]
 
 [[package]]
@@ -398,6 +397,7 @@ dependencies = [
  "vif-native",
  "vif-objects",
  "vif-scanner",
+ "vif-typing",
 ]
 
 [[package]]

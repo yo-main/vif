@@ -1,4 +1,5 @@
-use vif_objects::{ast::Typing, span::Span};
+use crate::objects::Type;
+use vif_objects::span::Span;
 
 #[derive(Debug)]
 pub enum TypingError {
@@ -153,8 +154,8 @@ impl NonMutableArgumentToMutableVariable {
 pub struct DifferentSignatureBetweenFunction {
     function_a: String,
     function_b: String,
-    signature_a: Typing,
-    signature_b: Typing,
+    signature_a: Type,
+    signature_b: Type,
     span: Span,
 }
 
@@ -162,8 +163,8 @@ impl DifferentSignatureBetweenFunction {
     pub fn new(
         function_a: String,
         function_b: String,
-        signature_a: Typing,
-        signature_b: Typing,
+        signature_a: Type,
+        signature_b: Type,
         span: Span,
     ) -> TypingError {
         TypingError::DifferentSignatureBetweenFunction(Self {
@@ -191,13 +192,13 @@ impl DifferentSignatureBetweenFunction {
 #[derive(Debug)]
 pub struct DifferentSignatureBetweenReturns {
     function: String,
-    return_a: Typing,
-    return_b: Typing,
+    return_a: Type,
+    return_b: Type,
     span: Span,
 }
 
 impl DifferentSignatureBetweenReturns {
-    pub fn new(function: String, return_a: Typing, return_b: Typing, span: Span) -> TypingError {
+    pub fn new(function: String, return_a: Type, return_b: Type, span: Span) -> TypingError {
         TypingError::DifferentSignatureBetweenReturns(Self {
             function,
             return_a,

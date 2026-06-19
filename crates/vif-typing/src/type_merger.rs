@@ -1,4 +1,4 @@
-use vif_objects::ast::Type;
+use crate::objects::Type;
 
 pub trait TypeMerger {
     fn merge(&self, left: &Type, right: &Type) -> Option<Type>;
@@ -43,10 +43,10 @@ impl TypeMerger for HardTypeMerger {
             },
             Type::Callable(c1) => match right {
                 Type::Callable(c2) => self.merge(
-                    &c1.output.r#type.get_concrete_type(),
-                    &c2.output.r#type.get_concrete_type(),
+                    &c1.output.get_concrete_type(),
+                    &c2.output.get_concrete_type(),
                 ),
-                _ => self.merge(&c1.output.r#type.get_concrete_type(), right),
+                _ => self.merge(&c1.output.get_concrete_type(), right),
             },
             Type::Unknown => None,
             Type::KeyWord => match right {
@@ -92,10 +92,10 @@ impl TypeMerger for SoftTypeMerger {
             },
             Type::Callable(c1) => match right {
                 Type::Callable(c2) => self.merge(
-                    &c1.output.r#type.get_concrete_type(),
-                    &c2.output.r#type.get_concrete_type(),
+                    &c1.output.get_concrete_type(),
+                    &c2.output.get_concrete_type(),
                 ),
-                _ => self.merge(&c1.output.r#type.get_concrete_type(), right),
+                _ => self.merge(&c1.output.get_concrete_type(), right),
             },
             Type::Unknown => Some(Type::Unknown),
             Type::KeyWord => match right {

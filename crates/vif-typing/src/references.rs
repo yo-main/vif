@@ -1,4 +1,4 @@
-use vif_objects::ast::Typing;
+use crate::objects::Type;
 
 pub struct References {
     references: Vec<Reference>,
@@ -12,34 +12,47 @@ pub enum Reference {
 #[derive(Debug, Clone)]
 pub struct VariableReference {
     pub name: String,
-    pub typing: Typing,
+    pub mutable: bool,
+    pub typing: Type,
 }
 
 pub struct FunctionReference {
     pub name: String,
-    pub typing: Typing,
+    pub output: Type,
     // pub parameters: Vec<VariableReference>,
 }
 
 impl std::cmp::PartialEq for VariableReference {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name && self.typing.mutable == other.typing.mutable
+        self.name == other.name
     }
 }
 
 impl VariableReference {
-    pub fn new(name: String, typing: Typing) -> Self {
-        Self { name, typing }
+    pub fn new(name: String, typing: Type, mutable: bool) -> Self {
+        Self {
+            name,
+            typing,
+            mutable,
+        }
     }
 }
 
 impl Reference {
-    pub fn new_variable(name: String, typing: Typing) -> Self {
-        Self::Variable(VariableReference { name, typing })
+    pub fn new_variable(name: String, typing: Type, mutable: bool) -> Self {
+        Self::Variable(VariableReference {
+            name,
+            typing,
+            mutable,
+        })
     }
 
-    pub fn new_function(name: String, typing: Typing) -> Self {
-        Self::Function(FunctionReference { name, typing })
+    pub fn new_function(name: String, output: Type) -> Self {
+        Self::Function(FunctionReference {
+            name,
+            output,
+            // parameters,
+        })
     }
 }
 
@@ -94,21 +107,21 @@ impl References {
         self.references.push(value)
     }
 
-    pub fn get_typing(&self, name: &str) -> Option<Typing> {
+    pub fn get_typing(&self, name: &str) -> Option<Type> {
         for reference in self.references.iter() {
             match reference {
                 Reference::Variable(v) if v.name == name => return Some(v.typing.clone()),
-                Reference::Function(f) if f.name == name => return Some(f.typing.clone()),
+                Reference::Function(f) if f.name == name => return Some(f.output.clone()),
                 _ => (),
             };
         }
         None
     }
 
-    pub fn get_function_typing_ref(&mut self, name: &str) -> Option<&mut Typing> {
+    pub fn get_function_typing_ref(&mut self, name: &str) -> Option<&mut Type> {
         for reference in self.references.iter_mut() {
             match reference {
-                Reference::Function(f) if f.name == name => return Some(&mut f.typing),
+                Reference::Function(f) if f.name == name => return Some(&mut f.output),
                 _ => (),
             };
         }
