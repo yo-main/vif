@@ -10,6 +10,7 @@ pub enum TypingError {
     DifferentSignatureBetweenReturns(DifferentSignatureBetweenReturns),
     FunctionReturnsDifferentTypes(FunctionReturnsDifferentTypes),
     IncompatibleTypes(IncompatibleTypes),
+    UnknownVariable(UnknownVariable),
 }
 
 impl TypingError {
@@ -22,7 +23,28 @@ impl TypingError {
             Self::DifferentSignatureBetweenReturns(a) => a.format(content),
             Self::FunctionReturnsDifferentTypes(a) => a.format(content),
             Self::IncompatibleTypes(a) => a.format(content),
+            Self::UnknownVariable(a) => a.format(content),
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct UnknownVariable {
+    name: String,
+    span: Span,
+}
+
+impl UnknownVariable {
+    pub fn new(name: String, span: Span) -> TypingError {
+        TypingError::UnknownVariable(Self { name, span })
+    }
+    fn format(&self, content: &str) -> String {
+        let row = content.split('\n').nth(self.span.get_line() - 1).unwrap();
+        format!(
+            "Line {} - {row}\nUnknown variable: {}",
+            self.span.get_line(),
+            self.name,
+        )
     }
 }
 

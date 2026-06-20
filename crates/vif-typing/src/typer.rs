@@ -4,11 +4,13 @@ use crate::error::DifferentSignatureBetweenReturns;
 use crate::error::IncompatibleTypes;
 use crate::error::TypingError;
 
+use crate::error::UnknownVariable;
 use crate::objects::Assert;
 use crate::objects::Assign;
 use crate::objects::Binary;
 use crate::objects::Call;
 use crate::objects::Condition;
+use crate::objects::Entrypoint;
 use crate::objects::Expr;
 use crate::objects::ExprBody;
 use crate::objects::Function;
@@ -19,6 +21,7 @@ use crate::objects::Return;
 use crate::objects::Stmt;
 use crate::objects::Type;
 use crate::objects::Unary;
+use crate::objects::UnaryOperator;
 use crate::objects::Value;
 use crate::objects::Variable;
 use crate::objects::While;
@@ -45,15 +48,17 @@ where
         BottomUpTyper { type_merger }
     }
 
-    pub fn run(entrypoint: &ast::Entrypoint, type_merger: M) -> Result<Vec<Stmt>, TypingError> {
+    pub fn run(entrypoint: &ast::Entrypoint, type_merger: M) -> Result<Entrypoint, TypingError> {
         let typer = Self::new(type_merger);
         let mut references = References::new();
 
-        for stmt in entrypoint.body.iter() {
-            typer.visit_statement(stmt, &mut references)?;
-        }
+        let stmts = entrypoint
+            .body
+            .iter()
+            .map(|stmt| typer.visit_statement(stmt, &mut references))
+            .collect::<Result<Vec<Stmt>, TypingError>>()?;
 
-        todo!()
+        Ok(Entrypoint { body: stmts })
     }
 
     pub fn visit_function(
@@ -62,6 +67,11 @@ where
         references: &mut References,
     ) -> Result<Function, TypingError> {
         let index = references.len();
+
+        references.push(Reference::Function(FunctionReference {
+            name: function.name.clone(),
+            output: Type::Unknown,
+        }));
 
         let params = function
             .params
@@ -90,11 +100,6 @@ where
         let mut typed_function = Function::new(function.name.clone(), params, stmts, Type::Unknown);
 
         self.update_function_typing(&mut typed_function)?;
-
-        references.push(Reference::Function(FunctionReference {
-            name: typed_function.name.clone(),
-            output: typed_function.output.clone(),
-        }));
 
         references.truncate(index);
 
@@ -183,7 +188,7 @@ where
                     r#else.replace(Box::new(self.visit_statement(&stmt_else, references)?));
                 };
 
-                Stmt::Condition(Condition::new(expr, Box::new(then), r#else, Type::Unknown))
+                Stmt::Condition(Condition::new(expr, Box::new(then), r#else))
             }
             ast::Stmt::Return(ret) => {
                 let expr = self.visit_expression(&ret.value, references)?;
@@ -197,7 +202,7 @@ where
             ast::Stmt::While(block) => {
                 let expr = self.visit_expression(&block.condition, references)?;
                 let body = self.visit_statement(&block.body, references)?;
-                Stmt::While(While::new(expr, Box::new(body), Type::Unknown))
+                Stmt::While(While::new(expr, Box::new(body)))
             }
             ast::Stmt::Var(v) => {
                 let expr = self.visit_expression(&v.value, references)?;
@@ -259,7 +264,7 @@ where
                         // ),
                         // "get_time" =>
                         // "sleep" =>
-                        _ => panic!("Unknown variable ? {}", v),
+                        _ => return Err(UnknownVariable::new(v.clone(), expr.span.clone())),
                     }
                 }
             }
@@ -302,7 +307,11 @@ where
             }
             ast::ExprBody::Unary(unary) => {
                 let right = self.visit_expression(&unary.right, references)?;
-                let typing = right.typing.clone();
+                let typing = match unary.operator {
+                    UnaryOperator::Minus => right.typing.clone(),
+                    UnaryOperator::Not => Type::Bool,
+                };
+
                 Expr::new(
                     ExprBody::Unary(Unary::new(unary.operator.clone(), Box::new(right))),
                     expr.span.clone(),
@@ -326,19 +335,16 @@ where
                 let left = self.visit_expression(&logical.left, references)?;
                 let right = self.visit_expression(&logical.right, references)?;
 
-                let typing = match logical.operator {
-                    LogicalOperator::And => Type::Bool,
-                    LogicalOperator::Or => self
-                        .type_merger
-                        .merge(&left.typing, &right.typing)
-                        .ok_or_else(|| {
-                            IncompatibleTypes::new(
-                                left.typing.as_string(),
-                                right.typing.as_string(),
-                                expr.span.clone(),
-                            )
-                        })?,
-                };
+                let typing = self
+                    .type_merger
+                    .merge(&left.typing, &right.typing)
+                    .ok_or_else(|| {
+                        IncompatibleTypes::new(
+                            left.typing.as_string(),
+                            right.typing.as_string(),
+                            expr.span.clone(),
+                        )
+                    })?;
 
                 Expr::new(
                     ExprBody::Logical(Logical::new(

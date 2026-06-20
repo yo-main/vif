@@ -110,17 +110,11 @@ pub struct Condition {
     pub expr: Expr,
     pub then: Box<Stmt>,
     pub r#else: Option<Box<Stmt>>,
-    pub typing: Type,
 }
 
 impl Condition {
-    pub fn new(expr: Expr, then: Box<Stmt>, r#else: Option<Box<Stmt>>, typing: Type) -> Self {
-        Self {
-            expr,
-            then,
-            r#else,
-            typing,
-        }
+    pub fn new(expr: Expr, then: Box<Stmt>, r#else: Option<Box<Stmt>>) -> Self {
+        Self { expr, then, r#else }
     }
 }
 
@@ -274,16 +268,11 @@ impl Function {
 pub struct While {
     pub condition: Expr,
     pub body: Box<Stmt>,
-    pub typing: Type,
 }
 
 impl While {
-    pub fn new(condition: Expr, body: Box<Stmt>, typing: Type) -> Self {
-        Self {
-            condition,
-            body,
-            typing,
-        }
+    pub fn new(condition: Expr, body: Box<Stmt>) -> Self {
+        Self { condition, body }
     }
 }
 
@@ -533,7 +522,6 @@ mod test {
                 ),
                 Type::Unknown,
             )))),
-            Type::Unknown,
         ));
 
         assert_eq!(condition.get_all_returns().len(), 2)
@@ -556,7 +544,6 @@ mod test {
                 Type::Unknown,
             ))),
             None,
-            Type::Unknown,
         ));
 
         assert_eq!(condition.get_all_returns().len(), 1)
@@ -593,9 +580,7 @@ mod test {
                         ),
                         Type::Unknown,
                     )))),
-                    Type::Unknown,
                 ))),
-                Type::Unknown,
             )),
             Stmt::Return(Return::new(
                 Expr::new(
