@@ -1,12 +1,18 @@
 var mut x = 0
 
 while x < 5:
-	print(x)
 	if x == 3:
 		x = x + 5
 		continue
 
 	x = x + 1
 
-print(x)
+def m(x: int):
+	return x * -1
+
+def coucou(x: int):
+	return m
+
+var p = m
+print(coucou(2+4))
 

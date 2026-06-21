@@ -124,11 +124,11 @@ where
         // let signature =
         //     Signature::new_with_params(function.params.iter().map(|p| p.typing.clone()).collect());
 
-        let param_names = function
-            .params
-            .iter()
-            .map(|p| p.name.as_str())
-            .collect::<Vec<&str>>();
+        // let param_names = function
+        //     .params
+        //     .iter()
+        //     .map(|p| p.name.as_str())
+        //     .collect::<Vec<&str>>();
 
         // let return_pointers = returns.iter().any(|r| {
         //     if !r.value.typing.mutable {

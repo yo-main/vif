@@ -11,10 +11,6 @@ use vif_scanner::TokenType;
 pub struct Parser {}
 
 impl Parser {
-    pub fn new() -> Self {
-        Self {}
-    }
-
     pub fn build(scanner: &mut Scanner) -> Result<Entrypoint, Vec<AstError>> {
         let parser = Self {};
 
@@ -624,7 +620,6 @@ mod tests {
     use super::UnaryOperator;
     use super::Value;
     use super::Variable;
-    use vif_loader::setup_logging;
     use vif_objects::span::Span;
 
     #[test]

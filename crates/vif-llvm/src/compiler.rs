@@ -12,12 +12,10 @@ use inkwell::values::BasicMetadataValueEnum;
 use inkwell::values::BasicValue;
 use std::collections::HashMap;
 
-use vif_typing::Assert;
 use vif_typing::Assign;
 use vif_typing::Binary;
 use vif_typing::Call;
 use vif_typing::Callable;
-use vif_typing::CallableParameter;
 use vif_typing::Condition;
 use vif_typing::Entrypoint;
 use vif_typing::Expr;
@@ -38,7 +36,6 @@ use vif_typing::While;
 
 use crate::builder::LLVMValue;
 use vif_loader::log;
-use vif_objects::ast;
 use vif_objects::op_code::ItemReference;
 
 #[derive(Debug, Clone)]
@@ -191,7 +188,7 @@ impl<'ctx> Compiler<'ctx> {
         self.llvm_builder.return_statement(&LLVMValue::new_value(
             self.llvm_builder.value_int(1),
             Type::Int,
-        ));
+        ))?;
 
         Ok(entry_block)
     }
@@ -230,13 +227,6 @@ impl<'ctx> Compiler<'ctx> {
         }
 
         Ok(entry_block)
-    }
-
-    pub fn add_return_main_function(&self) -> Result<(), CompilerError> {
-        self.llvm_builder.return_statement(&LLVMValue::new_value(
-            self.llvm_builder.value_int(1),
-            Type::Int,
-        ))
     }
 
     pub fn add_return_none(&self) -> Result<(), CompilerError> {

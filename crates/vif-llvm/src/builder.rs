@@ -119,7 +119,7 @@ impl<'ctx> LLVMValue<'ctx> {
         }
     }
 
-    pub fn as_pointer(&self) -> PointerValue {
+    pub fn as_pointer(&self) -> PointerValue<'_> {
         match self {
             Self::RawValue(_) => unreachable!(),
             Self::Variable(v) => v.ptr,

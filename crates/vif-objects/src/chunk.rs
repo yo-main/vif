@@ -17,7 +17,7 @@ impl Chunk {
         0
     }
 
-    pub fn iter(&self, index: usize) -> std::slice::Iter<OpCode> {
+    pub fn iter(&self, index: usize) -> std::slice::Iter<'_, OpCode> {
         self.code[index..].iter()
     }
 }

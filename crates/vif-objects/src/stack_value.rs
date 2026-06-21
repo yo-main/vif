@@ -72,7 +72,7 @@ impl<'c> Values<'c> {
         self.values.last_mut()
     }
 
-    pub fn pop(&mut self) -> Option<StackValue> {
+    pub fn pop(&mut self) -> Option<StackValue<'_>> {
         self.values.pop()
     }
 
@@ -80,7 +80,7 @@ impl<'c> Values<'c> {
         self.values.clear();
     }
 
-    pub fn iter(&self) -> std::slice::Iter<'_, StackValue> {
+    pub fn iter(&self) -> std::slice::Iter<'_, StackValue<'_>> {
         self.values.iter()
     }
 }
