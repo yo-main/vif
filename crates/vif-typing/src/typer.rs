@@ -1,4 +1,5 @@
 use vif_ast as ast;
+use vif_ast::TypeAnnotation;
 
 use crate::error::DifferentSignatureBetweenReturns;
 use crate::error::IncompatibleTypes;
@@ -209,6 +210,22 @@ where
                 let expr = self.visit_expression(&v.value, references)?;
                 let typing = expr.typing.clone();
 
+                if let Some(annotation) = &v.annotation {
+                    match (annotation, &typing) {
+                        (TypeAnnotation::Int, Type::Int) => (),
+                        (TypeAnnotation::Float, Type::Float) => (),
+                        (TypeAnnotation::String, Type::String) => (),
+                        (TypeAnnotation::Bool, Type::Bool) => (),
+                        (TypeAnnotation::None, Type::None) => (),
+                        (ann, typ) => {
+                            return Err(IncompatibleTypes::new(
+                                ann.to_string(),
+                                typ.to_string(),
+                                expr.span.clone(),
+                            ))
+                        }
+                    }
+                }
                 // should not be needed as we get identifier typing from the call above
 
                 // // we might assign a variable to another variable

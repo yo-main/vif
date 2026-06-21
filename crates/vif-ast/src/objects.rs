@@ -1,3 +1,5 @@
+use std::fmt;
+
 use vif_scanner::Span;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -112,6 +114,22 @@ pub enum TypeAnnotation {
     String,
     Bool,
     None,
+}
+
+impl fmt::Display for TypeAnnotation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Int => "int",
+                Self::Float => "float",
+                Self::String => "string",
+                Self::Bool => "bool",
+                Self::None => "None",
+            }
+        )
+    }
 }
 
 #[derive(Debug, PartialEq)]
