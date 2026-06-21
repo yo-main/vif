@@ -85,23 +85,52 @@ impl std::fmt::Display for Type {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum CallableParameter {
+    Infinite,
+    Parameters(Vec<FunctionParameter>),
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct Callable {
-    pub parameters: Vec<FunctionParameter>,
+    pub parameters: CallableParameter,
     pub output: Box<Type>,
+}
+
+impl Callable {
+    pub fn new(parameters: Vec<FunctionParameter>, output: Box<Type>) -> Self {
+        Self {
+            parameters: CallableParameter::Parameters(parameters),
+            output,
+        }
+    }
+
+    pub fn new_infinite(output: Box<Type>) -> Self {
+        Self {
+            parameters: CallableParameter::Infinite,
+            output,
+        }
+    }
 }
 
 impl std::fmt::Display for Callable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "callable [{}] -> {}",
-            self.parameters
-                .iter()
-                .map(|p| p.name.to_owned())
-                .collect::<Vec<String>>()
-                .join(","),
-            self.output
-        )
+        match &self.parameters {
+            CallableParameter::Parameters(params) => {
+                write!(
+                    f,
+                    "callable [{}] -> {}",
+                    params
+                        .iter()
+                        .map(|p| p.name.to_owned())
+                        .collect::<Vec<String>>()
+                        .join(","),
+                    self.output
+                )
+            }
+            CallableParameter::Infinite => {
+                write!(f, "callable [*] -> {}", self.output)
+            }
+        }
     }
 }
 

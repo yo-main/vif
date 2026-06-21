@@ -6,7 +6,10 @@ use inkwell::values::{
     BasicMetadataValueEnum, BasicValue, BasicValueEnum, FunctionValue, PointerValue,
 };
 use inkwell::AddressSpace;
+
+use vif_typing::Function;
 use vif_typing::Type;
+use vif_typing::Variable;
 
 #[derive(Clone, Debug)]
 pub struct VariablePointer<'ctx> {
@@ -172,34 +175,34 @@ impl<'ctx> Builder<'ctx> {
     }
 
     fn get_llvm_type(&self, typing: &Type) -> inkwell::types::BasicTypeEnum<'ctx> {
-        match &typing.r#type {
-            ast::Type::Int => self.context.i64_type().as_basic_type_enum(),
-            ast::Type::Float => self.context.f64_type().as_basic_type_enum(),
-            ast::Type::String => self
+        match &typing {
+            Type::Int => self.context.i64_type().as_basic_type_enum(),
+            Type::Float => self.context.f64_type().as_basic_type_enum(),
+            Type::String => self
                 .context
                 .ptr_type(AddressSpace::default())
                 .as_basic_type_enum(),
-            ast::Type::Bool => self.context.bool_type().as_basic_type_enum(),
-            ast::Type::None => self.context.bool_type().as_basic_type_enum(),
-            ast::Type::Callable(c) => self.get_pointer(&c.output),
-            ast::Type::Unknown => panic!("cannot convert unknown to llvm type"),
-            ast::Type::KeyWord => panic!("cannot convert keyword to llvm type"),
+            Type::Bool => self.context.bool_type().as_basic_type_enum(),
+            Type::None => self.context.bool_type().as_basic_type_enum(),
+            Type::Callable(c) => self.get_pointer(&c.output),
+            Type::Unknown => panic!("cannot convert unknown to llvm type"),
+            Type::KeyWord => panic!("cannot convert keyword to llvm type"),
         }
     }
 
     fn get_pointer(&self, typing: &Type) -> inkwell::types::BasicTypeEnum<'ctx> {
-        match &typing.r#type {
-            ast::Type::Int => self.context.i64_type().as_basic_type_enum(),
-            ast::Type::Float => self.context.f64_type().as_basic_type_enum(),
-            ast::Type::String => self
+        match &typing {
+            Type::Int => self.context.i64_type().as_basic_type_enum(),
+            Type::Float => self.context.f64_type().as_basic_type_enum(),
+            Type::String => self
                 .context
                 .ptr_type(AddressSpace::default())
                 .as_basic_type_enum(),
-            ast::Type::Bool => self.context.bool_type().as_basic_type_enum(),
-            ast::Type::None => self.context.bool_type().as_basic_type_enum(),
-            ast::Type::Callable(c) => self.get_pointer(&c.output),
-            ast::Type::Unknown => panic!("cannot convert unknown to llvm type"),
-            ast::Type::KeyWord => panic!("cannot convert keyword to llvm type"),
+            Type::Bool => self.context.bool_type().as_basic_type_enum(),
+            Type::None => self.context.bool_type().as_basic_type_enum(),
+            Type::Callable(c) => self.get_pointer(&c.output),
+            Type::Unknown => panic!("cannot convert unknown to llvm type"),
+            Type::KeyWord => panic!("cannot convert keyword to llvm type"),
         }
     }
 
@@ -227,7 +230,7 @@ impl<'ctx> Builder<'ctx> {
 
     pub fn declare_variable(
         &self,
-        token: &ast::Variable,
+        token: &Variable,
         value: LLVMValue<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         let v = match value {
@@ -289,12 +292,15 @@ impl<'ctx> Builder<'ctx> {
         self.context.ptr_type(AddressSpace::default())
     }
 
-    fn declare_function(&self, function: &ast::Function, module: &Module<'ctx>) -> LLVMValue<'ctx> {
-        let function_ptr_type = if function.typing.return_as_pointer().unwrap() {
-            self.get_new_ptr().as_basic_type_enum()
-        } else {
-            self.get_llvm_type(&function.typing)
-        };
+    pub fn declare_entrypoint(&self, name: &str, module: &Module<'ctx>) -> LLVMValue<'ctx> {
+        let function_ptr_type = self.context.i64_type().as_basic_type_enum();
+        let llvm_function = function_ptr_type.fn_type(&vec![], false);
+
+        LLVMValue::new_function(module.add_function(name, llvm_function, None), Type::Int)
+    }
+
+    fn declare_function(&self, function: &Function, module: &Module<'ctx>) -> LLVMValue<'ctx> {
+        let function_ptr_type = self.get_llvm_type(&function.output);
 
         let args = function
             .params
@@ -306,13 +312,13 @@ impl<'ctx> Builder<'ctx> {
 
         LLVMValue::new_function(
             module.add_function(function.name.as_str(), llvm_function, None),
-            function.typing.clone(),
+            function.output.clone(),
         )
     }
 
     pub fn declare_user_function(
         &self,
-        function: &ast::Function,
+        function: &Function,
         module: &Module<'ctx>,
     ) -> LLVMValue<'ctx> {
         self.declare_function(function, module)
@@ -523,8 +529,8 @@ impl<'ctx> Builder<'ctx> {
         name: &str,
         var: &VariablePointer<'ctx>,
     ) -> Result<BasicValueEnum<'ctx>, CompilerError> {
-        match var.get_typing().r#type.get_concrete_type() {
-            ast::Type::String => Ok(var.ptr.as_basic_value_enum()),
+        match var.get_typing().get_concrete_type() {
+            Type::String => Ok(var.ptr.as_basic_value_enum()),
             _ => self
                 .builder
                 .build_load(self.get_llvm_type(&var.typing), var.ptr, name)
@@ -678,7 +684,7 @@ impl<'ctx> Builder<'ctx> {
 
         Ok(LLVMValue::new_value(
             result.as_basic_value_enum(),
-            Type::new(true, ast::Type::Bool),
+            Type::Bool,
         ))
     }
 

@@ -11,7 +11,30 @@ use inkwell::targets::TargetMachine;
 use inkwell::values::BasicMetadataValueEnum;
 use inkwell::values::BasicValue;
 use std::collections::HashMap;
-use vif_objects::ast::Typing;
+
+use vif_typing::Assert;
+use vif_typing::Assign;
+use vif_typing::Binary;
+use vif_typing::Call;
+use vif_typing::Callable;
+use vif_typing::CallableParameter;
+use vif_typing::Condition;
+use vif_typing::Entrypoint;
+use vif_typing::Expr;
+use vif_typing::ExprBody;
+use vif_typing::Function;
+use vif_typing::Logical;
+use vif_typing::LogicalOperator;
+use vif_typing::LoopKeyword;
+use vif_typing::Operator;
+use vif_typing::Return;
+use vif_typing::Stmt;
+use vif_typing::Type;
+use vif_typing::Unary;
+use vif_typing::UnaryOperator;
+use vif_typing::Value;
+use vif_typing::Variable;
+use vif_typing::While;
 
 use crate::builder::LLVMValue;
 use vif_loader::log;
@@ -127,21 +150,55 @@ impl<'ctx> Compiler<'ctx> {
             "print".to_owned(),
             LLVMValue::new_function(
                 print,
-                Typing::new(
-                    false,
-                    ast::Type::Callable(Box::new(ast::Callable::new(
-                        ast::Signature::new_with_infinite(),
-                        Typing::new(true, ast::Type::None),
-                        false,
-                    ))),
-                ),
+                Type::Callable(Callable::new_infinite(Box::new(Type::None))),
             ),
         );
     }
 
-    pub fn compile(
+    pub fn compile_entrypoint(
         &self,
-        function: &ast::Function,
+        entrypoint: &Entrypoint,
+        context: &mut CompilerContext<'ctx>,
+    ) -> Result<BasicBlock<'ctx>, CompilerError> {
+        let function_value = self
+            .llvm_builder
+            .declare_entrypoint("__entrypoint", &self.module);
+
+        context
+            .functions
+            .add("__entrypoint".to_owned(), function_value.clone());
+
+        // for (value, param) in function_value
+        //     .get_function_value()
+        //     .get_function_parameters()
+        //     .iter()
+        //     .zip(entrypoint.params.iter())
+        // {
+        //     context.variables.add(
+        //         param.name.to_owned(),
+        //         LLVMValue::new_variable(value.clone(), param.typing.clone()),
+        //     );
+        // }
+
+        let entry_block = self
+            .llvm_builder
+            .create_function_block(&function_value, "entry");
+
+        for token in entrypoint.body.iter() {
+            self.statement(token, context)?;
+        }
+
+        self.llvm_builder.return_statement(&LLVMValue::new_value(
+            self.llvm_builder.value_int(1),
+            Type::Int,
+        ));
+
+        Ok(entry_block)
+    }
+
+    pub fn compile_function(
+        &self,
+        function: &Function,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<BasicBlock<'ctx>, CompilerError> {
         let function_value = self
@@ -178,14 +235,14 @@ impl<'ctx> Compiler<'ctx> {
     pub fn add_return_main_function(&self) -> Result<(), CompilerError> {
         self.llvm_builder.return_statement(&LLVMValue::new_value(
             self.llvm_builder.value_int(1),
-            ast::Typing::new(true, ast::Type::Int),
+            Type::Int,
         ))
     }
 
     pub fn add_return_none(&self) -> Result<(), CompilerError> {
         self.llvm_builder.return_statement(&LLVMValue::new_value(
             self.llvm_builder.value_bool(false),
-            ast::Typing::new(true, ast::Type::None),
+            Type::None,
         ))
     }
 
@@ -249,19 +306,19 @@ impl<'ctx> Compiler<'ctx> {
 
     pub fn statement(
         &self,
-        token: &ast::Stmt,
+        token: &Stmt,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<(), CompilerError> {
         log::debug!("Starting statement");
         match token {
-            ast::Stmt::Expression(expr) => self.expression_statement(expr, context)?,
-            ast::Stmt::Return(ret) => self.return_statement(ret, context)?,
-            ast::Stmt::Function(func) => self.function_declaration(func, context)?,
-            ast::Stmt::Var(var) => self.var_declaration(var, context)?,
-            ast::Stmt::Condition(cond) => self.if_statement(cond, context)?,
-            ast::Stmt::Block(blocks) => self.block(blocks, context)?,
-            ast::Stmt::While(whi) => self.while_statement(whi, context)?,
-            ast::Stmt::Assert(_) => unimplemented!(), // TODO!!! self.assert_statement(ass),
+            Stmt::Expression(expr) => self.expression_statement(expr, context)?,
+            Stmt::Return(ret) => self.return_statement(ret, context)?,
+            Stmt::Function(func) => self.function_declaration(func, context)?,
+            Stmt::Var(var) => self.var_declaration(var, context)?,
+            Stmt::Condition(cond) => self.if_statement(cond, context)?,
+            Stmt::Block(blocks) => self.block(blocks, context)?,
+            Stmt::While(whi) => self.while_statement(whi, context)?,
+            Stmt::Assert(_) => unimplemented!(), // TODO!!! self.assert_statement(ass),
         };
 
         Ok(())
@@ -269,7 +326,7 @@ impl<'ctx> Compiler<'ctx> {
 
     fn return_statement(
         &self,
-        token: &ast::Return,
+        token: &Return,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<(), CompilerError> {
         let value = self.expression(&token.value, context)?;
@@ -293,7 +350,7 @@ impl<'ctx> Compiler<'ctx> {
 
     pub fn call(
         &self,
-        token: &ast::Call,
+        token: &Call,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         let function_value = self.expression(&token.callee, context)?;
@@ -307,7 +364,7 @@ impl<'ctx> Compiler<'ctx> {
                 .iter()
                 .map(|e| {
                     let value = self.expression(e, context).unwrap();
-                    str_fmt.push_str(value.get_typing().r#type.printf_formatter());
+                    str_fmt.push_str(value.get_typing().printf_formatter());
                     value
                 })
                 .map(|e| {
@@ -351,7 +408,7 @@ impl<'ctx> Compiler<'ctx> {
 
     fn if_statement(
         &self,
-        token: &ast::Condition,
+        token: &Condition,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<(), CompilerError> {
         let expression = self.expression(&token.expr, context)?;
@@ -402,7 +459,7 @@ impl<'ctx> Compiler<'ctx> {
 
     fn while_statement(
         &self,
-        token: &ast::While,
+        token: &While,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<(), CompilerError> {
         log::debug!("Starting while statement");
@@ -435,7 +492,7 @@ impl<'ctx> Compiler<'ctx> {
 
     fn function_declaration(
         &self,
-        token: &ast::Function,
+        token: &Function,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<(), CompilerError> {
         log::debug!("Starting function declaration");
@@ -444,8 +501,9 @@ impl<'ctx> Compiler<'ctx> {
 
         if token.name != "main" {
             let mut new_context = context.clone();
-            new_context.return_as_pointer = token.typing.return_as_pointer().unwrap();
-            self.compile(token, &mut new_context)?;
+            new_context.return_as_pointer = false;
+
+            self.compile_function(token, &mut new_context)?;
             context.functions.add(
                 token.name.clone(),
                 new_context
@@ -455,7 +513,7 @@ impl<'ctx> Compiler<'ctx> {
                     .clone(),
             );
         } else {
-            self.compile(token, context)?;
+            self.compile_function(token, context)?;
         }
 
         let last_block = self.llvm_builder.get_current_block().unwrap();
@@ -469,7 +527,7 @@ impl<'ctx> Compiler<'ctx> {
 
     fn block(
         &self,
-        token: &Vec<ast::Stmt>,
+        token: &Vec<Stmt>,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<(), CompilerError> {
         for stmt in token.iter() {
@@ -481,7 +539,7 @@ impl<'ctx> Compiler<'ctx> {
 
     fn var_declaration(
         &self,
-        token: &ast::Variable,
+        token: &Variable,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<(), CompilerError> {
         let value = self.expression(&token.value, context)?;
@@ -492,7 +550,7 @@ impl<'ctx> Compiler<'ctx> {
 
     fn expression_statement(
         &self,
-        token: &Box<ast::Expr>,
+        token: &Expr,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<(), CompilerError> {
         log::debug!("Starting expression statement");
@@ -502,37 +560,36 @@ impl<'ctx> Compiler<'ctx> {
 
     fn expression(
         &self,
-        token: &Box<ast::Expr>,
+        token: &Expr,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         match &token.body {
-            ast::ExprBody::Value(t) => {
+            ExprBody::Value(t) => {
                 self.value(t, ItemReference::new(Some(token.span.clone())), context)
             }
-            ast::ExprBody::Binary(t) => self.binary(t, context),
-            ast::ExprBody::Call(t) => self.call(t, context),
-            ast::ExprBody::Assign(t) => self.assign(t, context),
-            ast::ExprBody::Grouping(t) => self.grouping(t, context),
-            ast::ExprBody::Unary(t) => self.unary(t, context),
-            ast::ExprBody::Logical(t) => self.logical(t, context),
-            ast::ExprBody::LoopKeyword(t) => self.loop_keyword(t, context),
+            ExprBody::Binary(t) => self.binary(t, context),
+            ExprBody::Call(t) => self.call(t, context),
+            ExprBody::Assign(t) => self.assign(t, context),
+            ExprBody::Unary(t) => self.unary(t, context),
+            ExprBody::Logical(t) => self.logical(t, context),
+            ExprBody::LoopKeyword(t) => self.loop_keyword(t, context),
         }
     }
 
     fn logical(
         &self,
-        token: &ast::Logical,
+        token: &Logical,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         match token.operator {
-            ast::LogicalOperator::And => self.and(token, context),
-            ast::LogicalOperator::Or => self.or(token, context),
+            LogicalOperator::And => self.and(token, context),
+            LogicalOperator::Or => self.or(token, context),
         }
     }
 
     fn and(
         &self,
-        token: &ast::Logical,
+        token: &Logical,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         let expr1 = self.expression(&token.left, context)?;
@@ -546,7 +603,7 @@ impl<'ctx> Compiler<'ctx> {
 
     fn or(
         &self,
-        token: &ast::Logical,
+        token: &Logical,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         let first_block = self.llvm_builder.create_block("first");
@@ -584,7 +641,7 @@ impl<'ctx> Compiler<'ctx> {
 
     fn assign(
         &self,
-        token: &ast::Assign,
+        token: &Assign,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         let expr = self.expression(&token.value, context)?;
@@ -607,57 +664,57 @@ impl<'ctx> Compiler<'ctx> {
         // assignment does not produce anything
         Ok(LLVMValue::new_value(
             self.llvm_builder.value_bool(false),
-            ast::Typing::new(true, ast::Type::None),
+            Type::None,
         ))
     }
 
     fn value(
         &self,
-        token: &ast::Value,
+        token: &Value,
         reference: ItemReference,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         match token {
-            ast::Value::Integer(i) => Ok(LLVMValue::new_value(
+            Value::Integer(i) => Ok(LLVMValue::new_value(
                 self.llvm_builder.value_int(*i),
-                ast::Typing::new(false, ast::Type::Int),
+                Type::Int,
             )),
-            ast::Value::Float(f) => Ok(LLVMValue::new_value(
+            Value::Float(f) => Ok(LLVMValue::new_value(
                 self.llvm_builder.value_float(*f),
-                Typing::new(false, ast::Type::Float),
+                Type::Float,
             )),
-            ast::Value::True => Ok(LLVMValue::new_value(
+            Value::True => Ok(LLVMValue::new_value(
                 self.llvm_builder.value_bool(true),
-                Typing::new(false, ast::Type::Bool),
+                Type::Bool,
             )),
-            ast::Value::False => Ok(LLVMValue::new_value(
+            Value::False => Ok(LLVMValue::new_value(
                 self.llvm_builder.value_bool(false),
-                Typing::new(false, ast::Type::Bool),
+                Type::Bool,
             )),
-            ast::Value::None => Ok(LLVMValue::new_value(
+            Value::None => Ok(LLVMValue::new_value(
                 self.llvm_builder.value_bool(false),
-                Typing::new(false, ast::Type::None),
+                Type::None,
             )),
-            ast::Value::Variable(s) => self
+            Value::Variable(s) => self
                 .get_variable(&s, context)
                 .or_else(|_| self.get_function(&s, context)),
-            ast::Value::String(s) => Ok(LLVMValue::new_variable(
+            Value::String(s) => Ok(LLVMValue::new_variable(
                 self.llvm_builder.global_string("", s)?.as_pointer_value(),
-                Typing::new(false, ast::Type::String),
+                Type::String,
             )),
         }
     }
 
     fn loop_keyword(
         &self,
-        token: &ast::LoopKeyword,
+        token: &LoopKeyword,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         match token {
-            ast::LoopKeyword::Break => self
+            LoopKeyword::Break => self
                 .llvm_builder
                 .goto_block(context.loop_context.last().unwrap().end)?,
-            ast::LoopKeyword::Continue => self
+            LoopKeyword::Continue => self
                 .llvm_builder
                 .goto_block(context.loop_context.last().unwrap().cond)?,
         };
@@ -665,13 +722,13 @@ impl<'ctx> Compiler<'ctx> {
         // this doesn't return any value
         Ok(LLVMValue::new_value(
             self.llvm_builder.value_bool(false),
-            ast::Typing::new(true, ast::Type::None),
+            Type::None,
         ))
     }
 
     fn binary(
         &self,
-        token: &ast::Binary,
+        token: &Binary,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         let reference = ItemReference::new(Some(token.right.span.clone()));
@@ -682,71 +739,24 @@ impl<'ctx> Compiler<'ctx> {
 
     fn operator(
         &self,
-        token: &ast::Operator,
+        token: &Operator,
         value_left: LLVMValue<'ctx>,
         value_right: LLVMValue<'ctx>,
         reference: ItemReference,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         match token {
-            ast::Operator::Plus => self.llvm_builder.add(value_left, value_right),
-            ast::Operator::Minus => self.llvm_builder.sub(value_left, value_right),
-            ast::Operator::Divide => self.llvm_builder.divide(value_left, value_right),
-            ast::Operator::Multiply => self.llvm_builder.multiply(value_left, value_right),
-            ast::Operator::Equal => self.llvm_builder.equal(value_left, value_right),
-            ast::Operator::Greater => self.llvm_builder.greater(value_left, value_right),
-            ast::Operator::GreaterEqual => {
-                self.llvm_builder.greater_or_equal(value_left, value_right)
-            }
-            ast::Operator::BangEqual => self.llvm_builder.not_equal(value_left, value_right),
-            ast::Operator::Less => self.llvm_builder.less(value_left, value_right),
-            ast::Operator::LessEqual => self.llvm_builder.less_or_equal(value_left, value_right),
-            ast::Operator::Comma => unimplemented!(),
-            ast::Operator::Modulo => self.llvm_builder.modulo(value_left, value_right),
-            _ => unreachable!(),
-
-            // might have to transform them earlier because we don't know the ptr to update here
-            ast::Operator::PlusEqual => {
-                let var_name = value_left.get_name();
-                let var = context.variables.get(var_name).ok_or_else(|| {
-                    CompilerError::Unknown(format!("Variable unknown: {}", value_left.get_name()))
-                })?;
-                let new_value = self.llvm_builder.add(value_left, value_right).unwrap();
-                self.llvm_builder
-                    .store_value(var.as_pointer(), new_value.as_value())?;
-                Ok(new_value)
-            }
-            ast::Operator::MinusEqual => {
-                let var_name = value_left.get_name();
-                let var = context.variables.get(var_name).ok_or_else(|| {
-                    CompilerError::Unknown(format!("Variable unknown: {}", value_left.get_name()))
-                })?;
-                let new_value = self.llvm_builder.sub(value_left, value_right).unwrap();
-                self.llvm_builder
-                    .store_value(var.as_pointer(), new_value.as_value())?;
-                Ok(new_value)
-            }
-
-            ast::Operator::DevideEqual => {
-                let var_name = value_left.get_name();
-                let var = context.variables.get(var_name).ok_or_else(|| {
-                    CompilerError::Unknown(format!("Variable unknown: {}", value_left.get_name()))
-                })?;
-                let new_value = self.llvm_builder.divide(value_left, value_right).unwrap();
-                self.llvm_builder
-                    .store_value(var.as_pointer(), new_value.as_value())?;
-                Ok(new_value)
-            }
-            ast::Operator::MultiplyEqual => {
-                let var_name = value_left.get_name();
-                let var = context.variables.get(var_name).ok_or_else(|| {
-                    CompilerError::Unknown(format!("Variable unknown: {}", value_left.get_name()))
-                })?;
-                let new_value = self.llvm_builder.multiply(value_left, value_right).unwrap();
-                self.llvm_builder
-                    .store_value(var.as_pointer(), new_value.as_value())?;
-                Ok(new_value)
-            }
+            Operator::Plus => self.llvm_builder.add(value_left, value_right),
+            Operator::Minus => self.llvm_builder.sub(value_left, value_right),
+            Operator::Divide => self.llvm_builder.divide(value_left, value_right),
+            Operator::Multiply => self.llvm_builder.multiply(value_left, value_right),
+            Operator::EqualEqual => self.llvm_builder.equal(value_left, value_right),
+            Operator::Greater => self.llvm_builder.greater(value_left, value_right),
+            Operator::GreaterEqual => self.llvm_builder.greater_or_equal(value_left, value_right),
+            Operator::BangEqual => self.llvm_builder.not_equal(value_left, value_right),
+            Operator::Less => self.llvm_builder.less(value_left, value_right),
+            Operator::LessEqual => self.llvm_builder.less_or_equal(value_left, value_right),
+            Operator::Modulo => self.llvm_builder.modulo(value_left, value_right),
         }
     }
 
@@ -784,21 +794,13 @@ impl<'ctx> Compiler<'ctx> {
 
     fn unary(
         &self,
-        token: &ast::Unary,
+        token: &Unary,
         context: &mut CompilerContext<'ctx>,
     ) -> Result<LLVMValue<'ctx>, CompilerError> {
         let expr = self.expression(&token.right, context)?;
         match token.operator {
-            ast::UnaryOperator::Minus => self.llvm_builder.create_neg(expr),
-            ast::UnaryOperator::Not => self.llvm_builder.create_not(expr),
+            UnaryOperator::Minus => self.llvm_builder.create_neg(expr),
+            UnaryOperator::Not => self.llvm_builder.create_not(expr),
         }
-    }
-
-    pub fn grouping(
-        &self,
-        token: &ast::Grouping,
-        context: &mut CompilerContext<'ctx>,
-    ) -> Result<LLVMValue<'ctx>, CompilerError> {
-        self.expression(&token.expr, context)
     }
 }

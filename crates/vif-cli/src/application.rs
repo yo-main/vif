@@ -2,9 +2,9 @@ use std::fs;
 use std::io;
 use std::io::Write;
 use std::path::PathBuf;
+use vif_ast;
 use vif_ast::build_ast;
 use vif_ast::print_ast_tree;
-use vif_ast::Entrypoint;
 use vif_llvm::compile_and_build_binary;
 use vif_llvm::compile_and_execute;
 use vif_llvm::execute_llvm_from_stdin;
@@ -12,8 +12,8 @@ use vif_llvm::get_llvm_ir;
 use vif_loader::Action;
 use vif_loader::Print;
 use vif_loader::CONFIG;
-use vif_objects::ast::Function;
 use vif_typing::run_typing_checks;
+use vif_typing::Entrypoint;
 
 pub struct Vif {}
 
@@ -42,26 +42,30 @@ impl Vif {
     }
 
     fn get_llvm_ir(&self, path: &PathBuf) -> Result<String, String> {
-        !todo!()
-        // self.get_ast(&path)
-        //     .and_then(|ast| get_llvm_ir(&ast).map_err(|e| format!("{e}")))
+        self.get_typed_ast(&path)
+            .and_then(|ast| get_llvm_ir(&ast).map_err(|e| format!("{e}")))
     }
 
-    fn get_ast(&self, path: &PathBuf) -> Result<Entrypoint, String> {
+    fn get_ast(&self, path: &PathBuf) -> Result<vif_ast::Entrypoint, String> {
         self.read_file(&path)
             .and_then(|content| self.build_ast(content.as_str()))
     }
 
+    fn get_typed_ast(&self, path: &PathBuf) -> Result<Entrypoint, String> {
+        let content = self.read_file(&path)?;
+
+        self.build_ast(content.as_str())
+            .and_then(|a| run_typing_checks(&a).map_err(|e| e.format(content.as_str())))
+    }
+
     fn execute_file(&self, path: &PathBuf) -> Result<(), String> {
-        !todo!()
-        // self.get_ast(&path)
-        //     .and_then(|ast| compile_and_execute(&ast).map_err(|e| format!("{e}")))
+        self.get_typed_ast(&path)
+            .and_then(|ast| compile_and_execute(&ast).map_err(|e| format!("{e}")))
     }
 
     fn build_binary(&self, path: &PathBuf) -> Result<(), String> {
-        !todo!()
-        // self.get_ast(&path)
-        // .and_then(|ast| compile_and_build_binary(&ast).map_err(|e| format!("{e}")))
+        self.get_typed_ast(&path)
+            .and_then(|ast| compile_and_build_binary(&ast).map_err(|e| format!("{e}")))
     }
 
     fn read_file(&self, path: &PathBuf) -> Result<String, String> {
@@ -84,8 +88,8 @@ impl Vif {
         }
     }
 
-    fn build_ast(&self, content: &str) -> Result<Entrypoint, String> {
-        let mut ast = match build_ast(content) {
+    fn build_ast(&self, content: &str) -> Result<vif_ast::Entrypoint, String> {
+        let ast = match build_ast(content) {
             Ok(ast) => ast,
             Err(errors) => return Err(errors[0].format(content)),
         };

@@ -9,6 +9,8 @@ use crate::objects::Assert;
 use crate::objects::Assign;
 use crate::objects::Binary;
 use crate::objects::Call;
+use crate::objects::Callable;
+use crate::objects::CallableParameter;
 use crate::objects::Condition;
 use crate::objects::Entrypoint;
 use crate::objects::Expr;
@@ -16,7 +18,6 @@ use crate::objects::ExprBody;
 use crate::objects::Function;
 use crate::objects::FunctionParameter;
 use crate::objects::Logical;
-use crate::objects::LogicalOperator;
 use crate::objects::Return;
 use crate::objects::Stmt;
 use crate::objects::Type;
@@ -253,15 +254,11 @@ where
                     )
                 } else {
                     match v.as_str() {
-                        // "print" => Expr::new(
-                        //     ExprBody::Value(ast::Value::Variable("print".to_owned())),
-                        //     expr.span.clone(),
-                        //     Type::Callable(Box::new(Callable::new(
-                        //         Signature::new_with_infinite(),
-                        //         Typing::new(true, Type::None),
-                        //         false,
-                        //     ))),
-                        // ),
+                        "print" => Expr::new(
+                            ExprBody::Value(ast::Value::Variable("print".to_owned())),
+                            expr.span.clone(),
+                            Type::Callable(Callable::new_infinite(Box::new(Type::None))),
+                        ),
                         // "get_time" =>
                         // "sleep" =>
                         _ => return Err(UnknownVariable::new(v.clone(), expr.span.clone())),
@@ -380,18 +377,27 @@ where
                     {
                         match (&function_reference, &expr.typing) {
                             (Type::Callable(function_callable), Type::Callable(callable)) => {
-                                for (param, arg) in function_callable
-                                    .parameters
-                                    .iter()
-                                    .zip(callable.parameters.iter())
-                                {
-                                    if param.typing != arg.typing {
-                                        return Err(IncompatibleTypes::new(
-                                            param.typing.as_string(),
-                                            arg.typing.as_string(),
-                                            expr.span.clone(),
-                                        ));
+                                match (&function_callable.parameters, &callable.parameters) {
+                                    (
+                                        CallableParameter::Parameters(function_params),
+                                        CallableParameter::Parameters(params),
+                                    ) => {
+                                        for (param, arg) in
+                                            function_params.iter().zip(params.iter())
+                                        {
+                                            if param.typing != arg.typing {
+                                                return Err(IncompatibleTypes::new(
+                                                    param.typing.as_string(),
+                                                    arg.typing.as_string(),
+                                                    expr.span.clone(),
+                                                ));
+                                            }
+                                        }
                                     }
+                                    (CallableParameter::Infinite, CallableParameter::Infinite) => {
+                                        continue
+                                    }
+                                    _ => panic!("what is this"),
                                 }
                             }
                             _ => continue,
