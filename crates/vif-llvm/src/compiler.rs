@@ -251,22 +251,14 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     pub fn execute(&self) -> Result<(), CompilerError> {
-        let code = self.module.print_to_string();
-        let buffer =
-            MemoryBuffer::create_from_memory_range(code.to_str().unwrap().as_bytes(), "here");
-
-        let ctx = inkwell::context::Context::create();
-        let new_module = ctx.create_module_from_ir(buffer).unwrap();
-
-        let engine = new_module
+        let engine = self
+            .module
             .create_jit_execution_engine(inkwell::OptimizationLevel::Aggressive)
             .map_err(|_| CompilerError::LLVM("Could not start JIT engine".to_owned()))?;
 
-        let function = new_module.get_function("main").unwrap();
+        let function = self.module.get_function("__entrypoint").unwrap();
 
         unsafe { engine.run_function(function, &[]) };
-
-        // unsafe { engine.run_function(function, &[]) };
 
         Ok(())
     }

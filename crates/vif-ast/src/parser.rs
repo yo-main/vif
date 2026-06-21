@@ -296,7 +296,6 @@ impl Parser {
         scanner.check_and_consume(&TokenType::Indent)?;
 
         loop {
-            println!("PEEK {:?}", scanner.peek());
             match scanner.peek()? {
                 TokenType::NewLine => {
                     scanner.consume()?;

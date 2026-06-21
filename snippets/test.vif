@@ -1,6 +1,7 @@
 var mut x = 0
 
 while x < 5:
+	print(x)
 	if x == 3:
 		x = x + 5
 		continue
