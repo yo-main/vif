@@ -26,6 +26,7 @@ use vif_typing::LogicalOperator;
 use vif_typing::LoopKeyword;
 use vif_typing::Operator;
 use vif_typing::Return;
+use vif_typing::Span;
 use vif_typing::Stmt;
 use vif_typing::Type;
 use vif_typing::Unary;
@@ -36,7 +37,17 @@ use vif_typing::While;
 
 use crate::builder::LLVMValue;
 use vif_loader::log;
-use vif_objects::op_code::ItemReference;
+
+#[derive(PartialEq, Debug)]
+pub struct ItemReference {
+    span: Option<Span>,
+}
+
+impl ItemReference {
+    pub fn new(span: Option<Span>) -> Self {
+        Self { span }
+    }
+}
 
 #[derive(Debug, Clone)]
 struct Variables<'ctx> {

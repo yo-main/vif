@@ -1,5 +1,5 @@
 use crate::objects::Type;
-use vif_objects::span::Span;
+use vif_ast::Span;
 
 #[derive(Debug)]
 pub enum TypingError {

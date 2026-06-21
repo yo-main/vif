@@ -1,5 +1,5 @@
+use vif_ast::Span;
 pub use vif_ast::{LogicalOperator, LoopKeyword, Operator, TypeAnnotation, UnaryOperator, Value};
-use vif_objects::span::Span;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Type {

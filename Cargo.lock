@@ -373,7 +373,6 @@ version = "0.1.0"
 dependencies = [
  "treeline",
  "vif-loader",
- "vif-objects",
  "vif-scanner",
 ]
 
@@ -384,7 +383,6 @@ dependencies = [
  "vif-ast",
  "vif-llvm",
  "vif-loader",
- "vif-objects",
  "vif-typing",
 ]
 
@@ -394,8 +392,6 @@ version = "0.1.0"
 dependencies = [
  "inkwell",
  "vif-loader",
- "vif-native",
- "vif-objects",
  "vif-scanner",
  "vif-typing",
 ]
@@ -412,23 +408,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "vif-native"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "vif-objects",
-]
-
-[[package]]
-name = "vif-objects"
-version = "0.1.0"
-
-[[package]]
 name = "vif-scanner"
 version = "0.1.0"
 dependencies = [
  "vif-loader",
- "vif-objects",
 ]
 
 [[package]]
@@ -437,7 +420,6 @@ version = "0.1.0"
 dependencies = [
  "vif-ast",
  "vif-loader",
- "vif-objects",
 ]
 
 [[package]]

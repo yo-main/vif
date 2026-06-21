@@ -1,4 +1,4 @@
-use vif_objects::span::Span;
+use crate::span::Span;
 
 #[derive(Debug)]
 pub enum ScannerError {

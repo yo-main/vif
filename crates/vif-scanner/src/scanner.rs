@@ -3,11 +3,11 @@ use crate::error::IndentationError;
 use crate::error::ScannerError;
 use crate::error::UnclosedString;
 use crate::error::UnidentifiedError;
+use crate::span::Span;
 use crate::token::TokenType;
 use std::iter::Peekable;
 use std::str::Chars;
 use vif_loader::log;
-use vif_objects::span::Span;
 
 pub struct Scanner<'a> {
     next: Option<TokenType>,

@@ -9,6 +9,7 @@ pub use error::AstError;
 use parser::Parser;
 use vif_loader::log;
 use vif_scanner::Scanner;
+pub use vif_scanner::Span;
 
 pub use crate::objects::Assign;
 pub use crate::objects::Binary;

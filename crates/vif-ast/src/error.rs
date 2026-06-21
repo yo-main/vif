@@ -1,5 +1,5 @@
-use vif_objects::span::Span;
 use vif_scanner::ScannerError;
+use vif_scanner::Span;
 
 #[derive(Debug)]
 pub enum AstError {
