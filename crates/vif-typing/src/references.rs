@@ -59,8 +59,8 @@ impl Reference {
 impl std::fmt::Display for Reference {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Variable(v) => write!(f, "var {}", v.name),
-            Self::Function(v) => write!(f, "func {}", v.name),
+            Self::Variable(v) => write!(f, "var {} ({})", v.name, v.typing),
+            Self::Function(v) => write!(f, "func {} ({})", v.name, v.output),
         }
     }
 }

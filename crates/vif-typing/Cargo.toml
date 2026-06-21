@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+treeline = "0.1.0"
 vif-ast = { version = "0.1.0", path = "../vif-ast" }
 vif-loader = { version = "0.1.0", path = "../vif-loader" }
 

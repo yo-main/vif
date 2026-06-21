@@ -9,6 +9,7 @@ lazy_static! {
 pub enum Print {
     Assembly(PathBuf),
     Ast(PathBuf),
+    TypedAst(PathBuf),
 }
 
 pub enum Action {
@@ -41,6 +42,8 @@ pub fn get_config() -> Config {
                 Action::Print(Print::Assembly(path))
             } else if subcommand_matches.get_flag("ast") {
                 Action::Print(Print::Ast(path))
+            } else if subcommand_matches.get_flag("typed-ast") {
+                Action::Print(Print::TypedAst(path))
             } else {
                 Action::Print(Print::Assembly(path))
             }

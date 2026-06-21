@@ -1,18 +1,3 @@
-var mut x = 0
+var a: str = 1
 
-while x < 5:
-	if x == 3:
-		x = x + 5
-		continue
-
-	x = x + 1
-
-def m(x: int):
-	return x * -1
-
-def coucou(x: int):
-	return m
-
-var p = m
-print(coucou(2+4))
-
+print(a)

@@ -14,6 +14,11 @@ pub fn get_cli() -> Command {
                         .action(clap::ArgAction::SetTrue),
                 )
                 .arg(Arg::new("ast").long("ast").action(clap::ArgAction::SetTrue))
+                .arg(
+                    Arg::new("typed-ast")
+                        .long("typed-ast")
+                        .action(clap::ArgAction::SetTrue),
+                )
                 .arg(Arg::new("entrypoint").required(true)),
         )
 }

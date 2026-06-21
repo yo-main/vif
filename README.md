@@ -20,6 +20,21 @@ To build the project locally, you will need to have installed:
 
 If you are using nixOs, everything is in the `shell.nix`.
 
+
+## Getting started
+
+```bash
+# run a file
+cargo run -- run snippets/test.vif
+
+# ast
+cargo run -- print --ast snippets/test.vif
+
+# llvm IR
+cargo run -- print --assembly snippets/test.vif
+  
+```
+
 ## Roadmap
 
 I have been able to implement a solid base (at least according to my capabilities).

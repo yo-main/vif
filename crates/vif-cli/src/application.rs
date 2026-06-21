@@ -4,7 +4,6 @@ use std::io::Write;
 use std::path::PathBuf;
 use vif_ast;
 use vif_ast::build_ast;
-use vif_ast::print_ast_tree;
 use vif_llvm::compile_and_build_binary;
 use vif_llvm::compile_and_execute;
 use vif_llvm::execute_llvm_from_stdin;
@@ -12,6 +11,7 @@ use vif_llvm::get_llvm_ir;
 use vif_loader::Action;
 use vif_loader::Print;
 use vif_loader::CONFIG;
+use vif_typing;
 use vif_typing::run_typing_checks;
 use vif_typing::Entrypoint;
 
@@ -33,7 +33,11 @@ impl Vif {
                     print!("{}", llvm_ir);
                 }
                 Print::Ast(path) => self.get_ast(path).and_then(|ast| {
-                    print_ast_tree(&ast);
+                    vif_ast::print_ast_tree(&ast);
+                    Ok(())
+                })?,
+                Print::TypedAst(path) => self.get_typed_ast(path).and_then(|ast| {
+                    vif_typing::print_ast_tree(&ast);
                     Ok(())
                 })?,
             },

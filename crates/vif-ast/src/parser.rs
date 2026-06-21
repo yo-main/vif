@@ -601,6 +601,7 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use crate::objects::TypeAnnotation;
+    use vif_scanner::Span;
 
     use super::Binary;
     use super::Call;
@@ -620,7 +621,6 @@ mod tests {
     use super::UnaryOperator;
     use super::Value;
     use super::Variable;
-    use vif_objects::span::Span;
 
     #[test]
     fn simple_string() {

@@ -1,4 +1,5 @@
 mod callable;
+pub mod debug;
 mod error;
 mod mutability;
 mod objects;
@@ -6,8 +7,10 @@ mod references;
 pub mod type_merger;
 mod typer;
 use vif_ast as ast;
+
 pub use vif_ast::Span;
 
+pub use crate::debug::print_ast_tree;
 pub use crate::objects::Assert;
 pub use crate::objects::Assign;
 pub use crate::objects::Binary;
